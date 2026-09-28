@@ -1,0 +1,71 @@
+From: pocknix <noreply@pocknix.local>
+Subject: [PATCH] leds: htr3212: release the supply across system sleep
+
+The stick LED controllers share vdd_mcu_3v3 with the gamepad MCU. Without
+PM ops they hold the rail enabled through suspend, so rsinput's disable
+never reaches the switch. Shut the chip down and drop the regulator at
+suspend; re-enable, release SDB and reinitialise the registers at resume.
+
+Lifted from armada's HTR3212 driver (armada-os/armada 0030), which carries
+the same PM ops on top of the ROCKNIX driver.
+---
+--- a/drivers/leds/leds-htr3212.c
++++ b/drivers/leds/leds-htr3212.c
+@@ -273,6 +273,49 @@
+ 	return 0;
+ }
+ 
++/* Release vdd across sleep: it is shared with the gamepad MCU, which cuts it last */
++static int htr3212_suspend(struct device *dev)
++{
++	struct htr3212_priv *priv = dev_get_drvdata(dev);
++	int ret;
++
++	ret = htr3212_write(priv, HTR3212_SHUTDOWN, 0x00);
++	if (ret)
++		dev_err(dev, "Failed to shut down device on suspend (%pe)\n",
++			ERR_PTR(ret));
++
++	gpiod_set_value_cansleep(priv->sdb, 0);
++	regulator_disable(priv->vdd);
++
++	return 0;
++}
++
++static int htr3212_resume(struct device *dev)
++{
++	struct htr3212_priv *priv = dev_get_drvdata(dev);
++	int ret;
++
++	ret = regulator_enable(priv->vdd);
++	if (ret < 0) {
++		dev_err(dev, "Failed to enable regulator on resume (%pe)\n",
++			ERR_PTR(ret));
++		return ret;
++	}
++
++	gpiod_set_value_cansleep(priv->sdb, 1);
++	usleep_range(10000, 11000);
++
++	ret = htr3212_init_regs(priv);
++	if (ret)
++		dev_err(dev, "Failed to reinitialize registers on resume (%pe)\n",
++			ERR_PTR(ret));
++
++	return ret;
++}
++
++static DEFINE_SIMPLE_DEV_PM_OPS(htr3212_pm_ops, htr3212_suspend,
++				htr3212_resume);
++
+ static void htr3212_remove(struct i2c_client *client)
+ {
+ 	struct htr3212_priv *priv = i2c_get_clientdata(client);
+@@ -306,6 +349,7 @@
+ 	.driver = {
+ 		.name	= "htr3212",
+ 		.of_match_table = of_htr3212_match,
++		.pm	= pm_sleep_ptr(&htr3212_pm_ops),
+ 	},
+ 	.probe		= htr3212_probe,
+ 	.remove		= htr3212_remove,

@@ -467,7 +467,6 @@
 		startup-delay-us = <10000>;
 
 		gpio = <&tlmm 99 GPIO_ACTIVE_HIGH>;
-		regulator-always-on;
 		regulator-boot-on;
 		enable-active-high;
 	};
@@ -591,6 +590,12 @@
 			regulator-min-microvolt = <3296000>;
 			regulator-max-microvolt = <3960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			/* The codec keeps this rail enabled through s2idle; idle it in LPM */
+			regulator-state-mem {
+				regulator-on-in-suspend;
+				regulator-mode = <RPMH_REGULATOR_MODE_LPM>;
+			};
 		};
 
 		vreg_bob2: bob2 {
@@ -1716,7 +1721,8 @@
 		gamepad-pid = <0x3001>;
 		gamepad-rev = <0x0001>;
 
-		vdd-supply = <&vreg_bob2>;
+		/* The MCU's own 3.3 V switch, so rsinput can cut it across sleep */
+		vdd-supply = <&vdd_mcu_3v3>;
 		enable-gpios = <&tlmm 12 GPIO_ACTIVE_HIGH>;
 		pinctrl-0 = <&mcu_en_active>;
 		pinctrl-names = "default";

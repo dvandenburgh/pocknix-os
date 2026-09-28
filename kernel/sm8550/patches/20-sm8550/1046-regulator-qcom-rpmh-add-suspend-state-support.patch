@@ -37,12 +37,9 @@ core patch maps s2idle (PM_SUSPEND_TO_IDLE) to the same state-mem
 constraints, so the ops fire for both suspend modes on this platform.
 Active-set votes are never modified.
 ---
- drivers/regulator/qcom-rpmh-regulator.c | 165 +++++++++++++++++++++++-
- 1 file changed, 163 insertions(+), 2 deletions(-)
-
 --- a/drivers/regulator/qcom-rpmh-regulator.c
 +++ b/drivers/regulator/qcom-rpmh-regulator.c
-@@ -204,8 +204,21 @@
+@@ -206,8 +206,21 @@
  	else
  		ret = rpmh_write_async(vreg->dev, RPMH_ACTIVE_ONLY_STATE, cmd,
  					1);
@@ -65,7 +62,7 @@ Active-set votes are never modified.
  }
  
  static int _rpmh_regulator_vrm_set_voltage_sel(struct regulator_dev *rdev,
-@@ -342,6 +355,141 @@
+@@ -344,6 +357,141 @@
  }
  
  /**
@@ -133,7 +130,7 @@ Active-set votes are never modified.
 +static int rpmh_regulator_vrm_active_pmic_mode(struct rpmh_vreg *vreg)
 +{
 +	if (vreg->bypassed)
-+		return PMIC4_BOB_MODE_PASS;
++		return vreg->hw_data->pmic_bypass_mode;
 +
 +	if (vreg->mode == REGULATOR_MODE_INVALID)
 +		return -EINVAL;
@@ -207,7 +204,7 @@ Active-set votes are never modified.
   * rpmh_regulator_vrm_get_optimum_mode() - get the mode based on the  load
   * @rdev:		Regulator device pointer for the rpmh-regulator
   * @input_uV:		Input voltage
-@@ -399,6 +547,10 @@
+@@ -401,6 +549,10 @@
  	.list_voltage		= regulator_list_voltage_linear_range,
  	.set_mode		= rpmh_regulator_vrm_set_mode,
  	.get_mode		= rpmh_regulator_vrm_get_mode,
@@ -218,7 +215,7 @@ Active-set votes are never modified.
  };
  
  static const struct regulator_ops rpmh_regulator_vrm_drms_ops = {
-@@ -411,6 +563,10 @@
+@@ -413,6 +565,10 @@
  	.set_mode		= rpmh_regulator_vrm_set_mode,
  	.get_mode		= rpmh_regulator_vrm_get_mode,
  	.get_optimum_mode	= rpmh_regulator_vrm_get_optimum_mode,
@@ -229,7 +226,7 @@ Active-set votes are never modified.
  };
  
  static const struct regulator_ops rpmh_regulator_vrm_bypass_ops = {
-@@ -424,12 +580,19 @@
+@@ -426,12 +582,19 @@
  	.get_mode		= rpmh_regulator_vrm_get_mode,
  	.set_bypass		= rpmh_regulator_vrm_set_bypass,
  	.get_bypass		= rpmh_regulator_vrm_get_bypass,
