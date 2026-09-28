@@ -44,8 +44,12 @@ curve_temps() {
   esac
 }
 
-# pwm1_enable: 1 = manual control, 0 = back to the hardware's automatic mode.
-[ -e "${FAN_EN}" ] && echo 1 > "${FAN_EN}" 2>/dev/null
+# pwm1_enable: 1 = manual control, 0 = back to the hardware's automatic mode. pwm-fan's mode 3
+# is manual too but also cuts the fan supply at duty 0 and across suspend (mode 1 keeps the 5 V
+# rail switched on all night); other hwmon drivers read 2+ as automatic, so they keep 1.
+FAN_MODE=1
+[ "$(cat "$(dirname "${FAN_PWM}")/name" 2>/dev/null)" = "pwmfan" ] && FAN_MODE=3
+[ -e "${FAN_EN}" ] && echo "${FAN_MODE}" > "${FAN_EN}" 2>/dev/null
 trap '[ -e "${FAN_EN}" ] && echo 0 > "${FAN_EN}" 2>/dev/null; exit 0' INT TERM
 
 LAST=""
