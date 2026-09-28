@@ -1,5 +1,5 @@
 # mesa (pocknix) — Mesa trimmed to freedreno GL + turnip Vulkan, CPU-tuned per SoC.
-# Deliberately off ROCKNIX's 25.1.5 pin: that turnip GPU-faults under Eden/Switch.
+# Tracks current mesa rather than ROCKNIX's older pin, whose turnip GPU-faults under Eden/Switch.
 # x11+GLX stays enabled (ROCKNIX builds wayland-only): Steam and desktop apps run under
 # XWayland and need GLX/EGL-x11. epoch=2 outranks ALARM's epoch=1 mesa.
 pkgbase=mesa

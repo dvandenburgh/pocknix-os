@@ -39,8 +39,8 @@ cloud-guest-utils   # growpart — pocknix-expand-root grows the root partition 
 
 # --- graphics stack ---
 # mesa + vulkan-freedreno install from ALARM here to satisfy bootstrap deps, then
-# install_local_packages REPLACES both with our epoch-2 pocknix builds (packages/mesa:
-# freedreno/turnip-only, ROCKNIX's 25.1.5 pin, cortex-x3 tuned).
+# install_local_packages REPLACES both with our epoch-2 pocknix builds (packages/soc/mesa:
+# freedreno/turnip-only, CPU-tuned per SoC).
 mesa
 vulkan-freedreno
 vulkan-icd-loader
