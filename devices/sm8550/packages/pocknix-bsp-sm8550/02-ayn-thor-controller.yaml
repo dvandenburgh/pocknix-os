@@ -28,10 +28,11 @@ source_devices:
       handler: event*
     capability_map_id: thor_gamepad
 
+  # Every gpio-keys node reports phys gpio-keys/input0; the name is the discriminator.
   - group: gamepad
     evdev:
       name: gpio-keys-ayn
-      phys_path: gpio-keys-ayn/input0
+      phys_path: gpio-keys/input0
       handler: event*
     capability_map_id: thor_gamepad
 
