@@ -1,4 +1,4 @@
-import { ButtonItem, ConfirmModal, PanelSectionRow, TextField, showModal } from "@decky/ui";
+import { ButtonItem, ConfirmModal, PanelSectionRow, TextField, ToggleField, showModal } from "@decky/ui";
 import { useEffect, useState } from "react";
 import { availableCompatTools, registerForCompatTool, setCompatTool } from "../lib/compat";
 import type { CompatTool } from "../lib/compat";
@@ -23,11 +23,6 @@ export const fanOptions = [
 export const lavdOptions = [
   { data: "autopilot", label: "Autopilot" },
   { data: "performance", label: "Performance" },
-];
-// The proton wrapper resolves "big" against the board's POCKNIX_BIG_CORES mask.
-export const cpuPinOptions = [
-  { data: "", label: "All cores" },
-  { data: "big", label: "Big cores only" },
 ];
 const globalChoice = { data: "", label: "Use global" };
 
@@ -63,6 +58,22 @@ export function EnvVarsButton({ value, onSave }: { value: string; onSave: (next:
   );
 }
 
+export function XaliaToggle({ values, patch }: {
+  values: Record<string, any>;
+  patch: (patch: Record<string, any>) => void;
+}) {
+  return (
+    <PanelSectionRow>
+      <ToggleField
+        label="Disable Xalia"
+        description="Proton's controller-navigation helper; costs CPU in every game"
+        checked={values.disableXalia !== false}
+        onChange={(checked) => patch({ disableXalia: checked })}
+      />
+    </PanelSectionRow>
+  );
+}
+
 /** Per-game fan/scheduler overrides ("" = follow the global mode). */
 export function PerfFields({ values, patch }: {
   values: Record<string, any>;
@@ -72,11 +83,9 @@ export function PerfFields({ values, patch }: {
   const perGameLavd = [globalChoice, ...lavdOptions];
   const fanValue = perGameFan.some((option) => option.data === String(values.fanMode ?? "")) ? String(values.fanMode ?? "") : "";
   const lavdValue = perGameLavd.some((option) => option.data === String(values.lavdMode ?? "")) ? String(values.lavdMode ?? "") : "";
-  const pinValue = cpuPinOptions.some((option) => option.data === String(values.cpuPin ?? "")) ? String(values.cpuPin ?? "") : "";
   return (
     <>
       <SelectEdit label="CPU Scheduler" value={lavdValue} options={perGameLavd} onChange={(id) => patch({ lavdMode: id })} />
-      <SelectEdit label="CPU Cores" value={pinValue} options={cpuPinOptions} onChange={(id) => patch({ cpuPin: id })} />
       <SelectEdit label="Fan Curve" value={fanValue} options={perGameFan} onChange={(id) => patch({ fanMode: id })} />
     </>
   );
@@ -147,6 +156,7 @@ export function TweakFields({ config, appid, values, patch }: {
       />
       <SelectEdit label="Audio Buffer" value={audioValue} options={audioLatencyOptions} onChange={(id) => patch({ audioLatency: id })} />
       <SelectEdit label="Mesa Version" value={mesaValue} options={mesaOptions} onChange={(id) => patch({ mesaVersion: id })} />
+      <XaliaToggle values={values} patch={patch} />
       <EnvVarsButton value={String(values.envVars ?? "")} onSave={(next) => patch({ envVars: next })} />
     </>
   );

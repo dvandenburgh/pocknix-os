@@ -240,16 +240,21 @@ def big_cores():
     return cores
 
 
-def apply_cpu_pin(settings):
-    # Opt-in per title: scx_lavd does the placing by default (see pocknix-steam's launch).
-    # Affinity survives the execv and is inherited by every child, incl. the SLR container.
-    if str(settings.get("cpuPin", "") or "").strip() != "big":
-        return
+def apply_cpu_pin():
+    # Every game: unpinned, scx_lavd parks render/game threads on the little cores.
+    # Affinity survives the execv and every child inherits it.
     cores = big_cores() & os.sched_getaffinity(0)
     if not cores:
         print("pocknix-proton: no usable POCKNIX_BIG_CORES mask, leaving CPU affinity alone", file=sys.stderr)
         return
     os.sched_setaffinity(0, cores)
+
+
+def apply_xalia(settings):
+    # Proton starts xalia (gamepad UI helper) for every game, costing CPU inside the pinned
+    # tree. Runs after apply_env_vars so launch options and envVars win.
+    if "PROTON_USE_XALIA" not in os.environ and settings.get("disableXalia", True) is not False:
+        os.environ["PROTON_USE_XALIA"] = "0"
 
 
 def heal_arm_prefix(real_proton):
@@ -318,6 +323,7 @@ def main():
     try:
         apply_mesa_version(settings, real_proton)
         apply_env_vars(settings)
+        apply_xalia(settings)
     except Exception as exc:
         print(f"pocknix-proton: failed to apply env tweaks: {exc}", file=sys.stderr)
     try:
@@ -325,7 +331,7 @@ def main():
     except Exception as exc:
         print(f"pocknix-proton: failed to apply game modes: {exc}", file=sys.stderr)
     try:
-        apply_cpu_pin(settings)
+        apply_cpu_pin()
     except Exception as exc:
         print(f"pocknix-proton: failed to pin CPU cores: {exc}", file=sys.stderr)
     try:

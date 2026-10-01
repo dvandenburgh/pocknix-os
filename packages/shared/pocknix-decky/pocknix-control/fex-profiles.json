@@ -1,6 +1,8 @@
 {
   "defaults": {
-    "global": {},
+    "global": {
+      "disableXalia": true
+    },
     "games": {}
   },
   "profiles": {
