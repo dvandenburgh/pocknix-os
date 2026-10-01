@@ -2,8 +2,8 @@
 # Input sees a proper pad (Guide button, rumble). Upstream's PREBUILT aarch64 release, so the
 # build chroot needs no Rust toolchain; the per-device config ships in pocknix-bsp.
 pkgname=inputplumber
-pkgver=0.75.2
-pkgrel=3
+pkgver=0.81.0
+pkgrel=1
 pkgdesc="Open source input router and remapper daemon (prebuilt aarch64 release)"
 arch=('aarch64')
 url="https://github.com/ShadowBlip/InputPlumber"
@@ -14,7 +14,7 @@ conflicts=('inputplumber')
 # Prebuilt binary.
 options=('!strip' '!debug' '!lto')
 source=("inputplumber-aarch64-${pkgver}.tar.gz::https://github.com/ShadowBlip/InputPlumber/releases/download/v${pkgver}/inputplumber-aarch64.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('5509a6f79bec95c240de34833639e3ba8a144752e3745e6eb978b38b8aa05a10')
 
 package() {
   # The release tarball has usr/ at the top, sometimes inside one wrapper dir.

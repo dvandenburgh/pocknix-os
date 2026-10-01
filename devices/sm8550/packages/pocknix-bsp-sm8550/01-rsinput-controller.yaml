@@ -72,6 +72,14 @@ source_devices:
       handler: event*
     capability_map_id: sm8550_gamepad
 
+  # Odin 2 paddles: unclaimed, InputPlumber's stock 50-ayn_odin2.yaml makes it a second pad.
+  - group: gamepad
+    evdev:
+      name: gpio-keys-paddles
+      phys_path: gpio-keys/input0
+      handler: event*
+    capability_map_id: sm8550_gamepad
+
 options:
   auto_manage: true
 
