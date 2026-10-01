@@ -35,11 +35,10 @@ pocknix: rebased onto 1004 (no rumble work in this tree's suspend path).
  
      /*
       * The MCU streams gamepad reports continuously over the UART. If it keeps
-@@ -762,12 +765,33 @@
+@@ -762,12 +765,32 @@
      if (drv->reset_gpio)
          gpiod_set_value_cansleep(drv->reset_gpio, 0);
  
-+    /* Quiesced is not off: the 3.3 V switch stays on unless its last user drops it */
 +    if (!drv->vdd_off) {
 +        error = regulator_disable(drv->vdd);
 +        if (error) {

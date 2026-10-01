@@ -11,11 +11,10 @@ the same PM ops on top of the ROCKNIX driver.
 ---
 --- a/drivers/leds/leds-htr3212.c
 +++ b/drivers/leds/leds-htr3212.c
-@@ -273,6 +273,49 @@
+@@ -273,6 +273,48 @@
  	return 0;
  }
  
-+/* Release vdd across sleep: it is shared with the gamepad MCU, which cuts it last */
 +static int htr3212_suspend(struct device *dev)
 +{
 +	struct htr3212_priv *priv = dev_get_drvdata(dev);

@@ -1721,7 +1721,6 @@
 		gamepad-pid = <0x3001>;
 		gamepad-rev = <0x0001>;
 
-		/* The MCU's own 3.3 V switch, so rsinput can cut it across sleep */
 		vdd-supply = <&vdd_mcu_3v3>;
 		enable-gpios = <&tlmm 12 GPIO_ACTIVE_HIGH>;
 		pinctrl-0 = <&mcu_en_active>;
