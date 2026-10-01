@@ -16,7 +16,9 @@ SCHEMA_VERSION = 1
 MAX_IMPORT_BYTES = 512 * 1024
 MAX_FIELD_LEN = 4096
 
-GAME_KEYS = ("fexProfile", "audioLatency", "mesaVersion", "envVars", "lavdMode", "cpuPin")
+GAME_KEYS = ("fexProfile", "audioLatency", "mesaVersion", "envVars", "lavdMode")
+# Booleans travel as-is: the string filter below would drop an explicit False.
+GAME_BOOL_KEYS = ("disableXalia",)
 
 
 def _device_model():
@@ -93,6 +95,7 @@ def export_config(appid, name, basename="", allow_overwrite=False):
     for key in GAME_KEYS:
         if str(entry.get(key, "") or "").strip():
             out[key] = _clean_str(entry[key])
+    out.update({key: entry[key] for key in GAME_BOOL_KEYS if isinstance(entry.get(key), bool)})
     tool = _compat_tool_mapping().get(appid)
     if tool:
         out["protonTool"] = tool
@@ -132,6 +135,7 @@ def _load_payload(path):
             for key in GAME_KEYS:
                 if str(entry.get(key, "") or "").strip():
                     out[key] = _clean_str(entry[key])
+            out.update({key: entry[key] for key in GAME_BOOL_KEYS if isinstance(entry.get(key), bool)})
             tool = _clean_str(entry.get("protonTool", ""))
             clean_games[str(appid)] = (out, tool)
     if not clean_games:

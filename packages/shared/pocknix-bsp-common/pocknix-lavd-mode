@@ -40,7 +40,9 @@ case "${1:-}" in
       want="$(effective)"
       if [ "${want}" != "${running}" ] || ! kill -0 "${child}" 2>/dev/null; then
         [ -n "${child}" ] && { kill "${child}" 2>/dev/null; wait "${child}" 2>/dev/null; }
-        /usr/bin/scx_lavd "--${want}" &
+        # Values from Valve's Steam Frame: 0.5 ms slices while a pinned task waits (every game
+        # is pinned); deadline order even on lightly loaded CPUs instead of FIFO.
+        /usr/bin/scx_lavd "--${want}" --pinned-slice-us 500 --lb-local-dsq-util-pct 0 &
         child=$!
         running="${want}"
       fi
