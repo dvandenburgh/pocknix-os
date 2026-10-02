@@ -47,6 +47,11 @@ const updateStatus = () => call("update_status");
 const snapshotStatus = () => call("snapshot_status");
 const startRollback = (id) => call("start_rollback", id);
 const rebootSystem = () => call("reboot_system");
+const calibrationStatus = () => call("calibration_status");
+const calibrationStart = () => call("calibration_start");
+const calibrationCancel = () => call("calibration_cancel");
+const calibrationSave = () => call("calibration_save");
+const calibrationReset = () => call("calibration_reset");
 
 function useDebouncedSave(options) {
     const { config, field, snapshot, save, setConfig, onError, delay = 900 } = options;
@@ -756,6 +761,84 @@ function AddGameSection() {
     return (SP_JSX.jsxs(DFL.PanelSection, { title: "LIBRARY", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: pick, children: "Add Non-Steam Game" }) }), SP_JSX.jsx("div", { className: "pocknix-note", children: "Pick an executable to add it to your Steam library" })] }));
 }
 
+function instruction(s) {
+    if (s.kind === "trigger") {
+        return s.stage === "release"
+            ? `Let go of the ${s.control?.toLowerCase()} and keep your hands off`
+            : `Press the ${s.control?.toLowerCase()} all the way in and hold it`;
+    }
+    return s.stage === "release"
+        ? `Let go of the ${s.control?.toLowerCase()} and keep your hands off`
+        : `Push the ${s.control?.toLowerCase()} fully ${s.direction} and hold it there`;
+}
+function Bar({ label, value, signed }) {
+    const pct = Math.round((signed ? (value + 1) / 2 : value) * 100);
+    return (SP_JSX.jsxs("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }, children: [SP_JSX.jsx("div", { style: { width: "120px", fontSize: "12px" }, children: label }), SP_JSX.jsx("div", { style: { flex: 1 }, children: SP_JSX.jsx(DFL.ProgressBar, { nProgress: pct, nTransitionSec: 0 }) }), SP_JSX.jsx("div", { style: { width: "48px", textAlign: "right", fontSize: "12px" }, children: signed ? `${Math.round(value * 100)}` : `${pct}%` })] }));
+}
+function LiveBars({ live }) {
+    if (!live)
+        return null;
+    return (SP_JSX.jsxs("div", { style: { margin: "8px 0" }, children: [SP_JSX.jsx(Bar, { label: "Left stick X", value: live.lx, signed: true }), SP_JSX.jsx(Bar, { label: "Left stick Y", value: live.ly, signed: true }), SP_JSX.jsx(Bar, { label: "Right stick X", value: live.rx, signed: true }), SP_JSX.jsx(Bar, { label: "Right stick Y", value: live.ry, signed: true }), SP_JSX.jsx(Bar, { label: "Left trigger", value: live.lt }), SP_JSX.jsx(Bar, { label: "Right trigger", value: live.rt })] }));
+}
+function CalibrationModal({ closeModal }) {
+    const [status, setStatus] = SP_REACT.useState(null);
+    const [message, setMessage] = SP_REACT.useState("");
+    const [busy, setBusy] = SP_REACT.useState(false);
+    const phaseRef = SP_REACT.useRef("idle");
+    phaseRef.current = status?.phase || "idle";
+    // also the backend's watchdog heartbeat (calibration.py WATCHDOG_S)
+    SP_REACT.useEffect(() => {
+        let cancelled = false;
+        let inFlight = false;
+        const tick = async () => {
+            if (inFlight)
+                return;
+            inFlight = true;
+            try {
+                const next = await calibrationStatus();
+                if (!cancelled)
+                    setStatus(next);
+            }
+            catch (error) {
+                if (!cancelled)
+                    setMessage(String(error));
+            }
+            finally {
+                inFlight = false;
+            }
+        };
+        tick();
+        const timer = window.setInterval(tick, 100);
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            if (phaseRef.current !== "idle")
+                calibrationCancel().catch(() => { });
+        };
+    }, []);
+    const run = async (action) => {
+        if (busy)
+            return;
+        setBusy(true);
+        setMessage("");
+        try {
+            setStatus(await action());
+        }
+        catch (error) {
+            setMessage(String(error));
+        }
+        finally {
+            setBusy(false);
+        }
+    };
+    const phase = status?.phase || "idle";
+    const error = message || status?.error || "";
+    return (SP_JSX.jsxs(DFL.ModalRoot, { closeModal: phase === "capture" ? undefined : closeModal, bDisableBackgroundDismiss: phase !== "idle", children: [SP_JSX.jsx("div", { style: { fontWeight: 600, fontSize: "18px", marginBottom: "8px" }, children: "Controller Calibration" }), !status ? (SP_JSX.jsx("div", { children: "Loading\u2026" })) : !status.available ? (SP_JSX.jsx("div", { children: "This device's gamepad driver does not support calibration." })) : phase === "capture" ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs("div", { style: { fontSize: "12px", opacity: 0.7 }, children: ["Step ", status.step + 1, " of ", status.steps, " \u00B7 the controller is paused for Steam until this finishes"] }), SP_JSX.jsx("div", { style: { fontSize: "20px", margin: "16px 0" }, children: instruction(status) }), SP_JSX.jsx(DFL.ProgressBar, { nProgress: Math.round(status.progress * 100), nTransitionSec: 0 }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsx(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: SP_JSX.jsx(DFL.DialogButton, { onClick: () => run(calibrationCancel), children: "Cancel (touch)" }) })] })) : phase === "review" ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("div", { children: "Calibration applied. Check the sticks and triggers below: a full push should read 100 at the edge and 0 at rest. Save keeps it across reboots." }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsxs(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: [SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationSave), children: "Save" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationCancel), children: "Discard" })] })] })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs("div", { children: [status.saved ? "A saved calibration is in use." : "Using the driver defaults.", " Start walks each stick and trigger to its edge and back. The controller is paused for Steam while it runs; Cancel works by touch."] }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsxs(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: [SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationStart), children: "Start" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationReset), children: "Reset to Defaults" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => closeModal?.(), children: "Close" })] })] })), error ? SP_JSX.jsx("div", { style: { marginTop: "8px", color: "#ff8080" }, children: error }) : null] }));
+}
+function Calibration() {
+    return (SP_JSX.jsxs(DFL.PanelSection, { title: "CONTROLLER", children: [SP_JSX.jsx(DFL.Field, { label: "Calibration", description: "Stick centre, range and deadzones, trigger travel" }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: () => DFL.showModal(SP_JSX.jsx(CalibrationModal, {})), children: "Calibrate Controller" }) })] }));
+}
+
 // The share is guest-writable and covers the whole home folder, so the trade is spelled out
 // rather than buried: same warning the Pocknix Tools menu shows before it flips the switch.
 function ShareConfirmModal({ onConfirm, closeModal }) {
@@ -928,7 +1011,7 @@ function SdCard() {
 
 // SD card last: the only destructive action, kept away from the casual toggles
 function Library() {
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(AddGameSection, {}), SP_JSX.jsx(FileSharing, {}), SP_JSX.jsx(SdCard, {})] }));
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(AddGameSection, {}), SP_JSX.jsx(FileSharing, {}), SP_JSX.jsx(Calibration, {}), SP_JSX.jsx(SdCard, {})] }));
 }
 
 // SliderField has only onChange, so commits are debounced. The pending value lives in

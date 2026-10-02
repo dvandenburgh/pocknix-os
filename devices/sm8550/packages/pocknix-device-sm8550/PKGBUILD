@@ -6,7 +6,7 @@
 # installed devices (e.g. an internal-installed RP6) on their next pacman -Syu.
 pkgname=pocknix-device-sm8550
 pkgver=0.2.0
-pkgrel=9
+pkgrel=10
 pkgdesc="pocknix device metapackage: SM8550 family (Retroid Pocket 6, AYN Odin 2 family)"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -16,7 +16,9 @@ depends=('pocknix-bsp-sm8550'
          'pocknix-bootloader-sm8550'
          # sm8550 ships the stock ARM protons (sm8250 needs the -dxvk2 variants)
          'proton-cachyos'
-         'proton-ge')
+         'proton-ge'
+         # dep edge delivers the calibration boot replay to installed devices
+         'pocknix-gamepad-calibration')
 # Exactly one device metapackage per install (wrong-device guard, same pattern
 # as the BSPs).
 provides=('pocknix-device')

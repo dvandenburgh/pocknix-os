@@ -1,4 +1,5 @@
 import { AddGameSection } from "../components/AddGame";
+import { Calibration } from "../components/Calibration";
 import { FileSharing } from "../components/FileSharing";
 import { SdCard } from "../components/SdCard";
 
@@ -8,6 +9,7 @@ export function Library() {
     <>
       <AddGameSection />
       <FileSharing />
+      <Calibration />
       <SdCard />
     </>
   );

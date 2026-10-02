@@ -18,8 +18,7 @@ depends=('pocknix-bsp-sm8250'
          'proton-ge-dxvk2'
          # a6xx donor prep swaps into downloaded Valve ARM Protons (dep edge = delivery)
          'pocknix-dxvk2-donor'
-         # sm8250-only: the raw trigger view reads retroid/mangmi ABS_HAT2X/Y, dead on
-         # rsinput. A dep edge, not a list entry: -Syu never installs a new package name.
+         # dep edge delivers the calibration boot replay to installed devices
          'pocknix-gamepad-calibration')
 # Exactly one device metapackage per install (wrong-device guard, same pattern
 # as the BSPs).

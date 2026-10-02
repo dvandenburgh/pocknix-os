@@ -1,6 +1,5 @@
 [Unit]
 Description=Restore the saved pocknix gamepad calibration
-ConditionPathExists=/etc/pocknix/gamepad-calibration.conf
 After=systemd-modules-load.service
 # InputPlumber reads the pad's axis ranges when it claims the device, so the
 # driver has to be calibrated before it starts.

@@ -3,8 +3,8 @@
 set -u
 
 CONF=/etc/pocknix/gamepad-calibration.conf
-
-[ -r "${CONF}" ] || exit 0
+# Probe-time values for Pocknix Control's Reset; per board (devicetree overrides at probe).
+DEFAULTS=/run/pocknix/gamepad-calibration.defaults
 
 # sm8250 loads its gamepad driver as a module on device probe, so the parameters
 # can appear after this unit is ordered to run.
@@ -23,6 +23,18 @@ if [ -z "${params}" ]; then
   echo "no calibratable gamepad driver found, calibration not applied" >&2
   exit 0
 fi
+
+# Only once per boot: a unit restart after a replay must not snapshot calibrated values.
+if [ ! -e "${DEFAULTS}" ]; then
+  mkdir -p "${DEFAULTS%/*}"
+  for f in "${params}"/axis_*_* "${params}"/trigger_*_*; do
+    case "${f##*/}" in
+      *_max|*_min|*_center|*_deadzone|*_antideadzone) printf '%s=%s\n' "${f##*/}" "$(cat "${f}")" ;;
+    esac
+  done > "${DEFAULTS}.tmp" && mv "${DEFAULTS}.tmp" "${DEFAULTS}"
+fi
+
+[ -r "${CONF}" ] || exit 0
 
 applied=0
 while IFS='=' read -r key value; do
