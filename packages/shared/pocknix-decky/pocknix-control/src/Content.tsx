@@ -6,9 +6,9 @@ import { useDebouncedSave } from "./hooks/useDebouncedSave";
 import { tabIcons } from "./icons";
 import { currentGame } from "./lib/games";
 import { styles } from "./styles";
+import { Controller } from "./tabs/Controller";
 import { Games } from "./tabs/Games";
 import { Library } from "./tabs/Library";
-import { Lighting } from "./tabs/Lighting";
 import { Updater } from "./tabs/Updater";
 import type { Config } from "./types";
 
@@ -64,9 +64,7 @@ export function Content() {
   const tabs = [
     { id: "Games", title: tabIcons.Games, content: tabContent(<Games config={config} setConfig={setConfig} reload={load} />) },
     { id: "Library", title: tabIcons.Library, content: tabContent(<Library />) },
-    ...(config.led.available
-      ? [{ id: "Lighting", title: tabIcons.Lighting, content: tabContent(<Lighting config={config} setConfig={setConfig} reload={load} />) }]
-      : []),
+    { id: "Controller", title: tabIcons.Controller, content: tabContent(<Controller config={config} setConfig={setConfig} reload={load} />) },
     { id: "Updater", title: tabIcons.Updater, content: tabContent(<Updater />) },
   ];
   return (

@@ -104,7 +104,7 @@ const tabIcons = {
     Games: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("line", { x1: "6", x2: "10", y1: "11", y2: "11" }), SP_JSX.jsx("line", { x1: "8", x2: "8", y1: "9", y2: "13" }), SP_JSX.jsx("line", { x1: "15", x2: "15.01", y1: "12", y2: "12" }), SP_JSX.jsx("line", { x1: "18", x2: "18.01", y1: "10", y2: "10" }), SP_JSX.jsx("path", { d: "M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" })] }) })),
     Library: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }), SP_JSX.jsx("path", { d: "M8 12h8" }), SP_JSX.jsx("path", { d: "M12 8v8" })] }) })),
     Updater: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), SP_JSX.jsx("polyline", { points: "7 10 12 15 17 10" }), SP_JSX.jsx("line", { x1: "12", x2: "12", y1: "15", y2: "3" })] }) })),
-    Lighting: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("path", { d: "M9 18h6" }), SP_JSX.jsx("path", { d: "M10 22h4" }), SP_JSX.jsx("path", { d: "M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" })] }) })),
+    Controller: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("path", { d: "M21 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Z" }), SP_JSX.jsx("path", { d: "M6 15v-2" }), SP_JSX.jsx("path", { d: "M12 15V9" }), SP_JSX.jsx("circle", { cx: "12", cy: "6", r: "3" })] }) })),
 };
 
 function gameDisplayName(game) {
@@ -235,6 +235,229 @@ const styles = `
         align-self: stretch;
       }
     `;
+
+function instruction(s) {
+    if (s.kind === "trigger") {
+        return s.stage === "release"
+            ? `Let go of the ${s.control?.toLowerCase()} and keep your hands off`
+            : `Press the ${s.control?.toLowerCase()} all the way in and hold it`;
+    }
+    return s.stage === "release"
+        ? `Let go of the ${s.control?.toLowerCase()} and keep your hands off`
+        : `Push the ${s.control?.toLowerCase()} fully ${s.direction} and hold it there`;
+}
+function Bar({ label, value, signed }) {
+    const pct = Math.round((signed ? (value + 1) / 2 : value) * 100);
+    return (SP_JSX.jsxs("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }, children: [SP_JSX.jsx("div", { style: { width: "120px", fontSize: "12px" }, children: label }), SP_JSX.jsx("div", { style: { flex: 1 }, children: SP_JSX.jsx(DFL.ProgressBar, { nProgress: pct, nTransitionSec: 0 }) }), SP_JSX.jsx("div", { style: { width: "48px", textAlign: "right", fontSize: "12px" }, children: signed ? `${Math.round(value * 100)}` : `${pct}%` })] }));
+}
+function LiveBars({ live }) {
+    if (!live)
+        return null;
+    return (SP_JSX.jsxs("div", { style: { margin: "8px 0" }, children: [SP_JSX.jsx(Bar, { label: "Left stick X", value: live.lx, signed: true }), SP_JSX.jsx(Bar, { label: "Left stick Y", value: live.ly, signed: true }), SP_JSX.jsx(Bar, { label: "Right stick X", value: live.rx, signed: true }), SP_JSX.jsx(Bar, { label: "Right stick Y", value: live.ry, signed: true }), SP_JSX.jsx(Bar, { label: "Left trigger", value: live.lt }), SP_JSX.jsx(Bar, { label: "Right trigger", value: live.rt })] }));
+}
+function CalibrationModal({ closeModal }) {
+    const [status, setStatus] = SP_REACT.useState(null);
+    const [message, setMessage] = SP_REACT.useState("");
+    const [busy, setBusy] = SP_REACT.useState(false);
+    const phaseRef = SP_REACT.useRef("idle");
+    phaseRef.current = status?.phase || "idle";
+    // also the backend's watchdog heartbeat (calibration.py WATCHDOG_S)
+    SP_REACT.useEffect(() => {
+        let cancelled = false;
+        let inFlight = false;
+        const tick = async () => {
+            if (inFlight)
+                return;
+            inFlight = true;
+            try {
+                const next = await calibrationStatus();
+                if (!cancelled)
+                    setStatus(next);
+            }
+            catch (error) {
+                if (!cancelled)
+                    setMessage(String(error));
+            }
+            finally {
+                inFlight = false;
+            }
+        };
+        tick();
+        const timer = window.setInterval(tick, 100);
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            if (phaseRef.current !== "idle")
+                calibrationCancel().catch(() => { });
+        };
+    }, []);
+    const run = async (action) => {
+        if (busy)
+            return;
+        setBusy(true);
+        setMessage("");
+        try {
+            setStatus(await action());
+        }
+        catch (error) {
+            setMessage(String(error));
+        }
+        finally {
+            setBusy(false);
+        }
+    };
+    const phase = status?.phase || "idle";
+    const error = message || status?.error || "";
+    return (SP_JSX.jsxs(DFL.ModalRoot, { closeModal: phase === "capture" ? undefined : closeModal, bDisableBackgroundDismiss: phase !== "idle", children: [SP_JSX.jsx("div", { style: { fontWeight: 600, fontSize: "18px", marginBottom: "8px" }, children: "Controller Calibration" }), !status ? (SP_JSX.jsx("div", { children: "Loading\u2026" })) : !status.available ? (SP_JSX.jsx("div", { children: "This device's gamepad driver does not support calibration." })) : phase === "capture" ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs("div", { style: { fontSize: "12px", opacity: 0.7 }, children: ["Step ", status.step + 1, " of ", status.steps, " \u00B7 the controller is paused for Steam until this finishes"] }), SP_JSX.jsx("div", { style: { fontSize: "20px", margin: "16px 0" }, children: instruction(status) }), SP_JSX.jsx(DFL.ProgressBar, { nProgress: Math.round(status.progress * 100), nTransitionSec: 0 }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsx(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: SP_JSX.jsx(DFL.DialogButton, { onClick: () => run(calibrationCancel), children: "Cancel (touch)" }) })] })) : phase === "review" ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("div", { children: "Calibration applied. Check the sticks and triggers below: a full push should read 100 at the edge and 0 at rest. Save keeps it across reboots." }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsxs(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: [SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationSave), children: "Save" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationCancel), children: "Discard" })] })] })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs("div", { children: [status.saved ? "A saved calibration is in use." : "Using the driver defaults.", " Start walks each stick and trigger to its edge and back. The controller is paused for Steam while it runs; Cancel works by touch."] }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsxs(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: [SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationStart), children: "Start" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationReset), children: "Reset to Defaults" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => closeModal?.(), children: "Close" })] })] })), error ? SP_JSX.jsx("div", { style: { marginTop: "8px", color: "#ff8080" }, children: error }) : null] }));
+}
+function Calibration() {
+    return (SP_JSX.jsxs(DFL.PanelSection, { title: "CALIBRATION", children: [SP_JSX.jsx(DFL.Field, { label: "Sticks and triggers", description: "Stick centre and range, trigger travel" }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: () => DFL.showModal(SP_JSX.jsx(CalibrationModal, {})), children: "Calibrate Controller" }) })] }));
+}
+
+// SliderField has only onChange, so commits are debounced. The pending value lives in
+// a ref so the unmount flush always sees the latest edit, not a stale first-render one.
+const COMMIT_DELAY = 350;
+// Hardware brightness is 0-255; the slider shows percent so it reads like the other two.
+const briToPercent = (bri) => Math.round((bri / 255) * 100);
+const percentToBri = (percent) => Math.round((percent / 100) * 255);
+function ColorControls({ zone, hsv, brightness, onCommit }) {
+    const [hue, saturation] = hsv;
+    const [localH, setLocalH] = SP_REACT.useState(hsv[0]);
+    const [localS, setLocalS] = SP_REACT.useState(hsv[1]);
+    const [localBri, setLocalBri] = SP_REACT.useState(brightness);
+    const pending = SP_REACT.useRef(null);
+    const onCommitRef = SP_REACT.useRef(onCommit);
+    onCommitRef.current = onCommit;
+    // A commit response landing mid-drag would otherwise snap the slider backwards.
+    SP_REACT.useEffect(() => { if (!pending.current)
+        setLocalH(hsv[0]); }, [hue]);
+    SP_REACT.useEffect(() => { if (!pending.current)
+        setLocalS(hsv[1]); }, [saturation]);
+    SP_REACT.useEffect(() => { if (!pending.current)
+        setLocalBri(brightness); }, [brightness]);
+    const schedule = (h, s, bri) => {
+        setLocalH(h);
+        setLocalS(s);
+        setLocalBri(bri);
+        pending.current = { hsv: [h, s, 100], bri };
+    };
+    SP_REACT.useEffect(() => {
+        if (pending.current === null)
+            return;
+        const snapshot = pending.current;
+        const timer = window.setTimeout(() => {
+            pending.current = null;
+            onCommitRef.current(snapshot.hsv, snapshot.bri);
+        }, COMMIT_DELAY);
+        return () => window.clearTimeout(timer);
+    }, [localH, localS, localBri]);
+    // QAM unmounts on close; flush any edit still in the debounce window.
+    SP_REACT.useEffect(() => () => {
+        if (pending.current !== null) {
+            const snapshot = pending.current;
+            pending.current = null;
+            onCommitRef.current(snapshot.hsv, snapshot.bri);
+        }
+    }, []);
+    const setHue = (h) => schedule(h, localS, localBri);
+    const setSaturation = (s) => schedule(localH, s, localBri);
+    const setBrightness = (b) => schedule(localH, localS, b);
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Hue", value: localH, min: 0, max: 359, step: 1, showValue: true, validValues: "range", valueSuffix: "\u00B0", bottomSeparator: "thick", className: `pocknix-led-${zone}-h`, onChange: setHue }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Saturation", value: localS, min: 0, max: 100, step: 1, showValue: true, validValues: "range", valueSuffix: "%", bottomSeparator: "thick", className: `pocknix-led-${zone}-s`, onChange: setSaturation }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Brightness", value: briToPercent(localBri), min: 0, max: 100, step: 1, showValue: true, validValues: "range", valueSuffix: "%", bottomSeparator: "thick", className: `pocknix-led-${zone}-v`, onChange: (percent) => setBrightness(percentToBri(percent)) }) }), SP_JSX.jsx("style", { children: `
+        .pocknix-led-${zone}-h .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right,
+            hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%),
+            hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+        .pocknix-led-${zone}-s .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right, hsl(0,0%,100%), hsl(${localH},100%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+        .pocknix-led-${zone}-v .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right, hsl(0,0%,0%), hsl(${localH},${localS}%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+      ` })] }));
+}
+
+function hsvToRgb(h, s, v) {
+    const hh = ((h % 360) + 360) % 360;
+    const ss = Math.max(0, Math.min(100, s)) / 100;
+    const vv = Math.max(0, Math.min(100, v)) / 100;
+    const c = vv * ss;
+    const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+    const m = vv - c;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    if (hh < 60)
+        [r, g, b] = [c, x, 0];
+    else if (hh < 120)
+        [r, g, b] = [x, c, 0];
+    else if (hh < 180)
+        [r, g, b] = [0, c, x];
+    else if (hh < 240)
+        [r, g, b] = [0, x, c];
+    else if (hh < 300)
+        [r, g, b] = [x, 0, c];
+    else
+        [r, g, b] = [c, 0, x];
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+function rgbToHsv(r, g, b) {
+    const rr = r / 255;
+    const gg = g / 255;
+    const bb = b / 255;
+    const max = Math.max(rr, gg, bb);
+    const min = Math.min(rr, gg, bb);
+    const delta = max - min;
+    let h = 0;
+    let s = 0;
+    const v = max;
+    if (delta !== 0) {
+        s = delta / max;
+        if (max === rr)
+            h = ((gg - bb) / delta + (gg < bb ? 6 : 0)) / 6;
+        else if (max === gg)
+            h = ((bb - rr) / delta + 2) / 6;
+        else
+            h = ((rr - gg) / delta + 4) / 6;
+    }
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(v * 100)];
+}
+
+// Stored RGB holds the full-value color; the kernel multicolor class scales each
+// channel by brightness/max_brightness, so dimming is linear and the color survives.
+function commit(side, hsv, brightness, setConfig, reload) {
+    const [r, g, b] = hsvToRgb(hsv[0], hsv[1], 100);
+    setLed(side, r, g, b, brightness)
+        .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
+        .catch(() => reload());
+}
+function sideHsv(side) {
+    return rgbToHsv(side.r, side.g, side.b);
+}
+function Controller(props) {
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(Calibration, {}), props.config.led.available && SP_JSX.jsx(StickLights, { ...props })] }));
+}
+function StickLights({ config, setConfig, reload }) {
+    const led = config.led;
+    const leftHsv = sideHsv(led.left);
+    const rightHsv = sideHsv(led.right);
+    const commitLeft = (hsv, brightness) => commit("left", hsv, brightness, setConfig, reload);
+    const commitRight = (hsv, brightness) => commit("right", hsv, brightness, setConfig, reload);
+    const commitBoth = (hsv, brightness) => commit("both", hsv, brightness, setConfig, reload);
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "STICK LIGHTS", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Enable", checked: led.enabled, onChange: (value) => setLedEnabled(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
+                                .catch(() => reload()) }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Link Left & Right", description: "Match both sticks to the same color.", checked: led.linked, disabled: !led.enabled, onChange: (value) => setLedLinked(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
+                                .catch(() => reload()) }) }), led.sidesAvailable && (SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Side Lights", description: "Match the side lighting to the sticks.", checked: led.sides, disabled: !led.enabled, onChange: (value) => setLedSides(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
+                                .catch(() => reload()) }) }))] }), led.enabled && (led.linked ? (SP_JSX.jsx(DFL.PanelSection, { title: "BOTH STICKS", children: SP_JSX.jsx(ColorControls, { zone: "both", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitBoth }) })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSection, { title: "LEFT STICK", children: SP_JSX.jsx(ColorControls, { zone: "left", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitLeft }) }), SP_JSX.jsx(DFL.PanelSection, { title: "RIGHT STICK", children: SP_JSX.jsx(ColorControls, { zone: "right", hsv: rightHsv, brightness: led.right.brightness, onCommit: commitRight }) })] })))] }));
+}
 
 // Drives the same state as Steam's own per-game compatibility dropdown (SpecifyCompatTool +
 // app details), so never store a shadow copy: the two UIs stay in sync by construction.
@@ -761,84 +984,6 @@ function AddGameSection() {
     return (SP_JSX.jsxs(DFL.PanelSection, { title: "LIBRARY", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: pick, children: "Add Non-Steam Game" }) }), SP_JSX.jsx("div", { className: "pocknix-note", children: "Pick an executable to add it to your Steam library" })] }));
 }
 
-function instruction(s) {
-    if (s.kind === "trigger") {
-        return s.stage === "release"
-            ? `Let go of the ${s.control?.toLowerCase()} and keep your hands off`
-            : `Press the ${s.control?.toLowerCase()} all the way in and hold it`;
-    }
-    return s.stage === "release"
-        ? `Let go of the ${s.control?.toLowerCase()} and keep your hands off`
-        : `Push the ${s.control?.toLowerCase()} fully ${s.direction} and hold it there`;
-}
-function Bar({ label, value, signed }) {
-    const pct = Math.round((signed ? (value + 1) / 2 : value) * 100);
-    return (SP_JSX.jsxs("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }, children: [SP_JSX.jsx("div", { style: { width: "120px", fontSize: "12px" }, children: label }), SP_JSX.jsx("div", { style: { flex: 1 }, children: SP_JSX.jsx(DFL.ProgressBar, { nProgress: pct, nTransitionSec: 0 }) }), SP_JSX.jsx("div", { style: { width: "48px", textAlign: "right", fontSize: "12px" }, children: signed ? `${Math.round(value * 100)}` : `${pct}%` })] }));
-}
-function LiveBars({ live }) {
-    if (!live)
-        return null;
-    return (SP_JSX.jsxs("div", { style: { margin: "8px 0" }, children: [SP_JSX.jsx(Bar, { label: "Left stick X", value: live.lx, signed: true }), SP_JSX.jsx(Bar, { label: "Left stick Y", value: live.ly, signed: true }), SP_JSX.jsx(Bar, { label: "Right stick X", value: live.rx, signed: true }), SP_JSX.jsx(Bar, { label: "Right stick Y", value: live.ry, signed: true }), SP_JSX.jsx(Bar, { label: "Left trigger", value: live.lt }), SP_JSX.jsx(Bar, { label: "Right trigger", value: live.rt })] }));
-}
-function CalibrationModal({ closeModal }) {
-    const [status, setStatus] = SP_REACT.useState(null);
-    const [message, setMessage] = SP_REACT.useState("");
-    const [busy, setBusy] = SP_REACT.useState(false);
-    const phaseRef = SP_REACT.useRef("idle");
-    phaseRef.current = status?.phase || "idle";
-    // also the backend's watchdog heartbeat (calibration.py WATCHDOG_S)
-    SP_REACT.useEffect(() => {
-        let cancelled = false;
-        let inFlight = false;
-        const tick = async () => {
-            if (inFlight)
-                return;
-            inFlight = true;
-            try {
-                const next = await calibrationStatus();
-                if (!cancelled)
-                    setStatus(next);
-            }
-            catch (error) {
-                if (!cancelled)
-                    setMessage(String(error));
-            }
-            finally {
-                inFlight = false;
-            }
-        };
-        tick();
-        const timer = window.setInterval(tick, 100);
-        return () => {
-            cancelled = true;
-            window.clearInterval(timer);
-            if (phaseRef.current !== "idle")
-                calibrationCancel().catch(() => { });
-        };
-    }, []);
-    const run = async (action) => {
-        if (busy)
-            return;
-        setBusy(true);
-        setMessage("");
-        try {
-            setStatus(await action());
-        }
-        catch (error) {
-            setMessage(String(error));
-        }
-        finally {
-            setBusy(false);
-        }
-    };
-    const phase = status?.phase || "idle";
-    const error = message || status?.error || "";
-    return (SP_JSX.jsxs(DFL.ModalRoot, { closeModal: phase === "capture" ? undefined : closeModal, bDisableBackgroundDismiss: phase !== "idle", children: [SP_JSX.jsx("div", { style: { fontWeight: 600, fontSize: "18px", marginBottom: "8px" }, children: "Controller Calibration" }), !status ? (SP_JSX.jsx("div", { children: "Loading\u2026" })) : !status.available ? (SP_JSX.jsx("div", { children: "This device's gamepad driver does not support calibration." })) : phase === "capture" ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs("div", { style: { fontSize: "12px", opacity: 0.7 }, children: ["Step ", status.step + 1, " of ", status.steps, " \u00B7 the controller is paused for Steam until this finishes"] }), SP_JSX.jsx("div", { style: { fontSize: "20px", margin: "16px 0" }, children: instruction(status) }), SP_JSX.jsx(DFL.ProgressBar, { nProgress: Math.round(status.progress * 100), nTransitionSec: 0 }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsx(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: SP_JSX.jsx(DFL.DialogButton, { onClick: () => run(calibrationCancel), children: "Cancel (touch)" }) })] })) : phase === "review" ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("div", { children: "Calibration applied. Check the sticks and triggers below: a full push should read 100 at the edge and 0 at rest. Save keeps it across reboots." }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsxs(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: [SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationSave), children: "Save" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationCancel), children: "Discard" })] })] })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs("div", { children: [status.saved ? "A saved calibration is in use." : "Using the driver defaults.", " Start walks each stick and trigger to its edge and back. The controller is paused for Steam while it runs; Cancel works by touch."] }), SP_JSX.jsx(LiveBars, { live: status.live }), SP_JSX.jsxs(DFL.Focusable, { style: { display: "flex", gap: "8px", marginTop: "12px" }, children: [SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationStart), children: "Start" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => run(calibrationReset), children: "Reset to Defaults" }), SP_JSX.jsx(DFL.DialogButton, { disabled: busy, onClick: () => closeModal?.(), children: "Close" })] })] })), error ? SP_JSX.jsx("div", { style: { marginTop: "8px", color: "#ff8080" }, children: error }) : null] }));
-}
-function Calibration() {
-    return (SP_JSX.jsxs(DFL.PanelSection, { title: "CONTROLLER", children: [SP_JSX.jsx(DFL.Field, { label: "Calibration", description: "Stick centre, range and deadzones, trigger travel" }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: () => DFL.showModal(SP_JSX.jsx(CalibrationModal, {})), children: "Calibrate Controller" }) })] }));
-}
-
 // The share is guest-writable and covers the whole home folder, so the trade is spelled out
 // rather than buried: same warning the Pocknix Tools menu shows before it flips the switch.
 function ShareConfirmModal({ onConfirm, closeModal }) {
@@ -1011,149 +1156,7 @@ function SdCard() {
 
 // SD card last: the only destructive action, kept away from the casual toggles
 function Library() {
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(AddGameSection, {}), SP_JSX.jsx(FileSharing, {}), SP_JSX.jsx(Calibration, {}), SP_JSX.jsx(SdCard, {})] }));
-}
-
-// SliderField has only onChange, so commits are debounced. The pending value lives in
-// a ref so the unmount flush always sees the latest edit, not a stale first-render one.
-const COMMIT_DELAY = 350;
-// Hardware brightness is 0-255; the slider shows percent so it reads like the other two.
-const briToPercent = (bri) => Math.round((bri / 255) * 100);
-const percentToBri = (percent) => Math.round((percent / 100) * 255);
-function ColorControls({ zone, hsv, brightness, onCommit }) {
-    const [hue, saturation] = hsv;
-    const [localH, setLocalH] = SP_REACT.useState(hsv[0]);
-    const [localS, setLocalS] = SP_REACT.useState(hsv[1]);
-    const [localBri, setLocalBri] = SP_REACT.useState(brightness);
-    const pending = SP_REACT.useRef(null);
-    const onCommitRef = SP_REACT.useRef(onCommit);
-    onCommitRef.current = onCommit;
-    // A commit response landing mid-drag would otherwise snap the slider backwards.
-    SP_REACT.useEffect(() => { if (!pending.current)
-        setLocalH(hsv[0]); }, [hue]);
-    SP_REACT.useEffect(() => { if (!pending.current)
-        setLocalS(hsv[1]); }, [saturation]);
-    SP_REACT.useEffect(() => { if (!pending.current)
-        setLocalBri(brightness); }, [brightness]);
-    const schedule = (h, s, bri) => {
-        setLocalH(h);
-        setLocalS(s);
-        setLocalBri(bri);
-        pending.current = { hsv: [h, s, 100], bri };
-    };
-    SP_REACT.useEffect(() => {
-        if (pending.current === null)
-            return;
-        const snapshot = pending.current;
-        const timer = window.setTimeout(() => {
-            pending.current = null;
-            onCommitRef.current(snapshot.hsv, snapshot.bri);
-        }, COMMIT_DELAY);
-        return () => window.clearTimeout(timer);
-    }, [localH, localS, localBri]);
-    // QAM unmounts on close; flush any edit still in the debounce window.
-    SP_REACT.useEffect(() => () => {
-        if (pending.current !== null) {
-            const snapshot = pending.current;
-            pending.current = null;
-            onCommitRef.current(snapshot.hsv, snapshot.bri);
-        }
-    }, []);
-    const setHue = (h) => schedule(h, localS, localBri);
-    const setSaturation = (s) => schedule(localH, s, localBri);
-    const setBrightness = (b) => schedule(localH, localS, b);
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Hue", value: localH, min: 0, max: 359, step: 1, showValue: true, validValues: "range", valueSuffix: "\u00B0", bottomSeparator: "thick", className: `pocknix-led-${zone}-h`, onChange: setHue }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Saturation", value: localS, min: 0, max: 100, step: 1, showValue: true, validValues: "range", valueSuffix: "%", bottomSeparator: "thick", className: `pocknix-led-${zone}-s`, onChange: setSaturation }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Brightness", value: briToPercent(localBri), min: 0, max: 100, step: 1, showValue: true, validValues: "range", valueSuffix: "%", bottomSeparator: "thick", className: `pocknix-led-${zone}-v`, onChange: (percent) => setBrightness(percentToBri(percent)) }) }), SP_JSX.jsx("style", { children: `
-        .pocknix-led-${zone}-h .${DFL.gamepadSliderClasses.SliderTrack} {
-          background: linear-gradient(to right,
-            hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%),
-            hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)) !important;
-          --left-track-color: #0000 !important;
-          --colored-toggles-main-color: #0000 !important;
-        }
-        .pocknix-led-${zone}-s .${DFL.gamepadSliderClasses.SliderTrack} {
-          background: linear-gradient(to right, hsl(0,0%,100%), hsl(${localH},100%,50%)) !important;
-          --left-track-color: #0000 !important;
-          --colored-toggles-main-color: #0000 !important;
-        }
-        .pocknix-led-${zone}-v .${DFL.gamepadSliderClasses.SliderTrack} {
-          background: linear-gradient(to right, hsl(0,0%,0%), hsl(${localH},${localS}%,50%)) !important;
-          --left-track-color: #0000 !important;
-          --colored-toggles-main-color: #0000 !important;
-        }
-      ` })] }));
-}
-
-function hsvToRgb(h, s, v) {
-    const hh = ((h % 360) + 360) % 360;
-    const ss = Math.max(0, Math.min(100, s)) / 100;
-    const vv = Math.max(0, Math.min(100, v)) / 100;
-    const c = vv * ss;
-    const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
-    const m = vv - c;
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    if (hh < 60)
-        [r, g, b] = [c, x, 0];
-    else if (hh < 120)
-        [r, g, b] = [x, c, 0];
-    else if (hh < 180)
-        [r, g, b] = [0, c, x];
-    else if (hh < 240)
-        [r, g, b] = [0, x, c];
-    else if (hh < 300)
-        [r, g, b] = [x, 0, c];
-    else
-        [r, g, b] = [c, 0, x];
-    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
-}
-function rgbToHsv(r, g, b) {
-    const rr = r / 255;
-    const gg = g / 255;
-    const bb = b / 255;
-    const max = Math.max(rr, gg, bb);
-    const min = Math.min(rr, gg, bb);
-    const delta = max - min;
-    let h = 0;
-    let s = 0;
-    const v = max;
-    if (delta !== 0) {
-        s = delta / max;
-        if (max === rr)
-            h = ((gg - bb) / delta + (gg < bb ? 6 : 0)) / 6;
-        else if (max === gg)
-            h = ((bb - rr) / delta + 2) / 6;
-        else
-            h = ((rr - gg) / delta + 4) / 6;
-    }
-    return [Math.round(h * 360), Math.round(s * 100), Math.round(v * 100)];
-}
-
-// Stored RGB holds the full-value color; the kernel multicolor class scales each
-// channel by brightness/max_brightness, so dimming is linear and the color survives.
-function commit(side, hsv, brightness, setConfig, reload) {
-    const [r, g, b] = hsvToRgb(hsv[0], hsv[1], 100);
-    setLed(side, r, g, b, brightness)
-        .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
-        .catch(() => reload());
-}
-function sideHsv(side) {
-    return rgbToHsv(side.r, side.g, side.b);
-}
-function Lighting({ config, setConfig, reload }) {
-    const led = config.led;
-    const leftHsv = sideHsv(led.left);
-    const rightHsv = sideHsv(led.right);
-    const commitLeft = (hsv, brightness) => commit("left", hsv, brightness, setConfig, reload);
-    const commitRight = (hsv, brightness) => commit("right", hsv, brightness, setConfig, reload);
-    const commitBoth = (hsv, brightness) => commit("both", hsv, brightness, setConfig, reload);
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "STICK LIGHTS", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Enable", checked: led.enabled, onChange: (value) => setLedEnabled(value)
-                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
-                                .catch(() => reload()) }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Link Left & Right", description: "Match both sticks to the same color.", checked: led.linked, disabled: !led.enabled, onChange: (value) => setLedLinked(value)
-                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
-                                .catch(() => reload()) }) }), led.sidesAvailable && (SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Side Lights", description: "Match the side lighting to the sticks.", checked: led.sides, disabled: !led.enabled, onChange: (value) => setLedSides(value)
-                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
-                                .catch(() => reload()) }) }))] }), led.enabled && (led.linked ? (SP_JSX.jsx(DFL.PanelSection, { title: "BOTH STICKS", children: SP_JSX.jsx(ColorControls, { zone: "both", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitBoth }) })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSection, { title: "LEFT STICK", children: SP_JSX.jsx(ColorControls, { zone: "left", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitLeft }) }), SP_JSX.jsx(DFL.PanelSection, { title: "RIGHT STICK", children: SP_JSX.jsx(ColorControls, { zone: "right", hsv: rightHsv, brightness: led.right.brightness, onCommit: commitRight }) })] })))] }));
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(AddGameSection, {}), SP_JSX.jsx(FileSharing, {}), SP_JSX.jsx(SdCard, {})] }));
 }
 
 const SHOWN_UPDATES = 8;
@@ -1333,9 +1336,7 @@ function Content() {
     const tabs = [
         { id: "Games", title: tabIcons.Games, content: tabContent(SP_JSX.jsx(Games, { config: config, setConfig: setConfig, reload: load })) },
         { id: "Library", title: tabIcons.Library, content: tabContent(SP_JSX.jsx(Library, {})) },
-        ...(config.led.available
-            ? [{ id: "Lighting", title: tabIcons.Lighting, content: tabContent(SP_JSX.jsx(Lighting, { config: config, setConfig: setConfig, reload: load })) }]
-            : []),
+        { id: "Controller", title: tabIcons.Controller, content: tabContent(SP_JSX.jsx(Controller, { config: config, setConfig: setConfig, reload: load })) },
         { id: "Updater", title: tabIcons.Updater, content: tabContent(SP_JSX.jsx(Updater, {})) },
     ];
     return (SP_JSX.jsxs("div", { className: "pocknix-control-tabs", children: [SP_JSX.jsx("style", { children: styles }), SP_JSX.jsx(DFL.Tabs, { activeTab: tab, onShowTab: setTab, tabs: tabs })] }));

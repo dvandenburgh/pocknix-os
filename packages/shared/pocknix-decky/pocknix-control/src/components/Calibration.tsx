@@ -142,8 +142,8 @@ function CalibrationModal({ closeModal }: { closeModal?: () => void }) {
 
 export function Calibration() {
   return (
-    <PanelSection title="CONTROLLER">
-      <Field label="Calibration" description="Stick centre, range and deadzones, trigger travel" />
+    <PanelSection title="CALIBRATION">
+      <Field label="Sticks and triggers" description="Stick centre and range, trigger travel" />
       <PanelSectionRow>
         <ButtonItem layout="below" onClick={() => showModal(<CalibrationModal />)}>
           Calibrate Controller
