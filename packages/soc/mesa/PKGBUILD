@@ -5,7 +5,7 @@
 pkgbase=mesa
 pkgname=(mesa vulkan-freedreno)
 epoch=2
-pkgver=26.2.3
+pkgver=26.2.4
 # differs from pkgver only for RCs: the tarball keeps the hyphen makepkg forbids in pkgver
 _srcver=${pkgver}
 pkgrel=1
@@ -24,7 +24,7 @@ makedepends=(
 # upstream considers LTO broken until explicit notice (Arch mesa does the same)
 options=(!lto)
 source=("https://archive.mesa3d.org/mesa-${_srcver}.tar.xz")
-sha256sums=('1628058a8d2c0615975de5a15ab7bbb9638c50000b5bed9456ff423ea034a81f')
+sha256sums=('bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9')
 
 prepare() {
   cd "mesa-${_srcver}"
