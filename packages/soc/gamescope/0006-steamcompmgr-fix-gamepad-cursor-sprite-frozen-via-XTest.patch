@@ -1,8 +1,17 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: shuuri-labs <61762328+shuuri-labs@users.noreply.github.com>
+Date: Fri, 2 Oct 2026 17:20:02 +0200
+Subject: [PATCH 3/4] steamcompmgr: fix gamepad cursor sprite frozen via XTest
+
+---
+ src/steamcompmgr.cpp | 32 ++++++++++++++++++++------------
+ 1 file changed, 20 insertions(+), 12 deletions(-)
+
 diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
-index c4cee70..8017ce9 100644
+index 2ff296b5..8c455fbe 100644
 --- a/src/steamcompmgr.cpp
 +++ b/src/steamcompmgr.cpp
-@@ -1566,20 +1566,30 @@ MouseCursor::MouseCursor(xwayland_ctx_t *ctx)
+@@ -2021,23 +2021,31 @@ MouseCursor::MouseCursor(xwayland_ctx_t *ctx)
  
  void MouseCursor::UpdatePosition()
  {
@@ -16,19 +25,21 @@ index c4cee70..8017ce9 100644
 +	               &mask );
 +
  	wlserver_lock();
--	struct wlr_pointer_constraint_v1 *pConstraint = wlserver.GetCursorConstraint();
--	m_bConstrained = !!pConstraint;
+ 	struct wlr_pointer_constraint_v1 *pConstraint = wlserver.GetCursorConstraint();
 -	if ( pConstraint && pConstraint->current.cursor_hint.enabled )
 -	{
+-		m_bConstrained = true;
++	m_bConstrained = pConstraint && pConstraint->current.cursor_hint.enabled;
++	wlserver_unlock();
+ 
 -		m_x = pConstraint->current.cursor_hint.x;
 -		m_y = pConstraint->current.cursor_hint.y;
 -	}
 -	else
-+	m_bConstrained = !!wlserver.GetCursorConstraint();
-+	wlserver_unlock();
-+
 +	if ( root_x != m_x || root_y != m_y )
  	{
+-		m_bConstrained = false;
+-
 -		m_x = wlserver.mouse_surface_cursorx;
 -		m_y = wlserver.mouse_surface_cursory;
 +		m_x = root_x;
