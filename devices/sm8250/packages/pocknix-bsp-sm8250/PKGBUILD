@@ -16,7 +16,7 @@
 #     (pocknix-bootloader-sm8250), not in a boot-image rebuild file.
 pkgname=pocknix-bsp-sm8250
 pkgver=0.1.0
-pkgrel=18
+pkgrel=19
 pkgdesc="pocknix board support: SM8250 family (RP5, RP Flip 2) — runtime board dispatch, input maps, audio UCM, wake quirks"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -37,10 +37,11 @@ source=('device.conf'
         'pocknix-sm8250-audio-resume' 'pocknix-sm8250-audio-resume.service'
         'pocknix-sm8250-audio-heal' 'pocknix-sm8250-audio-heal.service'
         'pocknix-sm8250-board-select' 'pocknix-sm8250-board-select.service'
-        '51-pocknix-softmixer.conf' '60-pocknix-speaker-loudness.conf')
+        '51-pocknix-softmixer.conf' '60-pocknix-speaker-loudness.conf'
+        '52-retroid-pocket-5-hdmi.conf')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP')
+            'SKIP' 'SKIP')
 
 package() {
   # Runtime device facts: the model dispatcher + per-board files. boards/ is
@@ -115,6 +116,8 @@ package() {
     "${pkgdir}/usr/share/wireplumber/wireplumber.conf.d/51-pocknix-softmixer.conf"
   install -Dm644 "${srcdir}/60-pocknix-speaker-loudness.conf" \
     "${pkgdir}/usr/share/pipewire/pipewire.conf.d/60-pocknix-speaker-loudness.conf"
+  install -Dm644 "${srcdir}/52-retroid-pocket-5-hdmi.conf" \
+    "${pkgdir}/usr/share/wireplumber/wireplumber.conf.d/52-retroid-pocket-5-hdmi.conf"
 
   # GRUB board-select correction (see the script header): the static grub.cfg
   # defaults to the rp5 dtb; on a Flip 2 this service detects the real board
