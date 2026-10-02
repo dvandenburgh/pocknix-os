@@ -2,7 +2,7 @@
 # switch and the desktop updater.
 pkgname=pocknix-base
 pkgver=0.2.0
-pkgrel=5
+pkgrel=6
 pkgdesc="Locked/rolling base mode switch and desktop updater for pocknix"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -13,8 +13,10 @@ install=pocknix-base.install
 source=('pocknix-base'
         'pocknix-update'
         'pocknix-update.desktop'
-        '51-pocknix-update.rules')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+        '51-pocknix-update.rules'
+        'pocknix-os-release'
+        '50-pocknix-os-release.hook')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-base" "${pkgdir}/usr/bin/pocknix-base"
@@ -25,4 +27,7 @@ package() {
     "${pkgdir}/usr/share/applications/pocknix-update.desktop"
   install -Dm644 "${srcdir}/51-pocknix-update.rules" \
     "${pkgdir}/usr/share/polkit-1/rules.d/51-pocknix-update.rules"
+  install -Dm755 "${srcdir}/pocknix-os-release" "${pkgdir}/usr/lib/pocknix/pocknix-os-release"
+  install -Dm644 "${srcdir}/50-pocknix-os-release.hook" \
+    "${pkgdir}/usr/share/libalpm/hooks/50-pocknix-os-release.hook"
 }

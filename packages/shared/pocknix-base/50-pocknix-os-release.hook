@@ -1,0 +1,15 @@
+# filesystem upgrades restore Arch's os-release; base-lock upgrades change BUILD_ID; the
+# kernel package names the SoC (VARIANT_ID).
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+Target = pocknix-base-lock
+Target = pocknix-base
+Target = linux-pocknix-*
+
+[Action]
+Description = pocknix: stamping os-release...
+When = PostTransaction
+Exec = /usr/lib/pocknix/pocknix-os-release

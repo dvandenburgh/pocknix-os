@@ -1,0 +1,33 @@
+#!/bin/bash
+# Stamps Pocknix identity into /usr/lib/os-release (filesystem-owned, so the hook re-runs
+# this after every filesystem upgrade). Steam's Settings > System reads VERSION_ID as
+# "OS Version" and BUILD_ID as "OS Build". ID/ID_LIKE stay archarm/arch for tooling.
+set -euo pipefail
+
+# Bump at each image cut (maintainer-guide, "Cut a release").
+POCKNIX_VERSION=0.4.0
+
+osr=/usr/lib/os-release
+lock=/usr/share/pocknix/pocknix-base.lock
+[ -f "${osr}" ] || exit 0
+
+# The kernel package names the SoC family; the device tree would be the build host's in
+# an image chroot.
+soc="$(ls -d /var/lib/pacman/local/linux-pocknix-sm*-[0-9]* 2>/dev/null | head -1 | sed -n 's|.*/linux-pocknix-\(sm[0-9]*\)-.*|\1|p')"
+base="$(sed -n 's/^#.*snapshot \([0-9][0-9.]*\).*/\1/p' "${lock}" 2>/dev/null | head -1)"
+
+tmp="$(mktemp "${osr}.XXXXXX")"
+trap 'rm -f "${tmp}"' EXIT
+{
+  echo 'NAME="Pocknix OS"'
+  echo 'PRETTY_NAME="Pocknix OS"'
+  echo "VERSION=\"${POCKNIX_VERSION}${base:+ (base ${base})}\""
+  echo "VERSION_ID=${POCKNIX_VERSION}"
+  echo "BUILD_ID=${base:-rolling}"
+  [ -z "${soc}" ] || echo "VARIANT_ID=${soc}"
+  echo 'HOME_URL="https://github.com/shuuri-labs/pocknix-os"'
+  echo 'BUG_REPORT_URL="https://github.com/shuuri-labs/pocknix-os/issues"'
+  grep -vE '^(NAME|PRETTY_NAME|VERSION|VERSION_ID|BUILD_ID|VARIANT_ID|HOME_URL|DOCUMENTATION_URL|SUPPORT_URL|BUG_REPORT_URL)=' "${osr}" || true
+} > "${tmp}"
+chmod 644 "${tmp}"
+mv -f "${tmp}" "${osr}"

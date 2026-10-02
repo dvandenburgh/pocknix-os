@@ -47,14 +47,21 @@ _drop_alarm_user() {
     && echo "pocknix: removed ALARM's default 'alarm' login (its files stay in /home/alarm)."
 }
 
+# The hook only fires from the transaction AFTER it is installed.
+_stamp_os_release() {
+  /usr/lib/pocknix/pocknix-os-release || true
+}
+
 post_install() {
   _prune_superseded
   _add_shared_repo
   _drop_alarm_user
+  _stamp_os_release
 }
 
 post_upgrade() {
   _prune_superseded
   _add_shared_repo
   _drop_alarm_user
+  _stamp_os_release
 }
