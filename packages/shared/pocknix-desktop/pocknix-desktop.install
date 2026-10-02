@@ -9,11 +9,6 @@ _prune_fontcache() {
   /usr/bin/pocknix-fontcache-prune 2>/dev/null || true
 }
 
-# Same reason: the hook only fires on the next plasma-mobile transaction, so patch now.
-_apply_panel_touchfix() {
-  /usr/bin/pocknix-panel-touchfix 2>/dev/null || true
-}
-
 # Devices seeded before the stamp existed: backfill so an uninstall sticks from the
 # first -Syu. Upgrade-only, a fresh image must still seed.
 _backfill_flathub_stamp() {
@@ -27,12 +22,10 @@ _backfill_flathub_stamp() {
 post_install() {
   _drop_stale_flathub_wants
   _prune_fontcache
-  _apply_panel_touchfix
 }
 
 post_upgrade() {
   _drop_stale_flathub_wants
   _prune_fontcache
-  _apply_panel_touchfix
   _backfill_flathub_stamp
 }

@@ -1,0 +1,32 @@
+# The flavour owns its DE stack, so `pacman -Rs` of it removes exactly that DE. Build with
+# ./nodeps: makepkg -s would drag all of KDE/Qt into the chroot for a data package.
+pkgname=pocknix-desktop-plasma-mobile
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="pocknix desktop flavour: Plasma Mobile"
+arch=('any')
+url="https://github.com/shuuri-labs/pocknix-os"
+license=('GPL2')
+depends=('bash'
+         'pocknix-desktop-kde'
+         'plasma-mobile'
+         'plasma-nano'
+         'plasma-settings'
+         'qt6-tools')        # qdbus6 for the taskpanel removal
+provides=('pocknix-desktop-flavour')
+# These files lived in pocknix-desktop up to -26; a lone install against that would collide.
+conflicts=('pocknix-desktop<0.1.0-27')
+install='pocknix-desktop-plasma-mobile.install'
+source=('pocknix-desktop-remove-taskpanel' 'pocknix-desktop-remove-taskpanel.desktop'
+        'pocknix-panel-touchfix' '98-pocknix-panel-touchfix.hook')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -Dm755 "${srcdir}/pocknix-desktop-remove-taskpanel" \
+    "${pkgdir}/usr/bin/pocknix-desktop-remove-taskpanel"
+  install -Dm644 "${srcdir}/pocknix-desktop-remove-taskpanel.desktop" \
+    "${pkgdir}/etc/xdg/autostart/pocknix-desktop-remove-taskpanel.desktop"
+  install -Dm755 "${srcdir}/pocknix-panel-touchfix" "${pkgdir}/usr/bin/pocknix-panel-touchfix"
+  install -Dm644 "${srcdir}/98-pocknix-panel-touchfix.hook" \
+    "${pkgdir}/usr/share/libalpm/hooks/98-pocknix-panel-touchfix.hook"
+}

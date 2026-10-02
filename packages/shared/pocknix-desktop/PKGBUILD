@@ -1,35 +1,24 @@
-# depends stays 'bash': the KDE stack ships via pocknix-desktop-full, so makepkg -s keeps it
-# out of the build chroot.
+# DE-neutral half of the desktop layer; the DE itself comes from a pocknix-desktop-flavour
+# provider. Build with ./nodeps: the flavour dep would drag a whole DE into the chroot.
 pkgname=pocknix-desktop
 pkgver=0.1.0
-pkgrel=26
-pkgdesc="Plasma Mobile desktop session for the RP6 + game<->desktop session switch"
+pkgrel=27
+pkgdesc="pocknix desktop session launcher, Flathub seeding and flatpak fixes"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
-depends=('bash')
+# >= -2: steamos-session-select moved there from -26, so the file never goes missing mid-upgrade.
+depends=('bash' 'pocknix-session>=0.1.0-2' 'pocknix-desktop-flavour')
+optdepends=('pocknix-desktop-plasma-mobile: Plasma Mobile flavour (default)')
 install='pocknix-desktop.install'
-source=('pocknix-desktop' 'pocknix-desktop-rotate' 'pocknix-desktop-rotate.desktop'
-        'pocknix-desktop-remove-taskpanel' 'pocknix-desktop-remove-taskpanel.desktop'
-        'steamos-session-select' 'return-to-gamemode.desktop'
+source=('pocknix-desktop' 'return-to-gamemode.desktop'
         'pocknix-flathub-setup' 'pocknix-flathub.service' 'pocknix-flathub-dispatcher'
-        'ksplashrc' 'pocknix-x11.conf'
-        'powerdevilrc' 'kscreenlockerrc'
-        'pocknix-fontcache-prune' '99-pocknix-fontcache.hook'
-        'pocknix-panel-touchfix' '98-pocknix-panel-touchfix.hook')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        'pocknix-x11.conf'
+        'pocknix-fontcache-prune' '99-pocknix-fontcache.hook')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-desktop"          "${pkgdir}/usr/bin/pocknix-desktop"
-  install -Dm755 "${srcdir}/pocknix-desktop-rotate"   "${pkgdir}/usr/bin/pocknix-desktop-rotate"
-  install -Dm755 "${srcdir}/steamos-session-select"   "${pkgdir}/usr/bin/steamos-session-select"
-  install -Dm644 "${srcdir}/pocknix-desktop-rotate.desktop" \
-    "${pkgdir}/etc/xdg/autostart/pocknix-desktop-rotate.desktop"
-  install -Dm755 "${srcdir}/pocknix-desktop-remove-taskpanel" \
-    "${pkgdir}/usr/bin/pocknix-desktop-remove-taskpanel"
-  install -Dm644 "${srcdir}/pocknix-desktop-remove-taskpanel.desktop" \
-    "${pkgdir}/etc/xdg/autostart/pocknix-desktop-remove-taskpanel.desktop"
   install -Dm644 "${srcdir}/return-to-gamemode.desktop" \
     "${pkgdir}/usr/share/applications/return-to-gamemode.desktop"
   # Not enabled: the NM dispatcher starts it once a link is up.
@@ -39,15 +28,9 @@ package() {
   # Dispatcher scripts must be root-owned and not group/world writable or NM refuses to run them.
   install -Dm755 "${srcdir}/pocknix-flathub-dispatcher" \
     "${pkgdir}/etc/NetworkManager/dispatcher.d/50-pocknix-flathub"
-  install -Dm644 "${srcdir}/ksplashrc"                "${pkgdir}/etc/xdg/ksplashrc"
-  install -Dm644 "${srcdir}/powerdevilrc"             "${pkgdir}/etc/xdg/powerdevilrc"
-  install -Dm644 "${srcdir}/kscreenlockerrc"          "${pkgdir}/etc/xdg/kscreenlockerrc"
   # No xorg-server in the base to create /tmp/.X11-unix for XWayland.
   install -Dm644 "${srcdir}/pocknix-x11.conf"         "${pkgdir}/usr/lib/tmpfiles.d/pocknix-x11.conf"
   install -Dm755 "${srcdir}/pocknix-fontcache-prune" "${pkgdir}/usr/bin/pocknix-fontcache-prune"
   install -Dm644 "${srcdir}/99-pocknix-fontcache.hook" \
     "${pkgdir}/usr/share/libalpm/hooks/99-pocknix-fontcache.hook"
-  install -Dm755 "${srcdir}/pocknix-panel-touchfix" "${pkgdir}/usr/bin/pocknix-panel-touchfix"
-  install -Dm644 "${srcdir}/98-pocknix-panel-touchfix.hook" \
-    "${pkgdir}/usr/share/libalpm/hooks/98-pocknix-panel-touchfix.hook"
 }
