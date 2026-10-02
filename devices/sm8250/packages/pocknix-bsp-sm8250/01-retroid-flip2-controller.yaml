@@ -36,5 +36,5 @@ options:
   auto_manage: true
 
 target_devices:
-  - deck
+  - deck-uhid
   - keyboard

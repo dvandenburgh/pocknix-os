@@ -2,7 +2,8 @@
 # vhci_hcd -EBUSYs the whole system suspend while a virtual USB device is attached, and
 # InputPlumber's `deck` target attaches over USB/IP. Only then: the desktop `xb360` target is
 # plain uinput, and stopping there destroys the pad's evdev node for nothing (ES-DE and friends
-# rescan on focus change only, so they come back pad-less).
+# rescan on focus change only, so they come back pad-less). Inert under `deck-uhid`; guards a
+# session still on `deck`.
 STATUS=/sys/devices/platform/vhci_hcd.0/status
 FLAG=/run/pocknix-inputplumber-resume
 

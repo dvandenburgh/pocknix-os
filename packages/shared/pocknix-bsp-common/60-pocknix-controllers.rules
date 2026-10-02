@@ -4,9 +4,10 @@
 # controller. Without uinput write, input works in the Steam UI but NOT in-game.
 KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
 
-# 28de = Valve: Steam Controller, Steam Deck, and InputPlumber's 'deck' virtual target.
-KERNEL=="hidraw*", ATTRS{idVendor}=="28de", MODE="0660", TAG+="uaccess"
-SUBSYSTEM=="input", ATTRS{idVendor}=="28de", MODE="0660", TAG+="uaccess"
+# 28de = Valve: Steam Controller, Steam Deck, and InputPlumber's Deck targets. Matched on the
+# HID node name: the uhid `deck-uhid` pad has no USB idVendor.
+KERNEL=="hidraw*", KERNELS=="000[356]:28DE:*", GROUP="input", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="input", KERNELS=="000[356]:28DE:*", MODE="0660", TAG+="uaccess"
 
 # Sony (DualShock 3/4, DualSense)
 KERNEL=="hidraw*", ATTRS{idVendor}=="054c", MODE="0660", TAG+="uaccess"
