@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: shuuri-labs <61762328+shuuri-labs@users.noreply.github.com>
+Date: Fri, 2 Oct 2026 17:19:49 +0200
+Subject: [PATCH] steamcompmgr: run SGSR when FSR is requested on SDR content
+
+The Steam Deck client offers FSR but no SGSR entry, so nothing sends filter
+5 on this hardware. Resolve FSR to SGSR when the base layer is SDR RGB, where
+SGSR can read it; HDR and YCbCr keep FSR's existing paths. The
+fsr_means_sgsr convar (default on) restores plain FSR for A/B, and Steam's
+FSR feedback stays set while the stand-in runs.
+---
+ src/main.hpp         | 9 ++++++++-
+ src/steamcompmgr.cpp | 6 +++++-
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/src/main.hpp b/src/main.hpp
+index b2a169f1..0de56dd8 100644
+--- a/src/main.hpp
++++ b/src/main.hpp
+@@ -7,6 +7,7 @@
+ #include <string_view>
+ #include <utility>
+ 
++#include "convar.h"
+ #include "gamescope_shared.h"
+ 
+ extern const char *gamescope_optstring;
+@@ -62,9 +63,15 @@ static constexpr bool SgsrSupportsInput( GamescopeAppTextureColorspace eColorspa
+     return !bYcbcr && ( eColorspace == GAMESCOPE_APP_TEXTURE_COLORSPACE_LINEAR || eColorspace == GAMESCOPE_APP_TEXTURE_COLORSPACE_SRGB );
+ }
+ 
++extern gamescope::ConVar<bool> cv_fsr_means_sgsr;
++
+ // Sharp ran FSR before SGSR existed, so HDR keeps that rather than losing the sharpening. Neither pre-pass reads the YCbCr slot.
+-static constexpr GamescopeUpscaleFilter ResolveUpscaleFilter( GamescopeUpscaleFilter eFilter, GamescopeAppTextureColorspace eColorspace, bool bYcbcr )
++static inline GamescopeUpscaleFilter ResolveUpscaleFilter( GamescopeUpscaleFilter eFilter, GamescopeAppTextureColorspace eColorspace, bool bYcbcr )
+ {
++    // Deck Steam's only filter option ("Sharp") sends FSR, never SGSR, so FSR runs as SGSR
++    // wherever SGSR can read the input; it is cheaper on Adreno.
++    if ( eFilter == GamescopeUpscaleFilter::FSR && cv_fsr_means_sgsr && SgsrSupportsInput( eColorspace, bYcbcr ) )
++        return GamescopeUpscaleFilter::SGSR;
+     if ( eFilter != GamescopeUpscaleFilter::SGSR || SgsrSupportsInput( eColorspace, bYcbcr ) )
+         return eFilter;
+     return bYcbcr ? GamescopeUpscaleFilter::LINEAR : GamescopeUpscaleFilter::FSR;
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index 8c455fbe..1b76ac47 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -301,6 +301,7 @@ gamescope::ConVar<bool> cv_adaptive_sync_uncapped( "adaptive_sync_uncapped", tru
+ 
+ gamescope::ConVar<bool> cv_upscale_preemptive( "upscale_preemptive", true, "Allow pre-emptive upscaling" );
+ gamescope::ConVar<bool> cv_upscale_preemptive_debug_force_sync( "upscale_preemptive_debug_force_sync", false, "Force synchronize pre-emptive upscaling" );
++gamescope::ConVar<bool> cv_fsr_means_sgsr( "fsr_means_sgsr", true, "Run SGSR when FSR is requested and the base layer is SDR RGB" );
+ 
+ uint64_t g_SteamCompMgrLimitedAppRefreshCycle = 16'666'666;
+ uint64_t g_SteamCompMgrAppRefreshCycle = 16'666'666;
+@@ -10065,7 +10066,10 @@ steamcompmgr_main(int argc, char **argv)
+ 			flush_root = true;
+ 		}
+ 
+-		if ( const bool bFSRActive = g_eActiveUpscaler == GamescopeUpscaleFilter::FSR; bFSRActive != g_bWasFSRActive )
++		// Steam's FSR indicator stays lit while SGSR stands in for its FSR request.
++		const bool bFSRActive = g_eActiveUpscaler == GamescopeUpscaleFilter::FSR ||
++			( g_eActiveUpscaler == GamescopeUpscaleFilter::SGSR && cv_fsr_means_sgsr && g_wantedUpscaleFilter == GamescopeUpscaleFilter::FSR );
++		if ( bFSRActive != g_bWasFSRActive )
+ 		{
+ 			uint32_t active = bFSRActive ? 1 : 0;
+ 			XChangeProperty( root_ctx->dpy, root_ctx->root, root_ctx->atoms.gamescopeFSRFeedback, XA_CARDINAL, 32, PropModeReplace,

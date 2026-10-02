@@ -1,16 +1,15 @@
-# gamescope (pocknix) — patched build for rotated msm/DPU panels.
-# Vanilla gamescope cannot drive them: it asks for a DRM plane rotation the msm DPU rejects,
-# so every flip fails ("Failed to prepare 1-layer flip"). 0007/0008 rotate in the composite
-# pass instead; pocknix-steam forces it and passes logical LANDSCAPE -W/-H.
+# gamescope (pocknix) - Valve tag plus a small series for msm handhelds.
+# pocknix-steam passes logical LANDSCAPE -W/-H and relies on upstream composite rotation
+# (3.16.31+); older builds, ALARM's included, request a plane rotation the msm DPU rejects.
 # epoch=1 outranks ALARM's gamescope. The pkgver segment after "rocknix." must vercmp higher
 # on every bump, hence commit date then sha — a bare sha is non-monotonic.
 pkgname=gamescope
 epoch=1
-pkgver=3.16.0.rocknix.20260802.6644cc9
-pkgrel=3
-_commit=6644cc9a07d8ba937003deae8bd7c28a490d0c64
+pkgver=3.16.31.rocknix.20260927.f6916aa
+pkgrel=1
+_commit=f6916aacdecb4476f05746fef4dc49a650c28f05
 install=gamescope.install
-pkgdesc="SteamOS session compositing WM — patched (rotation-shader, for msm/rotated panels)"
+pkgdesc="SteamOS session compositing WM — patched (for msm handhelds)"
 arch=('aarch64')
 url="https://github.com/ValveSoftware/gamescope"
 license=('BSD-2-Clause')
@@ -30,19 +29,17 @@ source=("gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=${
         '0001-WaylandBackend-wire-up-wl_touch-implementation.patch'
         '0004-DRMBackend-Add-GAMESCOPE_FAKE_OUTPUT_MM-env-to-set-c.patch'
         '0006-steamcompmgr-fix-gamepad-cursor-sprite-frozen-via-XTest.patch'
-        '0007-Add-composited-output-rotation-for-displays-that-can.patch'
-        '0008-steamcompmgr-classify-the-interactive-overlay-by-out.patch')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        '0009-steamcompmgr-run-SGSR-when-FSR-is-requested-on-SDR-content.patch')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd gamescope
   git submodule update --init --recursive
-  # Numbering is inherited: 0001/0004/0006 keep ROCKNIX's, 0007/0008 are upstream PR #2228.
+  # Patch numbers are never reused; dropped ones are listed in PATCHES.md.
   patch -p1 < "${srcdir}/0001-WaylandBackend-wire-up-wl_touch-implementation.patch"
   patch -p1 < "${srcdir}/0004-DRMBackend-Add-GAMESCOPE_FAKE_OUTPUT_MM-env-to-set-c.patch"
   patch -p1 < "${srcdir}/0006-steamcompmgr-fix-gamepad-cursor-sprite-frozen-via-XTest.patch"
-  patch -p1 < "${srcdir}/0007-Add-composited-output-rotation-for-displays-that-can.patch"
-  patch -p1 < "${srcdir}/0008-steamcompmgr-classify-the-interactive-overlay-by-out.patch"
+  patch -p1 < "${srcdir}/0009-steamcompmgr-run-SGSR-when-FSR-is-requested-on-SDR-content.patch"
 }
 
 build() {
