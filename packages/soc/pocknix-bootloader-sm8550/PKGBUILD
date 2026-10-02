@@ -8,9 +8,9 @@
 # A bump must keep the ABL matched to this contract — watch ROCKNIX's own pin in
 # packages/tools/rocknix-abl/package.mk when reviewing `make sync`.
 pkgname=pocknix-bootloader-sm8550
-_ablver=1.1.7
+_ablver=1.2
 pkgver=${_ablver}
-pkgrel=4
+pkgrel=1
 pkgdesc="SM8550 qcom-abl boot payload: ROCKNIX ABL install kit (rocknix_abl)"
 arch=('aarch64')
 # !strip: a stripped bootloader is an unbootable one.
@@ -23,7 +23,7 @@ source=("https://github.com/ROCKNIX/abl/releases/download/v${_ablver}/rocknix-ab
         'backup_abl.sh'
         'restore_backup_abl.sh'
         '95-pocknix-abl-kit.hook')
-sha512sums=('fa1d213bec97661942b8083be1f2eb6b65cc200b4f3f76dd84261ba92a01ac9261ed6834350f2f647a5ed82fcabadf5011b9ba6769f471abeaf06210ae9221c1'
+sha512sums=('b2d897b4f681f22d416201e332a5c27efc00b0139c3b0806126f8913182285e803b8a3726a7c9a1609956049d4b6d054b3529bd0f508d1a86ab9ab3bf79dca01'
             'SKIP'
             'SKIP'
             'SKIP'

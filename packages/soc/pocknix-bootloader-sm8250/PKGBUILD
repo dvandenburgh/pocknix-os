@@ -2,8 +2,8 @@
 # (boot chain: dev/kernel.md). grubenv holds the user's menu choice: installed only when missing.
 pkgname=pocknix-bootloader-sm8250
 pkgver=20260701          # the ROCKNIX release bootaa64.efi was extracted from
-pkgrel=13
-_ablver=1.1.7            # ROCKNIX ABL release the kit is taken from
+pkgrel=14
+_ablver=1.2              # ROCKNIX ABL release the kit is taken from
 pkgdesc="SM8250 arm-efi boot payload: ROCKNIX GRUB + pocknix grub.cfg + ABL install kit"
 arch=('aarch64')
 # !strip: a stripped bootloader is an unbootable one.
@@ -26,7 +26,7 @@ sha512sums=('SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
-            'fa1d213bec97661942b8083be1f2eb6b65cc200b4f3f76dd84261ba92a01ac9261ed6834350f2f647a5ed82fcabadf5011b9ba6769f471abeaf06210ae9221c1'
+            'b2d897b4f681f22d416201e332a5c27efc00b0139c3b0806126f8913182285e803b8a3726a7c9a1609956049d4b6d054b3529bd0f508d1a86ab9ab3bf79dca01'
             'SKIP'
             'SKIP'
             'SKIP'

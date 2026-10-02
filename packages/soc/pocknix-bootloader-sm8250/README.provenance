@@ -38,12 +38,12 @@ static one (root=PARTLABEL, single rp5 entry, timeout 0).
 abl_signed-SM8250.elf is NOT committed here — the PKGBUILD fetches it from the
 same pinned ROCKNIX ABL release the sm8550 package uses:
 
-  release:  https://github.com/ROCKNIX/abl/releases/tag/v1.1.7
-  asset:    rocknix-abl-v1.1.7.tar.gz
-  tarball sha512: fa1d213bec97661942b8083be1f2eb6b65cc200b4f3f76dd84261ba92a01ac92
-                  61ed6834350f2f647a5ed82fcabadf5011b9ba6769f471abeaf06210ae9221c1
+  release:  https://github.com/ROCKNIX/abl/releases/tag/v1.2
+  asset:    rocknix-abl-v1.2.tar.gz
+  tarball sha512: b2d897b4f681f22d416201e332a5c27efc00b0139c3b0806126f8913182285e8
+                  03b8a3726a7c9a1609956049d4b6d054b3529bd0f508d1a86ab9ab3bf79dca01
   abl_signed-SM8250.elf sha256 (release's own sidecar, re-checked in prepare()):
-                  a96f2677200b5b427983529c26eb496b738930a4100e7faa8d427b250d208ccb
+                  ef5248b26b3d55bd538bbcc55042918255a47b04990e93d681265b9e4af3dca6
 
 The four kit scripts are the same verbatim ROCKNIX sources the sm8550 package
 vendors, with %DEVICE% -> SM8250 (their package.mk substitution). Keep the two
