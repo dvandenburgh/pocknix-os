@@ -20,10 +20,11 @@ source=("steamos-manager::git+https://gitlab.steamos.cloud/holo/steamos-manager.
         '0004-remote-Relay-property-changes-for-remotes-present-at.patch'
         '0005-ds_inhibit-Default-to-disabled.patch'
         '0006-screenreader-Make-speech-dispatcher-an-optional-defa.patch'
+        '0007-remote-Keep-configured-remotes-exported-across-owner.patch'
         'platform.toml' 'pocknix.toml' 'pocknix-remotes.toml' '10-pocknix.conf')
 sha256sums=('SKIP'
             '5a30ce742be0835d9b23fc862db5cbbbc71464e1c9b1fca22917e10e4ba32a92'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 _toolchain() {
@@ -40,7 +41,7 @@ prepare() {
   cd steamos-manager
   # Patch numbers are never reused; dropped ones are listed in PATCHES.md.
   local p
-  for p in "${srcdir}"/000[1-6]-*.patch; do
+  for p in "${srcdir}"/000[1-7]-*.patch; do
     patch -p1 < "${p}"
   done
   cargo fetch --locked
