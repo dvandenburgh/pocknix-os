@@ -1,0 +1,51 @@
+#!/bin/bash
+# Every RetroArch launch (ES-DE or a pocknix-play tile) comes through here. RetroArch saves its
+# config on exit and the seeder keeps drifted values as user edits, so one GL fallback would
+# stick; --appendconfig re-pins pacing every launch. Values must match retroarch.cfg's pacing
+# block and pocknix-roms-init's per-panel formula.
+[ -r /usr/lib/pocknix/device.conf ] && . /usr/lib/pocknix/device.conf
+[ -r /etc/pocknix/device.conf ] && . /etc/pocknix/device.conf
+refresh="${POCKNIX_PANEL_REFRESH:-120}"
+si=$(( refresh / 60 )); [ "${si}" -lt 1 ] && si=1
+# Black frame insertion and shader subframes (the user's call) both need every vblank.
+racfg="${HOME}/.config/retroarch/retroarch.cfg"
+bfi="$(sed -n 's/^video_black_frame_insertion = "\([0-9]*\)"/\1/p' "${racfg}" 2>/dev/null)"
+sub="$(sed -n 's/^video_shader_subframes = "\([0-9]*\)"/\1/p' "${racfg}" 2>/dev/null)"
+if [ "${bfi:-0}" -gt 0 ] 2>/dev/null || [ "${sub:-1}" -gt 1 ] 2>/dev/null; then si=1; fi
+
+# GL+vsync under gamescope paces at an irregular ~47fps; audio-paced GL without vsync holds 60.
+# glcore, not gl: gl loads only GLSL presets and ours are slang. flycast is named because our
+# build lacks Vulkan though its info file claims it, and it fails to load on a Vulkan context.
+driver=vulkan; vsync=true
+core=""; prev=""
+for a in "$@"; do [ "${prev}" = "-L" ] && core="${a}"; prev="${a}"; done
+if [ -n "${core}" ]; then
+  name="$(basename "${core}" .so)"; info="/usr/share/libretro/info/${name}.info"
+  if grep -q '^required_hw_api' "${info}" 2>/dev/null && ! grep -q '^required_hw_api.*Vulkan' "${info}"; then
+    driver=glcore; vsync=false
+  fi
+  case "${name}" in
+    flycast_libretro) driver=glcore; vsync=false ;;
+    # "OpenGL" here makes RetroArch switch the whole session to GL; only that value is healed
+    # ("Auto" follows Vulkan, "Software" is deliberate).
+    duckstation_libretro)
+      opt="${HOME}/.config/retroarch/config/DuckStation/DuckStation.opt"
+      [ -w "${opt}" ] && sed -i 's/^duckstation_GPU\.Renderer = "OpenGL"$/duckstation_GPU.Renderer = "Vulkan"/' "${opt}" ;;
+  esac
+fi
+
+frag="${XDG_RUNTIME_DIR:-/tmp}/pocknix-retroarch-pacing.cfg"
+cat > "${frag}" <<CFG
+video_driver = "${driver}"
+video_vsync = "${vsync}"
+video_refresh_rate = "${refresh}.000000"
+video_swap_interval = "${si}"
+video_max_swapchain_images = "2"
+CFG
+# Without vsync, BFI and subframes have no vblank to hang on and flicker or halve speed; off for
+# this launch only.
+if [ "${vsync}" = false ]; then
+  printf 'video_black_frame_insertion = "0"\nvideo_shader_subframes = "1"\n' >> "${frag}"
+fi
+
+exec retroarch -f --appendconfig "${frag}" "$@"
