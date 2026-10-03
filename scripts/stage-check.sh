@@ -168,7 +168,7 @@ first_copy() {  # $1 name -> FC="name@repo" of the copy pacman would install
 # --- delta (from the staging marker) -----------------------------------------
 pkgbase() { local b="${1##*/}"; b="${b%-*}"; b="${b%-*}"; b="${b%-*}"; printf '%s' "${b}"; }
 pkgver_of() { local b="${1##*/}"; b="${b%-*}"; b="${b#"$(pkgbase "$1")-"}"; printf '%s' "${b}"; }
-declare -A added dropped   # name -> version (as staged / as was live)
+declare -A added=() dropped=()   # name -> version (as staged / as was live)
 if [ -f "${MARKER}" ]; then
   while IFS= read -r l; do
     f="${l#[+-]}"; [ -n "${f}" ] && [ "${f}" != "${l}" ] || continue
@@ -244,7 +244,7 @@ check_shadow() {  # $1 soc: an older per-SoC copy hides the newer shared one
     if [ "${soc_repo}" = stage ]; then
       FAIL "${n}: staged ${ver["${n}@stage"]} is OLDER than [pocknix-shared] ${ver["${n}@shared"]} and would shadow it on $1"
     else
-      WARN "${n}: [pocknix] $1 still has ${ver["${n}@$1"]} which shadows the staged shared ${ver["${n}@stage"]} — dual-publish the bump to $1 or DROP it there"
+      WARN "${n}: [pocknix] $1 still has ${ver["${n}@$1"]} which shadows the staged shared ${ver["${n}@stage"]} — DROP it there"
     fi
   done
 }
@@ -293,6 +293,9 @@ if [ -f "${MARKER}" ]; then
   done
   for n in "${!dropped[@]}"; do
     [ -n "${added["${n}"]+x}" ] && continue
+    if [ "${POCKNIX_REPO_SCOPE}" != "shared" ] && [ -n "${ver["${n}@shared"]+x}" ]; then
+      note "moved" "${n} -> [pocknix-shared] ${ver["${n}@shared"]}"; continue
+    fi
     who=""; has_conflict=0
     for k in "${!repl[@]}"; do
       while IFS= read -r spec; do

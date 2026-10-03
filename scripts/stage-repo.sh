@@ -24,7 +24,11 @@ source "$(dirname "$0")/lib.sh"
 need_tool rclone
 read -ra DROPS <<< "${POCKNIX_STAGE_DROP:-}"
 [ "$#" -gt 0 ] || [ "${#DROPS[@]}" -gt 0 ] || die "no packages named — usage: make stage PKG=\"<artifact-name> ...\" [DROP=\"<name> ...\"]"
+# The stanza bridge: pocknix-base retrofits [pocknix-shared] onto stale devices, which can only
+# reach it (and its hard dep) from [pocknix], so these two stay in every per-SoC tree.
+BRIDGE=" pocknix-base pocknix-base-lock "
 for d in "${DROPS[@]-}"; do
+  case "${BRIDGE}" in *" ${d} "*) die "${d}: never DROP a stanza-bridge package from [pocknix]" ;; esac
   for name in "$@"; do [ "${d}" = "${name}" ] && die "${d}: named in both PKG and DROP"; done
 done
 [ -n "${POCKNIX_REPO_RCLONE_REMOTE}" ] || die "POCKNIX_REPO_RCLONE_REMOTE unset — no live repo to stage from"
@@ -69,17 +73,17 @@ for name in "$@"; do
     [ "$(pkgbase "$f")" = "${name}" ] || continue
     case " ${found[*]-} " in *" ${f} "*) ;; *) found+=("$f") ;; esac
   done
-  # Per-SoC staging falls back to the SHARED localrepo: shared packages build
-  # only there, but during the [pocknix-shared] transition they are also staged
-  # into the per-SoC trees (same bytes) — and pocknix-base permanently so (it
-  # carries the stanza migration, so stale devices must reach it from [pocknix]).
+  # Shared packages ship to [pocknix-shared] only, BRIDGE excepted: [pocknix] sits first in
+  # pacman.conf, so a per-SoC copy would shadow every later shared bump.
   if [ "${#found[@]}" -eq 0 ] && [ "${POCKNIX_REPO_SCOPE}" != "shared" ]; then
     for f in "${LOCALREPO_SHARED_DIR}/${name}"-[0-9]*.pkg.tar.* "${LOCALREPO_SHARED_DIR}/${name}"-*:*.pkg.tar.*; do
       [[ "$f" == *.sig ]] && continue
       [ "$(pkgbase "$f")" = "${name}" ] || continue
       case " ${found[*]-} " in *" ${f} "*) ;; *) found+=("$f") ;; esac
     done
-    [ "${#found[@]}" -gt 0 ] && log "${name}: staging the SHARED artifact into ${REPO_SEG} (dual-publish)"
+    [ "${#found[@]}" -gt 0 ] && case "${BRIDGE}" in *" ${name} "*) false ;; esac \
+      && die "${name}: a shared package, stage it with make stage-shared (never into ${REPO_SEG})"
+    [ "${#found[@]}" -gt 0 ] && log "${name}: staging the SHARED artifact into ${REPO_SEG} (stanza bridge)"
   fi
   [ "${#found[@]}" -gt 0 ] || die "${name}: no artifact in ${REPO_LOCALREPO_DIR} (or the shared localrepo) — build it first (make packages; split artifacts build from their parent PKGBUILD)"
   [ "${#found[@]}" -eq 1 ] || die "${name}: multiple versions in localrepo ($(basename "${found[0]}") ...) — remove the stale ones first"
