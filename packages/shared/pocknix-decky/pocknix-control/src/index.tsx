@@ -1,9 +1,11 @@
 import { definePlugin } from "@decky/api";
 import { Content } from "./Content";
 import { patchLibraryContextMenu } from "./lib/contextMenu";
+import { registerTouchLifetime } from "./lib/touch";
 
 export default definePlugin(() => {
   const unpatchContextMenu = patchLibraryContextMenu();
+  const unregisterTouch = registerTouchLifetime();
   return {
     name: "Pocknix Control",
     content: <Content />,
@@ -11,6 +13,7 @@ export default definePlugin(() => {
     alwaysRender: true,
     onDismount() {
       unpatchContextMenu();
+      unregisterTouch();
     },
   };
 });

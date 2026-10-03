@@ -14,6 +14,8 @@ export interface GameTweak {
   lavdMode?: string;
   /** Wrapper exports PROTON_USE_XALIA=0 unless false; absent = disabled. */
   disableXalia?: boolean;
+  /** true = the touchscreen is inhibited while this game runs (pocknix_control/touch.py). */
+  touchDisabled?: boolean;
   [key: string]: any;
 }
 

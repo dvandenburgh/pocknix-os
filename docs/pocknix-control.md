@@ -36,6 +36,11 @@ Changes apply on the **next game launch**.
   extra audio latency. 120 ms clears crackle and is inaudible in most games. Keep it low (or
   on Game default) for timing-sensitive titles - rhythm games, fighting games, anything where
   you play to the beat or need tight audio cues.
+- **Disable Touchscreen**: switches the touchscreen off while the game runs, so a thumb
+  resting on the screen edge cannot fire stray taps. It comes back as soon as the game exits.
+  While it is off, touch is off everywhere, the Steam overlay and on-screen keyboard included;
+  use the controls there. Unlike the other tweaks this one takes effect immediately, even
+  mid-game, and it works for every game Steam launches, native and emulators included.
 
 ## Library
 

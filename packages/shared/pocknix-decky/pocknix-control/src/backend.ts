@@ -4,6 +4,7 @@ import type { CalibrationStatus, Config, ConfigExportResult, ConfigImportResult,
 export const getConfig = () => call<[], Config>("get_config");
 export const setFanMode = (mode: string) => call<[string], Config>("set_fan_mode", mode);
 export const setLavdMode = (mode: string) => call<[string], Config>("set_lavd_mode", mode);
+export const gameLifetime = (appid: string, running: boolean) => call<[string, boolean], void>("game_lifetime", appid, running);
 export const saveTweaks = (data: Tweaks) => call<[Tweaks], Config>("save_tweaks", data);
 export const exportConfig = (appid: string, name: string, basename: string, allowOverwrite: boolean) =>
   call<[string, string, string, boolean], ConfigExportResult>("export_config", appid, name, basename, allowOverwrite);

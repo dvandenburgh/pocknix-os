@@ -8,11 +8,16 @@ from pocknix_control.modes import set_fan_mode, set_lavd_mode
 from pocknix_control.sdcard import detect_sdcard, format_sdcard
 from pocknix_control.sharing import install_samba, set_share, share_status
 from pocknix_control.snapshots import reboot_system, snapshot_status, start_rollback
+from pocknix_control.touch import sync_touch
 from pocknix_control.tweaks import save_tweaks
 from pocknix_control.updates import check_updates, start_update, update_status
 
 
 class Plugin:
+    # Appid of the running game, reported by the frontend's app-lifetime hook; drives the
+    # touchscreen tweak. Starts None, so a (re)loaded backend turns touch back on.
+    _running_appid = None
+
     # Offload blocking work to a thread so a slow call can't stall Decky's asyncio loop.
     async def get_config(self):
         return await asyncio.to_thread(build_config)
@@ -20,9 +25,19 @@ class Plugin:
     async def _main(self):
         await asyncio.to_thread(restore_led)
         await asyncio.to_thread(calibration.recover)
+        await asyncio.to_thread(sync_touch, self._running_appid)
 
     async def _unload(self):
         await asyncio.to_thread(calibration.cancel)
+        await asyncio.to_thread(sync_touch, None)
+
+    async def game_lifetime(self, appid, running):
+        appid = str(appid or "")
+        if running:
+            self._running_appid = appid or None
+        elif appid == self._running_appid:
+            self._running_appid = None
+        await asyncio.to_thread(sync_touch, self._running_appid)
 
     async def detect_sdcard(self):
         return await asyncio.to_thread(detect_sdcard)
@@ -49,6 +64,7 @@ class Plugin:
 
     async def save_tweaks(self, data):
         await asyncio.to_thread(save_tweaks, data)
+        await asyncio.to_thread(sync_touch, self._running_appid)
         return await self.get_config()
 
     async def export_config(self, appid, name, basename, allow_overwrite):
