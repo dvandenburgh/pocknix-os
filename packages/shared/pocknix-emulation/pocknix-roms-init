@@ -215,6 +215,10 @@ esac
 mkdir -p "${EMU}/BIOS" "${EMU}/Saves" "${EMU}/States"
 for s in "${SYSTEMS[@]}"; do mkdir -p "${ROMS}/${s}"; done
 for e in ${EMU_NAMES}; do mkdir -p "${EMU_DROP}/${e}"; done
+# Eden is not shipped any more: hand a device that has it its own copy (cruft.md)
+if [ -x /opt/pocknix/emulators/eden/Eden.AppImage ] && [ -z "$(ls -A "${EMU_DROP}/eden" 2>/dev/null)" ]; then
+  cp /opt/pocknix/emulators/eden/Eden.AppImage "${EMU_DROP}/eden/Eden.AppImage" 2>/dev/null || true
+fi
 # refreshed every run so doc updates reach existing installs
 [ -f "${SHARE}/ROMS-README.txt" ] && cp -f "${SHARE}/ROMS-README.txt" "${EMU}/README.txt" 2>/dev/null
 

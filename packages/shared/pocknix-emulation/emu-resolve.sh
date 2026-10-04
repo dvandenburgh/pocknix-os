@@ -28,6 +28,7 @@ emu_path() {  # $1 name -> prints the executable, or returns 1
   fi
   case "$1" in
     armsx2)  f=/opt/pocknix/emulators/armsx2/ARMSX2.AppImage ;;
+    eden)    f=/opt/pocknix/emulators/eden/Eden.AppImage ;;   # pre-retirement installs only
     rpcs3)   f=/opt/pocknix/emulators/rpcs3/rpcs3.AppImage ;;
     vita3k)  f=/opt/pocknix/emulators/vita3k/Vita3K.AppImage ;;
     xemu)    f=/opt/pocknix/emulators/xemu/xemu.AppImage ;;
