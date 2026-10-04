@@ -369,6 +369,8 @@ fi
 if [ -n "${POCKNIX_SNAPSHOT_NO_UPLOAD:-}" ]; then
   cp -f "${OUT}/pocknix-base.lock" "${LOCKFILE}"
   ok "dry run: snapshot dir ready at ${OUT} ($(du -sh "${OUT}" | cut -f1)); lockfile written, nothing uploaded, conf NOT pinned"
+  # The dry run is the last vet point before the base goes live; advisory, never blocks.
+  "$(dirname "$0")/base-diff.sh" || warn "base-diff failed; run 'make base-diff' by hand"
   exit 0
 fi
 

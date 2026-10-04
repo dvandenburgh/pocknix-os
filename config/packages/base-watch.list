@@ -1,0 +1,18 @@
+# ALARM base packages a regression would hit directly, because we lean on them in
+# non-default ways. base-diff.sh (make base-diff, auto after a snapshot dry run) flags
+# any of these the new lockfile moves. Tracker: owner/repo = GitHub, searched for open
+# issues; a URL = printed for a by-hand look. Name may be a glob. Keep it short.
+
+scx-scheds        sched-ext/scx      # scx_lavd with custom flags is our CPU scheduler
+linux-firmware*   https://gitlab.com/kernel-firmware/linux-firmware/-/issues  # sm8550 wifi overlay shadows its paths
+systemd           systemd/systemd    # session switch, logind, suspend
+pipewire          https://gitlab.freedesktop.org/pipewire/pipewire/-/issues
+wireplumber       https://gitlab.freedesktop.org/pipewire/wireplumber/-/issues
+bluez             bluez/bluez        # controllers + audio
+sdl3              libsdl-org/SDL     # controller mapping for Steam and emulators
+sdl2-compat       libsdl-org/sdl2-compat
+libinput          https://gitlab.freedesktop.org/libinput/libinput/-/issues  # touch + gamepad-as-mouse
+qt6-base          https://bugreports.qt.io   # plasma-mobile links Qt private ABI
+kwin              https://bugs.kde.org/buglist.cgi?product=kwin&bug_status=__open__
+plasma-mobile     https://invent.kde.org/plasma/plasma-mobile/-/issues
+waydroid          waydroid/waydroid
