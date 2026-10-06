@@ -29,10 +29,6 @@ if command -v pocknix-gamepad-target >/dev/null 2>&1; then
   pocknix-gamepad-target xb360 || true
 fi
 
-# SDL's bundled controller DB rotates the d-pad 180 degrees for InputPlumber's xb360 GUID;
-# PRIORITY_USER is the one level a bundled DB cannot overwrite.
-export SDL_GAMECONTROLLERCONFIG='030000005e0400008e02000001000000,Microsoft X-Box 360 pad,a:b0,b:b1,back:b6,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b8,leftshoulder:b4,leftstick:b9,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b10,righttrigger:a5,rightx:a3,righty:a4,start:b7,x:b2,y:b3,platform:Linux,'
-
 # Before kwin enumerates input: its fallback puts every touchscreen on the FIRST output.
 for _dc in /usr/lib/pocknix/device.conf /etc/pocknix/device.conf; do
   [ -r "${_dc}" ] && . "${_dc}"
