@@ -16,6 +16,8 @@ esac
 
 mkdir -p "${STATE_HOME}"
 printf '%s\n' "${sel}" > "${CHOICE_FILE}"
+# Arms pocknix-session's straggler kill for the session being left.
+touch "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pocknix-session.switch"
 echo "steamos-session-select: next session = ${sel} (signalling current compositor to exit)" >&2
 
 # No -x: the patterns must also catch the wrappers (kwin_wayland_wrapper, etc.).

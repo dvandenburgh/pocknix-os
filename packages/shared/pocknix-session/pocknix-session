@@ -9,6 +9,7 @@
 # Steam passes to steamos-session-select.
 STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/pocknix-session"
 PIDFILE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pocknix-desktop.pid"
+SWITCH="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pocknix-session.switch"
 LOG="${HOME}/pocknix-session.log"
 
 if [ -e "${HOME}/.no-steam" ]; then
@@ -19,15 +20,65 @@ fi
 # tty1 shows between compositors.
 blank() { printf '\033[?25l\033[2J\033[H' >/dev/tty 2>/dev/null; }
 
+# The whole login session is our cgroup, including what got re-parented to PID 1 when its
+# parent died (gamescope's reaper, Xwayland), which a walk of our children would miss.
+SCOPE="/sys/fs/cgroup$(sed -n 's/^0:://p' /proc/self/cgroup)/cgroup.procs"
+
+# Builtins only, so no helper of ours shows up. (sd-pam) holds the PAM session: killing it
+# would end the logind session.
+leftovers() {
+  local p c
+  while read -r p; do
+    [ "${p}" = "$$" ] || [ "${p}" = "${BASHPID}" ] && continue
+    read -r c < "/proc/${p}/comm" 2>/dev/null
+    [ "${c}" = "(sd-pam)" ] || echo "${p}"
+  done < "${SCOPE}"
+}
+
+sweep() {  # <TERM|KILL>; TERM escalates to KILL after 3s
+  local pids t
+  mapfile -t pids < <(leftovers)
+  [ "${#pids[@]}" -gt 0 ] || return 0
+  echo "pocknix-session: ${1} to what the last session left: ${pids[*]}" >&2
+  kill -"$1" "${pids[@]}" 2>/dev/null
+  [ "$1" = TERM ] || return 0
+  for t in 1 2 3; do
+    sleep 1
+    mapfile -t pids < <(leftovers)
+    [ "${#pids[@]}" -gt 0 ] || return 0
+  done
+  kill -KILL "${pids[@]}" 2>/dev/null
+}
+
+# A switch only TERMs the compositor, and one TERM-proof straggler (a Wine process stuck in
+# ntsync) holds gamescope's reaper, and so the launcher, open forever (#107). Anything still
+# running 6s after a switch request, or left once the launcher is gone, is killed from here.
+run() {  # <launcher>
+  local child t=0
+  # Append mode for both writers: a truncating fd would overwrite lines written meanwhile.
+  : >"${LOG}"
+  "$1" >>"${LOG}" 2>&1 &
+  child=$!
+  while kill -0 "${child}" 2>/dev/null; do
+    sleep 1
+    [ -e "${SWITCH}" ] || continue
+    t=$(( t + 1 ))
+    [ "${t}" -ge 6 ] && { sweep KILL; break; }
+  done
+  wait "${child}" 2>/dev/null
+  sweep TERM
+}
+
 fastfails=0
 while true; do
   session="$(cat "${STATE}" 2>/dev/null || echo gamescope)"
   start="$(date +%s)"
+  rm -f "${SWITCH}"
   blank
   case "${session}" in
-    plasma|desktop) command -v pocknix-desktop >/dev/null 2>&1 && pocknix-desktop >"${LOG}" 2>&1
+    plasma|desktop) command -v pocknix-desktop >/dev/null 2>&1 && run pocknix-desktop
                     rm -f "${PIDFILE}" ;;  # a recycled PID must never be signalled as the session
-    *)              command -v pocknix-steam   >/dev/null 2>&1 && pocknix-steam   >"${LOG}" 2>&1 ;;
+    *)              command -v pocknix-steam   >/dev/null 2>&1 && run pocknix-steam ;;
   esac
   # Under 5s is a broken session, not a switch.
   if [ "$(( $(date +%s) - start ))" -lt 5 ]; then

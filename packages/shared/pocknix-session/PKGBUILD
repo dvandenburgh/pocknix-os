@@ -1,6 +1,6 @@
 pkgname=pocknix-session
 pkgver=0.1.0
-pkgrel=3
+pkgrel=4
 pkgdesc="pocknix tty1 session service + game/desktop session supervisor"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"

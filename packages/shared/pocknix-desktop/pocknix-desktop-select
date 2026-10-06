@@ -57,11 +57,13 @@ resolve() {
   return 1
 }
 
-# A logout lets apps save; the signal is for desktops without one.
+# A logout lets apps save; the signal is for desktops without one. The switch marker arms
+# pocknix-session's straggler kill in case neither ends it.
 end_session() {
   local pid
   pid="$(cat "${PIDFILE}" 2>/dev/null)" || return 0
   kill -0 "${pid}" 2>/dev/null || return 0
+  touch "$(dirname "${PIDFILE}")/pocknix-session.switch"
   case ":${XDG_CURRENT_DESKTOP:-}:" in
     *:KDE:*) qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null && return 0 ;;
   esac
