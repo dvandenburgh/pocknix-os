@@ -17,13 +17,6 @@ echo "pocknix-desktop: starting ${session}: ${exec_line}" >&2
 mkdir -p /tmp/.X11-unix 2>/dev/null || true
 chmod 1777 /tmp/.X11-unix 2>/dev/null || true
 
-# The waking power press also reaches userspace, and this binding blanks the panel right after
-# resume (separate from powerButtonAction). Value is "active,default,description".
-if command -v kwriteconfig6 >/dev/null 2>&1; then
-  kwriteconfig6 --file kglobalshortcutsrc --group org_kde_powerdevil \
-    --key "Turn Off Screen" "none,Power Off,Turn Off Screen" 2>/dev/null || true
-fi
-
 # The game-mode `deck` target publishes no evdev joystick; see pocknix-gamepad-target.
 if command -v pocknix-gamepad-target >/dev/null 2>&1; then
   pocknix-gamepad-target xb360 || true
@@ -59,6 +52,12 @@ export XDG_SESSION_TYPE=wayland DESKTOP_SESSION="${session}"
 export XDG_SESSION_DESKTOP="${desktops%%;*}"
 export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-${session}}"
 [ -n "${desktops}" ] && export XDG_CURRENT_DESKTOP="${desktops//;/:}"
+
+# Flavours drop pre-start hooks here: some DE config is only read when its session starts. Run,
+# not sourced, so a failing hook can never keep the desktop from starting.
+for _hook in /usr/lib/pocknix/desktop.d/*.sh; do
+  [ -r "${_hook}" ] && { bash "${_hook}" || echo "pocknix-desktop: hook ${_hook} failed" >&2; }
+done
 
 # exec keeps this PID, so it names the session for steamos-session-select and
 # pocknix-desktop-select --now; the supervisor deletes it once the session ends.

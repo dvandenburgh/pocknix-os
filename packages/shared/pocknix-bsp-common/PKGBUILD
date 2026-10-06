@@ -11,6 +11,9 @@ license=('GPL2')
 # pocknix-core rides along so a plain -Syu delivers the mandatory layer to devices that
 # predate it: a new package name only reaches installed devices via a dep edge.
 depends=('sudo' 'pocknix-core' 'python' 'python-gobject')
+# HandlePowerKey=suspend is only safe once the kernel drops the wake press (patch 1080): an older
+# kernel would put the device back to sleep on every wake.
+conflicts=('linux-pocknix-sm8550<7.2.6-6' 'linux-pocknix-sm8250<7.2.6-3')
 optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target'
             'scx-scheds: scx_lavd for pocknix-lavd.service (unit self-skips without it)')
 install=pocknix-bsp-common.install

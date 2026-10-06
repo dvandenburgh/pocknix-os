@@ -1,12 +1,12 @@
 # System default (/etc/xdg/powerdevilrc); a user's ~/.config/powerdevilrc still wins.
-# powerButtonAction=0 is NoAction (PowerButtonAction enum). Plasma Mobile defaults to
-# ToggleScreenOnOff, which fights pocknix-powerd: the press that WAKES the device arrives as
-# a normal KEY_POWER after resume, so the shell blanked the panel again on every wake.
+# PowerButtonAction=1 is Sleep; Plasma 6 reads only this capitalised key (lowercase is the
+# Plasma 5 name it migrates from). powerdevil inhibits logind's power-key handling while the
+# session runs, so it must suspend itself; Plasma Mobile's default only toggles the screen.
 [AC][SuspendAndShutdown]
-powerButtonAction=0
+PowerButtonAction=1
 
 [Battery][SuspendAndShutdown]
-powerButtonAction=0
+PowerButtonAction=1
 
 [LowBattery][SuspendAndShutdown]
-powerButtonAction=0
+PowerButtonAction=1

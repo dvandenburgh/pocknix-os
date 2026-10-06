@@ -97,7 +97,7 @@ EOF
     rsync -a --chown=root:root "${POCKNIX_ROOT}/overlay/" "${root}/"
     chmod +x "${root}/usr/local/bin/pocknix-diag" \
              "${root}/usr/local/bin/pocknix-expand-root" \
-             "${root}/usr/local/bin/pocknix-volumed" "${root}/usr/local/bin/pocknix-powerd" 2>/dev/null || true
+             "${root}/usr/local/bin/pocknix-volumed" 2>/dev/null || true
   fi
 
   # PipeWire refuses root and Proton's bwrap wants a normal user. uid 1001 stays: installed
@@ -122,7 +122,7 @@ EOF
   chroot "${root}" systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
   # root-side helpers: deck can write neither binfmt_misc nor its own rtprio (SteamOS model)
   chroot "${root}" systemctl enable pocknix-fancontrol.service pocknix-fex-binfmt.service \
-        pocknix-volumed.service pocknix-gamescope-rt.service pocknix-powerd.service 2>/dev/null || true
+        pocknix-volumed.service pocknix-gamescope-rt.service 2>/dev/null || true
   chroot "${root}" systemctl enable pocknix-decky-sync.service pocknix-decky-loader.service 2>/dev/null || true
   # pocknix-flathub.service deliberately absent: at boot it fails on DNS (the NM dispatcher starts it).
   chroot "${root}" systemctl enable pocknix-waydroid-tuning.service 2>/dev/null || true

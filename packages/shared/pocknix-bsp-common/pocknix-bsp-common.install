@@ -14,6 +14,16 @@ _migrate_fan_lavd() {
   fi
 }
 
+# pocknix-powerd (an image overlay daemon) is retired: logind owns the power key. Nothing is
+# stopped or reloaded: until the reboot that boots the patched kernel, the running powerd and
+# logind's old setting are what keeps the wake press from re-suspending.
+_retire_powerd() {
+  rm -f /usr/local/bin/pocknix-powerd /etc/systemd/system/pocknix-powerd.service \
+        /etc/systemd/system/multi-user.target.wants/pocknix-powerd.service
+  [ -d /run/systemd/system ] && systemctl daemon-reload
+  return 0
+}
+
 # Enabled by its wants symlink; restart picks up a new daemon or profile file without a reboot.
 _perfd() {
   [ -d /run/systemd/system ] || return 0
@@ -24,10 +34,12 @@ _perfd() {
 
 post_install() {
   _migrate_fan_lavd
+  _retire_powerd
   _perfd
 }
 
 post_upgrade() {
   _migrate_fan_lavd
+  _retire_powerd
   _perfd
 }

@@ -2,7 +2,7 @@
 # Build with ./nodeps: makepkg -s would drag all of KDE/Qt into the chroot for a data package.
 pkgname=pocknix-desktop-kde
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="pocknix KDE defaults shared by the Plasma desktop flavours"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -17,8 +17,8 @@ depends=('bash'
 # These files lived in pocknix-desktop up to -26; a lone install against that would collide.
 conflicts=('pocknix-desktop<0.1.0-27')
 source=('pocknix-desktop-rotate' 'pocknix-desktop-rotate.desktop'
-        'ksplashrc' 'powerdevilrc' 'kscreenlockerrc')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        'ksplashrc' 'powerdevilrc' 'kscreenlockerrc' '50-kde-power-key.sh')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-desktop-rotate"   "${pkgdir}/usr/bin/pocknix-desktop-rotate"
@@ -27,4 +27,6 @@ package() {
   install -Dm644 "${srcdir}/ksplashrc"                "${pkgdir}/etc/xdg/ksplashrc"
   install -Dm644 "${srcdir}/powerdevilrc"             "${pkgdir}/etc/xdg/powerdevilrc"
   install -Dm644 "${srcdir}/kscreenlockerrc"          "${pkgdir}/etc/xdg/kscreenlockerrc"
+  install -Dm755 "${srcdir}/50-kde-power-key.sh" \
+    "${pkgdir}/usr/lib/pocknix/desktop.d/50-kde-power-key.sh"
 }
