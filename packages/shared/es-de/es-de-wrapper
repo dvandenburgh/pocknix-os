@@ -1,8 +1,7 @@
 #!/bin/bash
 # SDL2 discards joystick events while no SDL window has keyboard focus, and the ES-DE window
-# comes back from suspend without it; ES-DE sets no hint of its own. Game mode never loses focus.
-STATE_HOME="${XDG_STATE_HOME:-${HOME:-/home/deck}/.local/state}"
-if [ "$(cat "${STATE_HOME}/pocknix-session" 2>/dev/null)" = "plasma" ]; then
+# comes back from suspend without it; ES-DE sets no hint of its own. gamescope never drops focus.
+if [ -z "${GAMESCOPE_WAYLAND_DISPLAY:-}" ]; then
   export SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1
 fi
 
