@@ -192,6 +192,26 @@ do_defaults() {
   kdialog --title "$TITLE" --msgbox "Default settings restored for ${choice}." || true
 }
 
+# rows: <name> TAB <label> TAB active|""; empty when pocknix-desktop is not installed
+desktops() { pocknix-desktop-select list 2>/dev/null || true; }
+desktop_active_label() { desktops | awk -F'\t' '$3 == "active" { print $2 }'; }
+
+do_desktop() {
+  local args=() name label flag active="" choice
+  declare -A labels
+  while IFS=$'\t' read -r name label flag; do
+    labels["${name}"]="${label}"
+    [ "${flag}" = active ] && active="${name}"
+    args+=("${name}" "${label}" "$([ "${flag}" = active ] && echo on || echo off)")
+  done <<< "$(desktops)"
+  choice="$(kdialog --title "$TITLE" --radiolist "Desktop to use in desktop mode:" "${args[@]}")" || return 0
+  [ -n "${choice}" ] && [ "${choice}" != "${active}" ] || return 0
+  kdialog --title "$TITLE" --warningcontinuecancel \
+    "Switch to ${labels[${choice}]} now?\n\nThis logs out of the current desktop, so open apps close: save your work first. Desktop mode then always starts ${labels[${choice}]}." \
+    || return 0
+  pocknix-desktop-select "${choice}" --now || gui_err "Could not switch to ${labels[${choice}]}."
+}
+
 # terminal on purpose: pocknix-base demands a typed ROLL and streams the pacman run
 konsole_run() { konsole -e /bin/bash -c "pkexec $1; echo; read -rp 'Press Enter to close... '"; }
 
@@ -244,6 +264,7 @@ while :; do
   if layer_installed; then items+=(emulation "Emulation layer is installed - remove it...")
   else items+=(emulation "Install the emulation layer (ES-DE + emulators)..."); fi
   [ -n "$(emulators_present)" ] && items+=(defaults "Restore emulator default settings...")
+  [ "$(desktops | wc -l)" -ge 2 ] && items+=(desktop "Desktop: $(desktop_active_label) - change...")
   choice="$(kdialog --title "$TITLE" --menu "Pocknix maintenance tools\nMode: ${mode^^}" "${items[@]}")" || exit 0
   case "${choice}" in
     rollback)          do_rollback "" ;;
@@ -255,6 +276,7 @@ while :; do
     share)             do_share ;;
     emulation)         do_layer ;;
     defaults)          do_defaults ;;
+    desktop)           do_desktop ;;
     status)            do_status ;;
     *) exit 0 ;;
   esac

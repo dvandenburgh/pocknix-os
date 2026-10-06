@@ -3,10 +3,15 @@ set -e
 
 export HOME="${HOME:-/home/deck}"
 
-if ! command -v startplasmamobile >/dev/null 2>&1; then
-  echo "pocknix-desktop: startplasmamobile not found — is the plasma-mobile stack installed?" >&2
+session="$(pocknix-desktop-select current)" || {
+  echo "pocknix-desktop: no usable desktop in /usr/share/wayland-sessions" >&2
   exit 1
-fi
+}
+entry="/usr/share/wayland-sessions/${session}.desktop"
+exec_line="$(sed -n 's/^Exec=//p' "${entry}" | head -1)"
+desktops="$(sed -n 's/^DesktopNames=//p' "${entry}" | head -1)"
+desktops="${desktops%;}"
+echo "pocknix-desktop: starting ${session}: ${exec_line}" >&2
 
 # kwin starts XWayland only if /tmp/.X11-unix is sticky, and gamescope leaves it deck:0755.
 mkdir -p /tmp/.X11-unix 2>/dev/null || true
@@ -52,4 +57,16 @@ if [ -n "${POCKNIX_TOUCH2_NAME:-}" ]; then
   fi
 fi
 
-exec startplasmamobile
+# What a display manager exports: DEs are tested against that, and the supervisor's own
+# session says XDG_SESSION_TYPE=tty.
+export XDG_SESSION_TYPE=wayland DESKTOP_SESSION="${session}"
+export XDG_SESSION_DESKTOP="${desktops%%;*}"
+export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-${session}}"
+[ -n "${desktops}" ] && export XDG_CURRENT_DESKTOP="${desktops//;/:}"
+
+# exec keeps this PID, so it names the session for steamos-session-select and
+# pocknix-desktop-select --now; the supervisor deletes it once the session ends.
+# Plain word splitting: session Exec lines carry no quoting or field codes.
+read -ra argv <<< "${exec_line}"
+echo "$$" > "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pocknix-desktop.pid"
+exec "${argv[@]}"

@@ -21,7 +21,13 @@ echo "steamos-session-select: next session = ${sel} (signalling current composit
 # No -x: the patterns must also catch the wrappers (kwin_wayland_wrapper, etc.).
 uid="$(id -u)"
 pkill -u "${uid}" -TERM gamescope    2>/dev/null || true
-pkill -u "${uid}" -TERM kwin_wayland 2>/dev/null || true
+kwin=0
+pkill -u "${uid}" -TERM kwin_wayland 2>/dev/null && kwin=1
+# Not every desktop runs kwin: stop the session pocknix-desktop exec'd instead.
+if [ "${kwin}" = 0 ]; then
+  pid="$(cat "${XDG_RUNTIME_DIR:-/run/user/${uid}}/pocknix-desktop.pid" 2>/dev/null)" \
+    && kill -TERM "${pid}" 2>/dev/null || true
+fi
 # Steam outlives gamescope and keeps its single-instance lock ("Steam is already running").
 if [ "${sel}" = plasma ]; then
   # -x: a bare "steam" also matches this script ("steamos-session").

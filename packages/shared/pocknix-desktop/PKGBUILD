@@ -2,7 +2,7 @@
 # provider. Build with ./nodeps: the flavour dep would drag a whole DE into the chroot.
 pkgname=pocknix-desktop
 pkgver=0.1.0
-pkgrel=27
+pkgrel=28
 pkgdesc="pocknix desktop session launcher, Flathub seeding and flatpak fixes"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -11,14 +11,15 @@ license=('GPL2')
 depends=('bash' 'pocknix-session>=0.1.0-2' 'pocknix-desktop-flavour')
 optdepends=('pocknix-desktop-plasma-mobile: Plasma Mobile flavour (default)')
 install='pocknix-desktop.install'
-source=('pocknix-desktop' 'return-to-gamemode.desktop'
+source=('pocknix-desktop' 'pocknix-desktop-select' 'return-to-gamemode.desktop'
         'pocknix-flathub-setup' 'pocknix-flathub.service' 'pocknix-flathub-dispatcher'
         'pocknix-x11.conf'
         'pocknix-fontcache-prune' '99-pocknix-fontcache.hook')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-desktop"          "${pkgdir}/usr/bin/pocknix-desktop"
+  install -Dm755 "${srcdir}/pocknix-desktop-select"   "${pkgdir}/usr/bin/pocknix-desktop-select"
   install -Dm644 "${srcdir}/return-to-gamemode.desktop" \
     "${pkgdir}/usr/share/applications/return-to-gamemode.desktop"
   # Not enabled: the NM dispatcher starts it once a link is up.

@@ -5,7 +5,10 @@
 # No login shell runs here; profile.d still has to (locale, flatpak XDG_DATA_DIRS).
 [ -r /etc/profile ] && . /etc/profile
 
+# "plasma" means desktop mode, whichever desktop pocknix-desktop-select picks: it is the word
+# Steam passes to steamos-session-select.
 STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/pocknix-session"
+PIDFILE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pocknix-desktop.pid"
 LOG="${HOME}/pocknix-session.log"
 
 if [ -e "${HOME}/.no-steam" ]; then
@@ -22,7 +25,8 @@ while true; do
   start="$(date +%s)"
   blank
   case "${session}" in
-    plasma|desktop) command -v pocknix-desktop >/dev/null 2>&1 && pocknix-desktop >"${LOG}" 2>&1 ;;
+    plasma|desktop) command -v pocknix-desktop >/dev/null 2>&1 && pocknix-desktop >"${LOG}" 2>&1
+                    rm -f "${PIDFILE}" ;;  # a recycled PID must never be signalled as the session
     *)              command -v pocknix-steam   >/dev/null 2>&1 && pocknix-steam   >"${LOG}" 2>&1 ;;
   esac
   # Under 5s is a broken session, not a switch.
