@@ -24,6 +24,10 @@ done
 # PWM 0-255 against millidegC, highest first; only the thresholds differ per mode.
 SPEEDS="255 204 153 119 102 77 51 0"
 
+# A step only drops once the temp is this far (millidegC) below the threshold that chose it, so a
+# temp hovering on a boundary can't start and stop the fan every tick.
+HYST=5000
+
 # Per-game override, "<pid> <fan> <lavd>" from pocknix-proton-wrapper; "-" = not overridden.
 # The pid IS the game session, so a dead pid means no override and exits need no cleanup step.
 effective_mode() {
@@ -37,7 +41,7 @@ effective_mode() {
 }
 
 curve_temps() {
-  case "$(effective_mode)" in
+  case "$1" in
     performance) echo "80000 75000 70000 65000 60000 55000 50000 0" ;;
     moderate)    echo "85000 80000 75000 70000 65000 60000 55000 0" ;;
     *)           echo "95000 85000 80000 75000 70000 65000 60000 0" ;;  # quiet (default)
@@ -51,18 +55,25 @@ FAN_MODE=1
 [ -e "${FAN_EN}" ] && echo "${FAN_MODE}" > "${FAN_EN}" 2>/dev/null
 trap '[ -e "${FAN_EN}" ] && echo 0 > "${FAN_EN}" 2>/dev/null; exit 0' INT TERM
 
-LAST=""
+LAST=""; LAST_TH=0; LAST_MODE=""
 while :; do
-  TEMPS="$(curve_temps)"
+  MODE="$(effective_mode)"
+  TEMPS="$(curve_temps "${MODE}")"
   TEMP="$(awk '{s+=$1;n++} END{printf "%d", (n? s/n : 0)}' ${SENSORS} 2>/dev/null)"
-  i=1; SPEED=0
+  i=1; SPEED=0; TH=0
   for th in ${TEMPS}; do
-    if [ "${TEMP}" -gt "${th}" ]; then SPEED="$(echo ${SPEEDS} | cut -d' ' -f${i})"; break; fi
+    if [ "${TEMP}" -gt "${th}" ]; then SPEED="$(echo ${SPEEDS} | cut -d' ' -f${i})"; TH="${th}"; break; fi
     i=$((i+1))
   done
+  # A mode change skips the hold: an ended per-game performance override must not keep its step.
+  if [ "${MODE}" = "${LAST_MODE}" ] && [ -n "${LAST}" ] && [ "${SPEED}" -lt "${LAST}" ] \
+     && [ "${TEMP}" -ge $((LAST_TH - HYST)) ]; then
+    SPEED="${LAST}"; TH="${LAST_TH}"
+  fi
   if [ "${SPEED}" != "${LAST}" ]; then
     echo "${SPEED}" > "${FAN_PWM}" 2>/dev/null
-    LAST="${SPEED}"
+    LAST="${SPEED}"; LAST_TH="${TH}"
   fi
+  LAST_MODE="${MODE}"
   sleep 3
 done

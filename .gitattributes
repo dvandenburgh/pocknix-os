@@ -1,0 +1,5 @@
+# A Windows checkout turns scripts CRLF, and systemd fails a "/bin/sh\r" shebang with
+# 203/EXEC. These paths hold scripts units exec directly, whatever their extension.
+*.sh        text eol=lf
+overlay/**  text eol=lf
+packages/shared/pocknix-bsp-common/* text eol=lf
