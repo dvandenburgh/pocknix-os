@@ -11,8 +11,6 @@ set -u
 TAG=pocknix-steam-splash
 THEME=/usr/share/plymouth/themes/pocknix
 WATERMARK="${THEME}/watermark.png"
-# Ground + wordmark placement match the plymouth theme (alignment .5/.96): boot -> game mode is one screen.
-BG=0x202126
 WINDOW_NAME=pocknix-steam-splash
 STEAM_APPID=769
 
@@ -24,6 +22,19 @@ if [ -z "${SIZE}" ] || [ $# -eq 0 ]; then
 fi
 
 T0="${POCKNIX_STEAM_T0:-$(date +%s)}"
+
+# two-step draws the watermark DeviceScale-times its size, placed by truncated logical-pixel maths,
+# on its BackgroundStartColor; read all of it back so boot -> game mode stays one still screen.
+# Unset alignments take two-step's defaults; a missing DeviceScale falls back to 1 (never off-screen).
+ply_key() { sed -n "s/^$1=[[:space:]]*//p" "$2" 2>/dev/null | tail -n 1; }
+num_or() { [[ "$1" =~ ^[0-9]*\.?[0-9]+$ ]] && printf '%s' "$1" || printf '%s' "$2"; }
+SCALE="$(ply_key DeviceScale /etc/plymouth/plymouthd.conf)"
+[[ "${SCALE}" =~ ^[1-9]$ ]] || SCALE=1
+HALIGN="$(num_or "$(ply_key WatermarkHorizontalAlignment "${THEME}/pocknix.plymouth")" 1.0)"
+VALIGN="$(num_or "$(ply_key WatermarkVerticalAlignment "${THEME}/pocknix.plymouth")" 0.5)"
+BG="$(ply_key BackgroundStartColor "${THEME}/pocknix.plymouth")"
+[[ "${BG}" =~ ^0x[0-9A-Fa-f]{6}$ ]] || BG=0x202126
+
 mark() {
   local msg="+$(( $(date +%s) - T0 ))s: $*"
   echo "[${TAG}] ${msg}" >&2
@@ -42,7 +53,11 @@ another_steam_window() {
 if [ -r "${WATERMARK}" ] && command -v ffplay >/dev/null 2>&1 && command -v xprop >/dev/null 2>&1; then
   # The still ends after one frame; overlay's default eof_action=repeat keeps it on screen.
   # SDL_VIDEODRIVER=x11: the app-id tag is an X property. -fs, not -x/-y: gamescope fits it.
-  graph="color=c=${BG}:s=${SIZE}:r=1[bg];movie=${WATERMARK}[wm];[bg][wm]overlay=(W-w)/2:(H-h)*0.96"
+  # format=rgb: the default yuv420 path shifts the ground colour and smears thin lines.
+  graph="color=c=${BG}:s=${SIZE}:r=1,format=rgb24[bg];"
+  graph+="movie=${WATERMARK},scale=iw*${SCALE}:ih*${SCALE}:flags=bilinear[wm];"
+  graph+="[bg][wm]overlay=format=rgb"
+  graph+=":x=${SCALE}*trunc((W-w)/${SCALE}*${HALIGN}):y=${SCALE}*trunc((H-h)/${SCALE}*${VALIGN})"
 
   # Double fork: Steam (exec'd below) never reaps inherited children, so orphan these to
   # gamescopereaper rather than leave zombies under Steam.
