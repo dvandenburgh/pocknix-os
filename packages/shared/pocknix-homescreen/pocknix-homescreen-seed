@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Seed the Plasma Mobile (Folio) homescreen once: the default dock, unlocked.
+
+Run only by pocknix-homescreen-init, with the shell stopped: plasmashell keeps this file in
+memory and rewrites it on exit. Everything after the first login is the user's to change.
+"""
+import json
+import os
+import re
+import sys
+
+CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+                    "plasma-org.kde.plasma.mobileshell-appletsrc")
+FOLIO_PLUGIN = "org.kde.plasma.mobile.homescreen.folio"
+DIRS = [
+    "/usr/share/applications",
+    os.path.expanduser("~/.local/share/applications"),
+    "/var/lib/flatpak/exports/share/applications",
+    os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
+]
+DOCK = [
+    "org.mozilla.firefox.desktop",
+    "org.kde.dolphin.desktop",
+    "org.kde.mobile.plasmasettings.desktop",
+    "pocknix-tools.desktop",
+    "return-to-gamemode.desktop",
+]
+
+
+def installed(sid):
+    return any(os.path.exists(os.path.join(d, sid)) for d in DIRS)
+
+
+class Config:
+    """Minimal editor for a KConfig ini: keeps every byte it does not touch."""
+
+    def __init__(self, text):
+        self.lines = text.splitlines()
+
+    def _span(self, group):
+        start = None
+        for i, line in enumerate(self.lines):
+            if line.startswith("["):
+                if start is not None:
+                    return start, i
+                if line.strip() == group:
+                    start = i
+        return (start, len(self.lines)) if start is not None else None
+
+    def set(self, group, key, value):
+        span = self._span(group)
+        if span is None:
+            self.lines += ["", group, key + "=" + value]
+            return
+        for i in range(span[0] + 1, span[1]):
+            if self.lines[i].startswith(key + "="):
+                self.lines[i] = key + "=" + value
+                return
+        end = span[1]
+        while end > span[0] + 1 and self.lines[end - 1] == "":
+            end -= 1
+        self.lines.insert(end, key + "=" + value)
+
+    def folio_id(self):
+        """The containment running Folio; ids are not fixed (a second screen shifts them)."""
+        current = None
+        for line in self.lines:
+            m = re.match(r"^\[Containments\]\[(\d+)\]$", line.strip())
+            if m:
+                current = m.group(1)
+            elif line.startswith("["):
+                current = None
+            elif current and line.strip() == "plugin=" + FOLIO_PLUGIN:
+                return current
+        return None
+
+    def text(self):
+        return "\n".join(self.lines) + "\n"
+
+
+def main():
+    try:
+        conf = Config(open(CONF, encoding="utf-8").read())
+    except FileNotFoundError:
+        print("pocknix-homescreen-seed: no shell config yet, nothing to do", file=sys.stderr)
+        return
+    cid = conf.folio_id()
+    if cid is None:
+        print("pocknix-homescreen-seed: no Folio containment in the shell config", file=sys.stderr)
+        return
+    group, folio = "[Containments][%s]" % cid, "[Containments][%s][Folio]" % cid
+
+    # A dock entry whose app is missing would show as a dead icon, and this runs only once.
+    dock = [{"storageId": sid, "type": "application"} for sid in DOCK if installed(sid)]
+    conf.set(folio, "favorites", json.dumps(dock, separators=(",", ":")))
+    # Plasma Mobile ships the containment user-immutable: nothing can be dragged or foldered.
+    conf.set(group, "immutability", "0")
+    conf.set(folio, "showFavoritesAppLabels", "true")
+
+    tmp = CONF + ".new"
+    with open(tmp, "w", encoding="utf-8") as handle:
+        handle.write(conf.text())
+    os.replace(tmp, CONF)
+    print("pocknix-homescreen-seed: dock = %s" % ", ".join(d["storageId"] for d in dock),
+          file=sys.stderr)
+
+
+main()

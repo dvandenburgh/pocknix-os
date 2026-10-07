@@ -1,6 +1,9 @@
 [Unit]
 Description=pocknix: unlock and seed the homescreen on first login
 PartOf=graphical-session.target
+# plasma-plasmashell.service is desktop Plasma's shell too; this only edits Plasma Mobile's
+# layout, and the init's shell restart must never hit the other one.
+ConditionEnvironment=DESKTOP_SESSION=plasma-mobile
 After=plasma-plasmashell.service
 # The wallpaper seed talks to the shell this unit is about to restart; let it finish first.
 After=pocknix-branding-init.service

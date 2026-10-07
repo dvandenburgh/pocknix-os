@@ -1,15 +1,14 @@
 #!/bin/bash
-# First desktop login only. The shell config does not exist until plasmashell has run once, so
-# the Before= unit finds nothing to edit; Folio reads its favourites only at start, so a write
-# through the shell's scripting bus would not show until the next login either. Wait for the
-# shell to create its layout, then stop it, edit the file, start it: one restart, once.
+# First Plasma Mobile login only. The shell config does not exist until plasmashell has run once,
+# and Folio reads its favourites only at start, so a write through the shell's scripting bus would
+# not show until the next login. Wait for the layout, stop the shell, edit, start: one restart, once.
 set -euo pipefail
 
 CONF="${XDG_CONFIG_HOME:-${HOME}/.config}/plasma-org.kde.plasma.mobileshell-appletsrc"
 STAMP="${XDG_CONFIG_HOME:-${HOME}/.config}/pocknix/homescreen-seeded"
 
 [ -e "$STAMP" ] && exit 0
-command -v pocknix-homescreen-folders >/dev/null 2>&1 || exit 0
+command -v pocknix-homescreen-seed >/dev/null 2>&1 || exit 0
 
 shell() {
   busctl --user --timeout=5 call org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell \
@@ -25,11 +24,11 @@ done
 
 systemctl --user stop plasma-plasmashell.service
 if [ -f "$CONF" ]; then
-  pocknix-homescreen-folders --first-run || true
+  pocknix-homescreen-seed || true
 fi
 systemctl --user start plasma-plasmashell.service
 
 # Stamped even if the config never appeared: this is a one-time default, not something to
-# keep re-imposing, and the Before= unit files apps on every later login regardless.
+# keep re-imposing.
 mkdir -p "$(dirname "$STAMP")"
 : > "$STAMP"

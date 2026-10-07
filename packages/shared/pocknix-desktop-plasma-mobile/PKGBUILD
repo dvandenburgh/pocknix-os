@@ -2,7 +2,7 @@
 # ./nodeps: makepkg -s would drag all of KDE/Qt into the chroot for a data package.
 pkgname=pocknix-desktop-plasma-mobile
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="pocknix desktop flavour: Plasma Mobile"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -10,6 +10,7 @@ license=('GPL2')
 depends=('bash'
          'pocknix-desktop-kde'
          'plasma-mobile'
+         'pocknix-homescreen'
          'plasma-nano'
          'plasma-settings'
          'qt6-tools')        # qdbus6 for the taskpanel removal
