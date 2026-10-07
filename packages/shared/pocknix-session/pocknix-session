@@ -83,7 +83,13 @@ while true; do
   # Under 5s is a broken session, not a switch.
   if [ "$(( $(date +%s) - start ))" -lt 5 ]; then
     fastfails=$(( fastfails + 1 ))
-    if [ "${fastfails}" -ge 3 ]; then
+    # Desktop mode can be gone or broken (the desktop layer is removable) while Steam still
+    # offers it; game mode is the screen that always has a way back.
+    if [ "${fastfails}" -ge 3 ] && [ "${session}" != gamescope ]; then
+      echo "pocknix-session: desktop mode keeps exiting immediately, back to game mode" >&2
+      printf 'gamescope\n' > "${STATE}"
+      fastfails=0
+    elif [ "${fastfails}" -ge 3 ]; then
       printf '\033[?25h' >/dev/tty 2>/dev/null
       echo "pocknix-session: '${session}' keeps exiting immediately, see ${LOG}" >&2
       exit 3
