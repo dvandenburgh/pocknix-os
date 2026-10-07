@@ -11,6 +11,8 @@ set -u
 TAG=pocknix-steam-splash
 THEME=/usr/share/plymouth/themes/pocknix
 WATERMARK="${THEME}/watermark.png"
+# A theme that animates its logo through the throbber ships it at rest in the same box.
+[ -r "${THEME}/watermark-still.png" ] && WATERMARK="${THEME}/watermark-still.png"
 WINDOW_NAME=pocknix-steam-splash
 STEAM_APPID=769
 
