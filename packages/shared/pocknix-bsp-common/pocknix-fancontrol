@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # pocknix-fancontrol — fan curve, run as root. Nothing else takes PWM control of the fan, so
 # without this it never spins and the device cooks. /var/lib/pocknix/fan-mode is re-read every
 # tick, so switching curves is a bare file write with no service restart. Curves and the quiet
@@ -22,7 +22,7 @@ done
 [ -n "${SENSORS}" ] || { echo "pocknix-fancontrol: no cpu/gpu thermal zones, exiting"; exit 0; }
 
 # PWM 0-255 against millidegC, highest first; only the thresholds differ per mode.
-SPEEDS="255 204 153 119 102 77 51 0"
+SPEEDS=(255 204 153 119 102 77 51 0)
 
 # A step only drops once the temp is this far (millidegC) below the threshold that chose it, so a
 # temp hovering on a boundary can't start and stop the fan every tick.
@@ -30,22 +30,34 @@ HYST=5000
 
 # Per-game override, "<pid> <fan> <lavd>" from pocknix-proton-wrapper; "-" = not overridden.
 # The pid IS the game session, so a dead pid means no override and exits need no cleanup step.
-effective_mode() {
-  if read -r pid fan _ 2>/dev/null < "${GAME_MODE_FILE}"; then
-    if [ -n "${pid}" ] && [ "${fan}" != "-" ] && [ -d "/proc/${pid}" ]; then
-      printf '%s\n' "${fan}"
-      return
-    fi
+# The helpers below run every tick, so they set variables with builtins instead of forking.
+effective_mode() {  # -> MODE
+  local pid fan _
+  if read -r pid fan _ 2>/dev/null < "${GAME_MODE_FILE}" \
+     && [ -n "${pid}" ] && [ "${fan}" != "-" ] && [ -d "/proc/${pid}" ]; then
+    MODE="${fan}"
+    return
   fi
-  cat "${MODE_FILE}" 2>/dev/null
+  MODE=""
+  IFS= read -r MODE 2>/dev/null < "${MODE_FILE}"
 }
 
-curve_temps() {
+curve_temps() {  # <mode> -> TEMPS
   case "$1" in
-    performance) echo "80000 75000 70000 65000 60000 55000 50000 0" ;;
-    moderate)    echo "85000 80000 75000 70000 65000 60000 55000 0" ;;
-    *)           echo "95000 85000 80000 75000 70000 65000 60000 0" ;;  # quiet (default)
+    performance) TEMPS=(80000 75000 70000 65000 60000 55000 50000 0) ;;
+    moderate)    TEMPS=(85000 80000 75000 70000 65000 60000 55000 0) ;;
+    *)           TEMPS=(95000 85000 80000 75000 70000 65000 60000 0) ;;  # quiet (default)
   esac
+}
+
+avg_temp() {  # -> TEMP, the mean of the readable sensors (0 if none)
+  local s t sum=0 n=0
+  for s in ${SENSORS}; do
+    read -r t 2>/dev/null < "${s}" || continue
+    case "${t}" in ''|*[!0-9-]*) continue ;; esac
+    sum=$(( sum + t )); n=$(( n + 1 ))
+  done
+  TEMP=$(( n ? sum / n : 0 ))
 }
 
 # pwm1_enable: 1 = manual, 0 = hardware automatic. pwm-fan's 3 is manual AND drops the fan supply
@@ -55,15 +67,20 @@ FAN_MODE=1
 [ -e "${FAN_EN}" ] && echo "${FAN_MODE}" > "${FAN_EN}" 2>/dev/null
 trap '[ -e "${FAN_EN}" ] && echo 0 > "${FAN_EN}" 2>/dev/null; exit 0' INT TERM
 
+# A pipe this shell holds both ends of never reaches EOF: a timed read on it is the tick's
+# sleep, without forking /usr/bin/sleep every 3 s for the life of the device. If it cannot be
+# opened, /dev/null ends every read at once and sleep does the waiting.
+{ exec {TICK}<> <(:); } 2>/dev/null || exec {TICK}</dev/null
+tick() { read -r -t "$1" -u "${TICK}" && return; [ $? -gt 128 ] || sleep "$1"; }
+
 LAST=""; LAST_TH=0; LAST_MODE=""
 while :; do
-  MODE="$(effective_mode)"
-  TEMPS="$(curve_temps "${MODE}")"
-  TEMP="$(awk '{s+=$1;n++} END{printf "%d", (n? s/n : 0)}' ${SENSORS} 2>/dev/null)"
-  i=1; SPEED=0; TH=0
-  for th in ${TEMPS}; do
-    if [ "${TEMP}" -gt "${th}" ]; then SPEED="$(echo ${SPEEDS} | cut -d' ' -f${i})"; TH="${th}"; break; fi
-    i=$((i+1))
+  effective_mode
+  curve_temps "${MODE}"
+  avg_temp
+  SPEED=0; TH=0
+  for i in "${!TEMPS[@]}"; do
+    if [ "${TEMP}" -gt "${TEMPS[i]}" ]; then SPEED="${SPEEDS[i]}"; TH="${TEMPS[i]}"; break; fi
   done
   # A mode change skips the hold: an ended per-game performance override must not keep its step.
   if [ "${MODE}" = "${LAST_MODE}" ] && [ -n "${LAST}" ] && [ "${SPEED}" -lt "${LAST}" ] \
@@ -75,5 +92,5 @@ while :; do
     LAST="${SPEED}"; LAST_TH="${TH}"
   fi
   LAST_MODE="${MODE}"
-  sleep 3
+  tick 3
 done
