@@ -436,7 +436,9 @@ main() {
 
   [ "${built}" -gt 0 ] || die "no packages built"
   ok "local repos ready -> ${LOCALREPO} + ${LOCALREPO_SHARED}"
-  ls -1 "${LOCALREPO}"/*.pkg.tar.* "${LOCALREPO_SHARED}"/*.pkg.tar.* 2>/dev/null | sed 's#.*/#  #'
+  # An empty repo leaves its glob unmatched and ls exits 2, which pipefail would turn into a
+  # failed build (and abort `make build`) after every package built fine.
+  { ls -1 "${LOCALREPO}"/*.pkg.tar.* "${LOCALREPO_SHARED}"/*.pkg.tar.* 2>/dev/null || true; } | sed 's#.*/#  #'
 }
 
 main "$@"
