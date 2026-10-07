@@ -31,6 +31,14 @@ cleanup() { chroot_umount "${BROOT}" 2>/dev/null || true
             mountpoint -q "${BROOT}/localrepo-shared" && umount "${BROOT}/localrepo-shared" 2>/dev/null || true; }
 trap cleanup EXIT
 
+# rm -rf follows bind mounts (even --one-file-system: same device), so a localrepo mount left
+# by an interrupted build would take the real localrepo with it. Never rm with one in place.
+wipe_chroot() {
+  cleanup
+  ! findmnt -rno TARGET | grep -q "^${BROOT}/" || die "still mounted under ${BROOT}, not wiping it"
+  rm -rf "${BROOT}"
+}
+
 # Which repo a package dir builds into: shared packages target the shared
 # localrepo, everything else (packages/soc + device packages) the per-SoC one.
 pkg_repo_dir()   { case "$1" in */packages/shared/*) printf '%s' "${LOCALREPO_SHARED}" ;; *) printf '%s' "${LOCALREPO}" ;; esac; }
@@ -50,7 +58,7 @@ setup_chroot() {
     fi
     if [ "${have_base}" != "${want_base}" ]; then
       log "build chroot base is '${have_base:-unknown}', want '${want_base}' — recreating"
-      rm -rf "${BROOT}"
+      wipe_chroot
     fi
   fi
 
@@ -78,7 +86,7 @@ setup_chroot() {
   else
     fetch_alarm_tarball
     log "creating build chroot -> ${BROOT} (one-time; ~1.5 GB with base-devel)"
-    rm -rf "${BROOT}"; mkdir -p "${BROOT}"
+    wipe_chroot; mkdir -p "${BROOT}"
     if have bsdtar; then bsdtar -xpf "${TARBALL}" -C "${BROOT}"
     else tar -xpf "${TARBALL}" -C "${BROOT}" --numeric-owner; fi
     maybe_install_qemu "${BROOT}"
