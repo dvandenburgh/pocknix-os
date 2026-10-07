@@ -24,6 +24,12 @@ blank() { printf '\033[?25l\033[2J\033[H' >/dev/tty 2>/dev/null; }
 # parent died (gamescope's reaper, Xwayland), which a walk of our children would miss.
 SCOPE="/sys/fs/cgroup$(sed -n 's/^0:://p' /proc/self/cgroup)/cgroup.procs"
 
+# run() ticks every second for as long as a session lives. A pipe this shell holds both ends
+# of never reaches EOF, so a timed read on it sleeps without forking /usr/bin/sleep each tick;
+# if it cannot be opened, /dev/null ends every read at once and sleep does the waiting.
+{ exec {TICK}<> <(:); } 2>/dev/null || exec {TICK}</dev/null
+tick() { read -r -t "$1" -u "${TICK}" && return; [ $? -gt 128 ] || sleep "$1"; }
+
 # Builtins only, so no helper of ours shows up. (sd-pam) holds the PAM session: killing it
 # would end the logind session.
 leftovers() {
@@ -43,7 +49,7 @@ sweep() {  # <TERM|KILL>; TERM escalates to KILL after 3s
   kill -"$1" "${pids[@]}" 2>/dev/null
   [ "$1" = TERM ] || return 0
   for t in 1 2 3; do
-    sleep 1
+    tick 1
     mapfile -t pids < <(leftovers)
     [ "${#pids[@]}" -gt 0 ] || return 0
   done
@@ -57,10 +63,10 @@ run() {  # <launcher>
   local child t=0
   # Append mode for both writers: a truncating fd would overwrite lines written meanwhile.
   : >"${LOG}"
-  "$1" >>"${LOG}" 2>&1 &
+  "$1" >>"${LOG}" 2>&1 {TICK}<&- &
   child=$!
   while kill -0 "${child}" 2>/dev/null; do
-    sleep 1
+    tick 1
     [ -e "${SWITCH}" ] || continue
     t=$(( t + 1 ))
     [ "${t}" -ge 6 ] && { sweep KILL; break; }
