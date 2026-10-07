@@ -4,6 +4,8 @@
 # clamps to a ~12 logical px minimum that then floats over app content in overlay mode.
 # Runs per session, not baked into appletsrc, because plasma-mobile's panelsfix.js re-adds it.
 set -u
+# /etc/xdg/autostart is read by every KDE session, desktop Plasma included.
+[ "${DESKTOP_SESSION:-}" = plasma-mobile ] || exit 0
 
 have() { command -v "$1" >/dev/null 2>&1; }
 have qdbus6 || { echo "pocknix-desktop-remove-taskpanel: qdbus6 not found" >&2; exit 1; }
