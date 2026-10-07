@@ -3,14 +3,14 @@
 # live in devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
-pkgrel=22
+pkgrel=23
 pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, second-screen touch policy, power profiles daemon"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
 # pocknix-core rides along so a plain -Syu delivers the mandatory layer to devices that
 # predate it: a new package name only reaches installed devices via a dep edge.
-depends=('sudo' 'pocknix-core' 'python' 'python-gobject')
+depends=('bash' 'sudo' 'pocknix-core' 'python' 'python-gobject')
 # HandlePowerKey=suspend is only safe once the kernel drops the wake press (patch 1080): an older
 # kernel would put the device back to sleep on every wake.
 conflicts=('linux-pocknix-sm8550<7.2.6-6' 'linux-pocknix-sm8250<7.2.6-3')
