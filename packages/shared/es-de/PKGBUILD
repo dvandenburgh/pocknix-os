@@ -3,8 +3,8 @@
 # The source URL's package_files id is NOT immutable — on a 404 take the new id from the
 # release page's "ES-DE_aarch64.AppImage" link and bump the sha256 with it.
 pkgname=es-de
-pkgver=3.4.1
-pkgrel=7
+pkgver=3.5.0
+pkgrel=1
 pkgdesc="ES-DE frontend for browsing and launching games (official aarch64 AppImage)"
 arch=('aarch64')
 url="https://es-de.org"
@@ -13,11 +13,11 @@ provides=('emulationstation-de')
 conflicts=('emulationstation-de')
 depends=('fuse2')
 options=('!strip')
-source=("ES-DE-${pkgver}.AppImage::https://gitlab.com/es-de/emulationstation-de/-/package_files/326321114/download"
+source=("ES-DE-${pkgver}.AppImage::https://gitlab.com/es-de/emulationstation-de/-/package_files/357718204/download"
         'es-de-wrapper'
         'es-de.desktop'
         'es-de-icon.png')
-sha256sums=('b84eababe6d6388223cf8b1658bb237bc0125362acaae70e1ece55397c1eb414' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('b6d34657842db89628d5bc42ed465b605108b45cb1d16b15332d6c9f60136a4b' 'SKIP' 'SKIP' 'SKIP')
 noextract=("ES-DE-${pkgver}.AppImage")
 
 package() {
