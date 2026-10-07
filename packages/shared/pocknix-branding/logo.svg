@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pocknix handheld mark: a handheld in an atom, on a transparent ground so it sits on any field.
+     Thin outline and a dimmed white on purpose: it fronts the boot, so it stays quiet. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="776" height="725" viewBox="124 146 776 725">
+  <style>
+    .hand  { fill: none; stroke: #d2d6dd; }
+    .key   { fill: #d2d6dd; }
+    .orbit { fill: none; stroke: #ffffff; stroke-width: 7; }
+    .warm  { fill: #ff8a3d; }
+    .cool  { fill: #4cc9f0; }
+  </style>
+  <defs>
+    <!-- the orbits pass behind the handheld, not through it -->
+    <mask id="behind-body" maskUnits="userSpaceOnUse" x="124" y="146" width="776" height="725">
+      <rect x="124" y="146" width="776" height="725" fill="#fff"/>
+      <rect x="283" y="407" width="459" height="212" rx="82" fill="#000"/>
+    </mask>
+  </defs>
+
+  <g opacity="0.4" mask="url(#behind-body)">
+    <ellipse class="orbit" cx="512.2" cy="512.5" rx="384" ry="136"/>
+    <ellipse class="orbit" cx="512.2" cy="512.5" rx="384" ry="136" transform="rotate(60 512.2 512.5)"/>
+    <ellipse class="orbit" cx="512.2" cy="512.5" rx="384" ry="136" transform="rotate(-60 512.2 512.5)"/>
+  </g>
+
+  <rect class="hand" x="286.5" y="410.5" width="452" height="205" rx="78.5" stroke-width="7"/>
+  <rect class="hand" x="404.5" y="449.5" width="217" height="127" rx="10.5" stroke-width="5"
+        fill="#fff" fill-opacity="0.05"/>
+  <rect class="key" x="323.8" y="468" width="46" height="14" rx="2.5"/>
+  <rect class="key" x="339.8" y="452" width="14" height="46" rx="2.5"/>
+  <circle class="key" cx="678" cy="456.5" r="7"/>
+  <circle class="key" cx="659.9" cy="474.7" r="7"/>
+  <circle class="key" cx="696.1" cy="474.6" r="7"/>
+  <circle class="key" cx="678.1" cy="492.7" r="7"/>
+  <circle class="hand" cx="373.7" cy="557.5" r="18.7" stroke-width="5"/>
+  <circle class="hand" cx="650.9" cy="557.5" r="18.7" stroke-width="5"/>
+  <circle class="key" cx="373.7" cy="557.5" r="5"/>
+  <circle class="key" cx="650.9" cy="557.5" r="5"/>
+
+  <circle class="warm" cx="667.4" cy="173.4" r="26.7"/>
+  <circle class="warm" cx="151.3" cy="465.9" r="26.7"/>
+  <circle class="warm" cx="733" cy="801.7" r="26.7"/>
+  <circle class="cool" cx="291.6" cy="222.9" r="19.2"/>
+  <circle class="cool" cx="873.3" cy="558.7" r="19.2"/>
+  <circle class="cool" cx="357.2" cy="851.3" r="19.2"/>
+</svg>
