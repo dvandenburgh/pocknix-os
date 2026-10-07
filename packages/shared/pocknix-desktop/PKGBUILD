@@ -10,7 +10,8 @@ license=('GPL2')
 # >= -2: steamos-session-select moved there from -26, so the file never goes missing mid-upgrade.
 depends=('bash' 'pocknix-session>=0.1.0-2' 'pocknix-desktop-flavour'
          'pocknix-bsp-common>=0.1.0-22')  # owns the SDL d-pad fix the launcher used to export
-optdepends=('pocknix-desktop-plasma-mobile: Plasma Mobile flavour (default)')
+optdepends=('pocknix-desktop-plasma-mobile: Plasma Mobile flavour (default)'
+            'pocknix-desktop-plasma: desktop Plasma flavour')
 install='pocknix-desktop.install'
 source=('pocknix-desktop' 'pocknix-desktop-select' 'return-to-gamemode.desktop'
         'pocknix-flathub-setup' 'pocknix-flathub.service' 'pocknix-flathub-dispatcher'
