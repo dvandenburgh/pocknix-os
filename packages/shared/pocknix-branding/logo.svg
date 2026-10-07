@@ -2,14 +2,16 @@
 <!-- Pocknix handheld mark: a handheld in an atom, on a transparent ground so it sits on any field.
      White on black like SteamOS's boot screen. The electrons move, so electrons.awk draws them
      (in Steam Deck blue and the OLED accent); the orbits and body mask here must match it.
-     Thin outline and a dimmed white on purpose: it fronts the boot, so it stays quiet. -->
+     Thin outline and a dimmed white on purpose: it fronts the boot, so it stays quiet.
+     Colours are SteamOS's boot palette: a white mark, Steam Deck blue (#1a9fff) and the OLED
+     model's accent (#ec5129), so the boot reads as a SteamOS device. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="776" height="725" viewBox="124 146 776 725">
   <style>
-    .hand  { fill: none; stroke: #d2d6dd; }
-    .key   { fill: #d2d6dd; }
+    .hand  { fill: none; stroke: #ffffff; }
+    .key   { fill: #ffffff; }
     .orbit { fill: none; stroke: #ffffff; stroke-width: 7; }
-    .warm  { fill: #ff8a3d; }
-    .cool  { fill: #4cc9f0; }
+    .warm  { fill: #ec5129; }
+    .cool  { fill: #1a9fff; }
 
   </style>
   <defs>

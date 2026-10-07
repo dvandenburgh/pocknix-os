@@ -64,7 +64,8 @@ package() {
   # Name/Description/ImageDir must point at OUR dir. Black field and white mark follow the
   # SteamOS boot screen. Watermark (256 high) and throbber (208) share .40625 = 13/32: exact in
   # binary, so both resolve to the same logo box on any screen. Messages move to the corner,
-  # off the wordmark. pocknix-steam-splash reads the field and alignment back.
+  # off the wordmark. The logo sits above centre with the spinner below it; pocknix-steam-splash
+  # reads the field and alignment back, so game mode matches.
   sed -i -e '/^Name\[[^]]*\]=/d' \
          -e 's|^Name=.*|Name=Pocknix|' \
          -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo, its electrons orbiting while it boots.|' \
@@ -74,7 +75,6 @@ package() {
          -e 's|^WatermarkVerticalAlignment=.*|WatermarkVerticalAlignment=.40625|' \
          -e 's|^VerticalAlignment=.*|VerticalAlignment=.40625|' \
          -e 's|^MessageBelowAnimation=.*|MessageBelowAnimation=false|' \
-
          "${theme}/pocknix.plymouth"
 
   # --- Plasma splash (KSplash look-and-feel) -------------------------------------------
