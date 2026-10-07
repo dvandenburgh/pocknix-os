@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # pocknix-gamescope-rt — elevate gamescope's compositor threads to SCHED_RR.
 #
 # gamescope is built -Drt_cap and HAS cap_sys_nice at runtime (getpcaps confirms it, and
@@ -17,18 +17,57 @@
 #
 # NB: on-device A/B showed forcing RR did NOT change FPS — this is for parity with ROCKNIX
 # and frame-pacing, not a measured throughput win.
-while :; do
-  # Match BOTH names: gamescope renames its compositor process to "gamescope-wl" (comm),
-  # which name-based tools can miss (pkill -x gamescope provenly does). Since the deck
-  # rtprio grant was dropped (limits.d, 2026-07-03) this helper is the ONLY RR mechanism.
-  gpid="$(pidof gamescope gamescope-wl 2>/dev/null)" || { sleep 2; continue; }
-  for tid in $(ps -L -o tid=,cls= -p "$gpid" 2>/dev/null | awk '$2=="TS"{print $1}'); do
-    # --reset-on-fork is CRITICAL: SCHED_RR is inherited across fork/clone, and gamescope's
-    # main thread forks the ENTIRE session (steam -> proton -> wine -> game). Without -R the
-    # whole tree is born RR 40 — which recreated the priority-inversion hitching on
-    # 2026-07-03 with no Wine promotion involved (rtprio rlimit was 0; inheritance needs no
-    # permission). -R keeps the gamescope thread RR but children start back at SCHED_OTHER.
-    chrt -r --reset-on-fork -p 40 "$tid" 2>/dev/null
+#
+# It polls for the life of the device, so the scan below is bash builtins over /proc rather than
+# pidof/ps/awk/sleep every tick; chrt only runs for a thread that still needs promoting.
+GS_BIN=""
+# A held-open pipe never reaches EOF, so a timed read on it sleeps without forking; if it cannot
+# be opened, /dev/null ends every read at once and sleep does the waiting.
+{ exec {TICK}<> <(:); } 2>/dev/null || exec {TICK}</dev/null
+tick() { read -r -t "$1" -u "${TICK}" && return; [ $? -gt 128 ] || sleep "$1"; }
+
+# Match BOTH names: gamescope renames its compositor process to "gamescope-wl" (comm),
+# which name-based tools can miss (pkill -x gamescope provenly does). Since the deck
+# rtprio grant was dropped (limits.d, 2026-07-03) this helper is the ONLY RR mechanism.
+# This is procps-ng pidof's match: argv0 or its basename, the exe, or the comm when argv0
+# has been rewritten with spaces.
+gamescope_pids() {  # -> PIDS
+  local d a0 c
+  PIDS=()
+  # Looked up until found, so a gamescope installed after this service started is still matched.
+  [ -n "${GS_BIN}" ] || { hash gamescope 2>/dev/null && GS_BIN="${BASH_CMDS[gamescope]}"; }
+  for d in /proc/[0-9]*; do
+    a0=""
+    IFS= read -r -d '' a0 2>/dev/null < "${d}/cmdline"
+    [ -n "${a0}" ] || continue   # kernel thread or gone
+    a0="${a0#-}"
+    case "${a0##*/}" in gamescope|gamescope-wl) PIDS+=("${d#/proc/}"); continue ;; esac
+    if [ -n "${GS_BIN}" ] && [ "${d}/exe" -ef "${GS_BIN}" ]; then PIDS+=("${d#/proc/}"); continue; fi
+    case "${a0}" in
+      *" "*) c=""; read -r c 2>/dev/null < "${d}/comm"
+             case "${c}" in gamescope|gamescope-wl) PIDS+=("${d#/proc/}") ;; esac ;;
+    esac
   done
-  sleep 3
+}
+
+while :; do
+  gamescope_pids
+  [ "${#PIDS[@]}" -gt 0 ] || { tick 2; continue; }
+  for pid in "${PIDS[@]}"; do
+    for t in /proc/"${pid}"/task/[0-9]*; do
+      line=""
+      read -r line 2>/dev/null < "${t}/stat" || continue
+      # Fields after "(comm) ", which may itself hold spaces; policy (stat field 41) is index 38.
+      # 0 = SCHED_OTHER, which ps shows as TS: the only class promoted.
+      read -r -a f <<< "${line##*") "}"
+      [ "${f[38]:-}" = 0 ] || continue
+      # --reset-on-fork is CRITICAL: SCHED_RR is inherited across fork/clone, and gamescope's
+      # main thread forks the ENTIRE session (steam -> proton -> wine -> game). Without -R the
+      # whole tree is born RR 40 — which recreated the priority-inversion hitching on
+      # 2026-07-03 with no Wine promotion involved (rtprio rlimit was 0; inheritance needs no
+      # permission). -R keeps the gamescope thread RR but children start back at SCHED_OTHER.
+      chrt -r --reset-on-fork -p 40 "${t##*/}" {TICK}<&- 2>/dev/null
+    done
+  done
+  tick 3
 done
