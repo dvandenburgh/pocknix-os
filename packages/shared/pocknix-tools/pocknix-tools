@@ -212,6 +212,40 @@ do_desktop() {
   pocknix-desktop-select "${choice}" --now || gui_err "Could not switch to ${labels[${choice}]}."
 }
 
+plasma_installed() { [ "$(pocknix-layer status desktop-plasma 2>/dev/null | sed -n 's/^installed=//p')" = yes ]; }
+
+do_plasma() {
+  if plasma_installed; then
+    # Removing the shell this session runs on leaves kwin with nothing to show.
+    if [ "${DESKTOP_SESSION:-}" = plasma ]; then
+      kdialog --title "$TITLE" --sorry "Desktop Plasma is the desktop you are using right now.\n\nSwitch to Plasma Mobile first (Desktop: ... - change), then remove it from there." || true
+      return 0
+    fi
+    kdialog --title "$TITLE" --warningcontinuecancel \
+      "Remove desktop Plasma?\n\nPlasma Mobile stays as the desktop. Your desktop Plasma settings are kept, so installing it again brings them back." \
+      || return 0
+    konsole_run "/usr/bin/pocknix-layer remove desktop-plasma"
+    plasma_installed && { gui_err "Desktop Plasma is still installed. The terminal output says what went wrong."; return 0; }
+    kdialog --title "$TITLE" --msgbox "Desktop Plasma is removed." || true
+    return 0
+  fi
+  kdialog --title "$TITLE" --warningcontinuecancel \
+    "Install desktop Plasma (preview)?\n\nThe regular KDE desktop with a taskbar, as a second choice next to Plasma Mobile. It is a preview until the next Pocknix release puts all of Plasma on one version.\n\nThis runs a full system update first." \
+    || return 0
+  konsole_run "/usr/bin/pocknix-layer install desktop-plasma"
+  plasma_installed || { gui_err "Desktop Plasma is still not installed. The terminal output says what went wrong."; return 0; }
+  # Outside a desktop session there is nothing to log out of: just make it the pick.
+  if [ -z "${DESKTOP_SESSION:-}" ]; then
+    pocknix-desktop-select plasma || true
+    kdialog --title "$TITLE" --msgbox "Desktop Plasma is installed. Desktop mode starts it from now on." || true
+    return 0
+  fi
+  kdialog --title "$TITLE" --yesno \
+    "Desktop Plasma is installed.\n\nSwitch to it now? This logs out of the current desktop, so open apps close: save your work first." \
+    || { kdialog --title "$TITLE" --msgbox "You can switch any time with Desktop: ... - change." || true; return 0; }
+  pocknix-desktop-select plasma --now || gui_err "Could not switch to desktop Plasma."
+}
+
 # terminal on purpose: pocknix-base demands a typed ROLL and streams the pacman run
 konsole_run() { konsole -e /bin/bash -c "pkexec $1; echo; read -rp 'Press Enter to close... '"; }
 
@@ -264,6 +298,10 @@ while :; do
   if layer_installed; then items+=(emulation "Emulation layer is installed - remove it...")
   else items+=(emulation "Install the emulation layer (ES-DE + emulators)..."); fi
   [ -n "$(emulators_present)" ] && items+=(defaults "Restore emulator default settings...")
+  if [ -n "$(desktops)" ]; then
+    if plasma_installed; then items+=(plasma "Desktop Plasma (preview) is installed - remove it...")
+    else items+=(plasma "Install desktop Plasma (preview)..."); fi
+  fi
   [ "$(desktops | wc -l)" -ge 2 ] && items+=(desktop "Desktop: $(desktop_active_label) - change...")
   choice="$(kdialog --title "$TITLE" --menu "Pocknix maintenance tools\nMode: ${mode^^}" "${items[@]}")" || exit 0
   case "${choice}" in
@@ -277,6 +315,7 @@ while :; do
     emulation)         do_layer ;;
     defaults)          do_defaults ;;
     desktop)           do_desktop ;;
+    plasma)            do_plasma ;;
     status)            do_status ;;
     *) exit 0 ;;
   esac

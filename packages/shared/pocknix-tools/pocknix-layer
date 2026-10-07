@@ -1,6 +1,7 @@
 #!/bin/bash
-# pocknix-layer - install/remove the emulation layer. status stays unprivileged (the menu polls
-# it); the rest arrives via pkexec under this program's own rule, never a bare `pkexec pacman`.
+# pocknix-layer - install/remove the emulation layer or the desktop Plasma flavour. status stays
+# unprivileged (the menu polls it); the rest arrives via pkexec under this program's own rule,
+# never a bare `pkexec pacman`.
 set -euo pipefail
 
 META=pocknix-emulation-full
@@ -37,6 +38,18 @@ kick_seeder() {
     || echo "pocknix-layer: could not run the config seeder now; log out and back in once"
 }
 
+# Opt-in flavour: no optdepends and no seeder, and -Rs takes its Plasma deps with it.
+if [ "${2:-emulation}" = desktop-plasma ]; then
+  FLAVOUR=pocknix-desktop-plasma
+  case "${1:-status}" in
+    status)  pacman -Q "${FLAVOUR}" >/dev/null 2>&1 && echo "installed=yes" || echo "installed=no" ;;
+    install) need_root; pacman -Syu --noconfirm "${FLAVOUR}"; echo "installed=yes" ;;
+    remove)  need_root; pacman -Rs --noconfirm "${FLAVOUR}"; echo "installed=no" ;;
+    *)       echo "usage: pocknix-layer {status|install|remove} [emulation|desktop-plasma]" >&2; exit 2 ;;
+  esac
+  exit 0
+fi
+
 case "${1:-status}" in
   status)
     meta_installed && echo "meta=yes" || echo "meta=no"
@@ -72,7 +85,7 @@ case "${1:-status}" in
     echo "installed=no"
     ;;
   *)
-    echo "usage: pocknix-layer {status|install|remove}" >&2
+    echo "usage: pocknix-layer {status|install|remove} [emulation|desktop-plasma]" >&2
     exit 2
     ;;
 esac
