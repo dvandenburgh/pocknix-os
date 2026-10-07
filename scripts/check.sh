@@ -16,6 +16,36 @@ done
 if [ "$(uname -s)" = "Linux" ]; then note "host os" "Linux ok"
 else note "host os" "$(uname -s) (image build needs Linux)"; fi
 
+# Image-build readiness on this host; notes only, so the preflight still passes anywhere. On a
+# non-aarch64 host the kernel cross-compiles and the chroots run under qemu-user (binfmt_misc).
+if [ "$(uname -s)" = "Linux" ]; then
+  if [ "$(uname -m)" = "aarch64" ]; then
+    note "host arch" "aarch64 (native)"
+  else
+    note "host arch" "$(uname -m) (kernel cross-compiles, chroots run under qemu-user)"
+    cc="${CROSS_COMPILE:-aarch64-linux-gnu-}gcc"
+    have "${cc}" && note "cross compiler" "${cc} ok" || note "cross compiler" "MISSING ${cc} (make kernel)"
+    bf="$(grep -l '^magic 7f454c46020101.*0200b700$' /proc/sys/fs/binfmt_misc/* 2>/dev/null | head -n 1 || true)"
+    if [ -z "${bf}" ]; then
+      note "qemu aarch64 binfmt" "MISSING (qemu-user-static + its binfmt registration)"
+    elif ! grep -qx enabled "${bf}"; then
+      note "qemu aarch64 binfmt" "${bf##*/} disabled (sudo systemctl restart systemd-binfmt)"
+    elif grep -q '^flags: .*C' "${bf}"; then
+      note "qemu aarch64 binfmt" "$(sed -n 's/^flags: //p' "${bf}") ok"
+    else
+      note "qemu aarch64 binfmt" "$(sed -n 's/^flags: //p' "${bf}") lacks C (makepkg's sudo fails in the chroot)"
+    fi
+  fi
+  # A Windows drive under WSL (9p) or another non-POSIX fs can't hold the chroots' owners and modes.
+  fs="$(stat -f -c %T "${POCKNIX_ROOT}" 2>/dev/null || true)"
+  case "${fs}" in
+    v9fs|9p|drvfs|fuseblk|ntfs*|vfat|msdos|exfat) note "checkout filesystem" "${fs}: build from a Linux filesystem instead" ;;
+    *) note "checkout filesystem" "${fs:-?} ok" ;;
+  esac
+  grep -qw btrfs /proc/filesystems 2>/dev/null || modprobe -n btrfs 2>/dev/null \
+    && note "btrfs (make sd-image)" "ok" || note "btrfs (make sd-image)" "MISSING in this kernel"
+fi
+
 # --- project layout --------------------------------------------------------
 for d in config config/packages scripts packages/shared packages/soc vendor "devices/${DEVICE}"; do
   [ -d "${POCKNIX_ROOT}/${d}" ] && note "dir: ${d}/" "ok" || { note "dir: ${d}/" "MISSING"; fail=1; }
