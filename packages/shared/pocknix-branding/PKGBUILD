@@ -25,6 +25,7 @@ source=('watermark.svg' 'logo.svg' 'throbber.svg' 'still.svg' 'electrons.awk'
         'pocknix-branding-init' 'pocknix-branding-init.service')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
+
 _spinner=/usr/share/plymouth/themes/spinner
 
 build() {
@@ -43,6 +44,7 @@ build() {
     rsvg-convert "${w}/throbber.svg" -o "${w}/throbber-${n%.svg}.png"
   done
   rsvg-convert "${w}/still.svg" -o "${w}/watermark-still.png"
+
 }
 
 package() {
@@ -72,6 +74,7 @@ package() {
          -e 's|^WatermarkVerticalAlignment=.*|WatermarkVerticalAlignment=.40625|' \
          -e 's|^VerticalAlignment=.*|VerticalAlignment=.40625|' \
          -e 's|^MessageBelowAnimation=.*|MessageBelowAnimation=false|' \
+
          "${theme}/pocknix.plymouth"
 
   # --- Plasma splash (KSplash look-and-feel) -------------------------------------------

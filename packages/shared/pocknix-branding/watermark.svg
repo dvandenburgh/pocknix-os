@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Plymouth watermark: logo over wordmark, in LOGICAL pixels. two-step draws images at
      DeviceScale (2x here), so authoring larger would overflow a 540-line logical screen.
-     The logo box (0,0 220x208) is shared with throbber.svg so the electrons land on their orbits. -->
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Plymouth watermark: logo over wordmark, in LOGICAL pixels. two-step draws images at
+     DeviceScale (2x here), so authoring larger would overflow a 540-line logical screen.
+     The logo box (0,0 220x208) is shared with throbber.svg so the electrons land on their orbits.
+     Rendered to watermark.png by the PKGBUILD; pocknix-steam-splash shows the same file. -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="220" height="256" viewBox="0 0 220 256">
   <image x="0" y="1.25" width="220" height="205.5" xlink:href="logo.svg"/>
   <image x="20" y="231.5" width="180" height="24.5" xlink:href="wordmark.png"/>
+
 </svg>
