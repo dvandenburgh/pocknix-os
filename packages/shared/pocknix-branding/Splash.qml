@@ -1,6 +1,6 @@
 /*
-    Pocknix OS splash: the wordmark on the same field as the wallpaper and the
-    Plymouth theme, so boot -> splash -> desktop is one continuous surface.
+    Pocknix OS splash: the wordmark on the same field as the wallpaper, so
+    splash -> desktop is one continuous surface.
 
     ksplashqml drives `stage` as startup progresses; stage 2 is "show yourself".
     Nothing here waits on a later stage, because Plasma Mobile's shell does not

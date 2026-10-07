@@ -1,7 +1,7 @@
 # pocknix-branding — Pocknix OS artwork: the plymouth boot theme, the Plasma splash, and
-# the desktop wallpaper. One package so the three stay in step; they share the same
-# wordmark and the same #202126 field, which is the point (boot -> splash -> desktop
-# reads as one surface instead of three unrelated screens).
+# the desktop wallpaper. One package so the three stay in step on the same wordmark. The
+# boot theme sits on SteamOS's black field (game mode boots like a Deck); the Plasma
+# splash and wallpaper keep the #202126 desktop field.
 pkgname=pocknix-branding
 pkgver=0.1.0
 pkgrel=3
@@ -45,15 +45,15 @@ package() {
   # logo + wordmark replace the Arch watermark (sized in logical px, see watermark.svg)
   install -Dm644 "${srcdir}/watermark.png" "${theme}/watermark.png"
 
-  # Name/Description/ImageDir must point at OUR dir, and the field matches the wallpaper
-  # so plymouth does not flash black before handing over. The logo sits above centre with the
-  # spinner below it; pocknix-steam-splash reads these alignments back, so game mode matches.
+  # Name/Description/ImageDir must point at OUR dir. Black field and white mark follow the
+  # SteamOS boot screen. The logo sits above centre with the spinner below it;
+  # pocknix-steam-splash reads the field and alignments back, so game mode matches.
   sed -i -e '/^Name\[[^]]*\]=/d' \
          -e 's|^Name=.*|Name=Pocknix|' \
          -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo over the stock spinner.|' \
          -e "s|^ImageDir=.*|ImageDir=/usr/share/plymouth/themes/pocknix|" \
-         -e 's|^BackgroundStartColor=.*|BackgroundStartColor=0x202126|' \
-         -e 's|^BackgroundEndColor=.*|BackgroundEndColor=0x202126|' \
+         -e 's|^BackgroundStartColor=.*|BackgroundStartColor=0x000000|' \
+         -e 's|^BackgroundEndColor=.*|BackgroundEndColor=0x000000|' \
          -e 's|^WatermarkVerticalAlignment=.*|WatermarkVerticalAlignment=.40|' \
          -e 's|^VerticalAlignment=.*|VerticalAlignment=.86|' \
          "${theme}/pocknix.plymouth"
