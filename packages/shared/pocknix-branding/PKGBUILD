@@ -4,7 +4,7 @@
 # reads as one surface instead of three unrelated screens).
 pkgname=pocknix-branding
 pkgver=0.1.0
-pkgrel=2
+pkgrel=3
 pkgdesc="Pocknix OS branding: plymouth boot theme, Plasma splash, wallpaper"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -16,14 +16,24 @@ install='pocknix-branding.install'
 # them drift. Building against the installed theme keeps the spinner in step with whatever
 # plymouth version the image ships, while the OUTPUT still lands in our own directory - which
 # is what makes it survive a plymouth upgrade (the reason a custom theme dir was wanted).
-makedepends=('plymouth')
-source=('watermark.png'
+# librsvg: the watermark is drawn from SVG at build time, so no rendered PNG is committed.
+makedepends=('plymouth' 'librsvg')
+source=('watermark.svg' 'logo.svg'
         'Splash.qml' 'splash-metadata.json' 'wordmark.png'
         'wallpaper-1920x1080.png' 'wallpaper-metadata.json'
         'pocknix-branding-init' 'pocknix-branding-init.service')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 _spinner=/usr/share/plymouth/themes/spinner
+
+build() {
+  # makepkg symlinks local sources into srcdir, and librsvg refuses <image> hrefs that resolve
+  # outside the referencing file's directory, so render from real copies.
+  rm -rf "${srcdir}/watermark"
+  install -d "${srcdir}/watermark"
+  cp -L "${srcdir}/watermark.svg" "${srcdir}/logo.svg" "${srcdir}/wordmark.png" "${srcdir}/watermark/"
+  rsvg-convert "${srcdir}/watermark/watermark.svg" -o "${srcdir}/watermark.png"
+}
 
 package() {
   # --- plymouth boot theme -------------------------------------------------------------
@@ -32,17 +42,20 @@ package() {
   install -d "${theme}"
   cp -a "${_spinner}/." "${theme}/"
   mv "${theme}/spinner.plymouth" "${theme}/pocknix.plymouth"
-  # our wordmark replaces the Arch watermark; authored at 2x for DeviceScale=2
+  # logo + wordmark replace the Arch watermark (sized in logical px, see watermark.svg)
   install -Dm644 "${srcdir}/watermark.png" "${theme}/watermark.png"
 
   # Name/Description/ImageDir must point at OUR dir, and the field matches the wallpaper
-  # so plymouth does not flash black before handing over.
+  # so plymouth does not flash black before handing over. The logo sits above centre with the
+  # spinner below it; pocknix-steam-splash reads these alignments back, so game mode matches.
   sed -i -e '/^Name\[[^]]*\]=/d' \
          -e 's|^Name=.*|Name=Pocknix|' \
-         -e 's|^Description=.*|Description=Pocknix OS boot splash: the stock spinner with the Pocknix wordmark.|' \
+         -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo over the stock spinner.|' \
          -e "s|^ImageDir=.*|ImageDir=/usr/share/plymouth/themes/pocknix|" \
          -e 's|^BackgroundStartColor=.*|BackgroundStartColor=0x202126|' \
          -e 's|^BackgroundEndColor=.*|BackgroundEndColor=0x202126|' \
+         -e 's|^WatermarkVerticalAlignment=.*|WatermarkVerticalAlignment=.40|' \
+         -e 's|^VerticalAlignment=.*|VerticalAlignment=.86|' \
          "${theme}/pocknix.plymouth"
 
   # --- Plasma splash (KSplash look-and-feel) -------------------------------------------

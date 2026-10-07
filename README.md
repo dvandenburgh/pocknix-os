@@ -147,7 +147,7 @@ See the [Pocknix Control docs](docs/pocknix-control.md) for the full tour.
 
 ## Known issues
 
-- **The Steam session can take a while to come up** - on first boot or after a Steam client update, entering game mode can take a *long* while, especially when running off an SD card. The Pocknix wordmark stays on screen while Steam gets ready; a short black gap before it appears is normal. Be patient and leave the device to do its thing - it will come up.
+- **The Steam session can take a while to come up** - on first boot or after a Steam client update, entering game mode can take a *long* while, especially when running off an SD card. The Pocknix logo stays on screen while Steam gets ready; a short black gap before it appears is normal. Be patient and leave the device to do its thing - it will come up.
 - **Gyro does not work yet.** The motion sensors are not wired up, so games and emulators that use gyro aim or tilt controls will not see any input. Getting them working is on the list.
 - **MangoHud incurs a slight performance penalty.** It is fine for dialing in settings, but turn it off during real gameplay. I consider this a feature, not a bug - instead of staring at performance metrics (we're all guilty), just enjoy your games! 😃
 

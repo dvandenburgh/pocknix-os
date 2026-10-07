@@ -1,6 +1,6 @@
 #!/bin/bash
 # pocknix-steam-splash <WxH> -- <steam command...>: gamescope's child for game mode. Maps the
-# wordmark until Big Picture is up, then execs Steam so gamescope's child pid is still Steam.
+# boot logo until Big Picture is up, then execs Steam so gamescope's child pid is still Steam.
 #
 # Under gamescope -e only windows with a Steam app id can take focus, and nothing is focused until
 # GAMESCOPECTRL_BASELAYER_APPID names one. So the window is tagged STEAM_GAME=769 (Steam's own id)
