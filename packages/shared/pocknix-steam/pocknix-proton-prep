@@ -16,11 +16,28 @@ GPU_DXVK3="$(
   done
   printf '%s' "${POCKNIX_GPU_DXVK3:-yes}"
 )"
+DXVK2_PROBE=""   # the donor dll compared each pass: found once, found again if that file goes away
 
 ARM_PROTONS=(
   "Proton 11.0 (ARM64)"
   "Proton Experimental (ARM64)"
 )
+
+# --watch re-runs apply every 20 s for the whole session, so its steady-state checks are builtins.
+# Every file they read is text (vdf, shell), which read -d '' takes whole.
+has() { # <file> <string>: grep -qF without a fork
+  local s=""
+  [ -f "$1" ] || return 1
+  IFS= read -r -d '' s 2>/dev/null < "$1"
+  [[ "${s}" == *"$2"* ]]
+}
+same() { # <file> <file>: cmp -s without a fork
+  local a="" b=""
+  [ -f "$1" ] && [ -f "$2" ] || return 1
+  IFS= read -r -d '' a 2>/dev/null < "$1"
+  IFS= read -r -d '' b 2>/dev/null < "$2"
+  [ "${a}" = "${b}" ]
+}
 
 # Dirs our old registration (<= 0.1.0-49) left behind; they duplicate Steam's own entries.
 LEGACY_TOOLDIRS=(proton-11-arm64 proton-experimental-arm64)
@@ -44,22 +61,27 @@ apply_proton() { # <steamapps/common dir>
   local proton_dir="${STEAM}/steamapps/common/$1"
   [ -d "${proton_dir}" ] || return 0
 
-  # Match the QUOTED key: ours names require_tool_appid in a comment, so an unquoted grep self-matches.
-  if grep -q '"require_tool_appid"' "${proton_dir}/toolmanifest.vdf" 2>/dev/null; then
+  # Match the QUOTED key: ours names require_tool_appid in a comment, so an unquoted one self-matches.
+  if has "${proton_dir}/toolmanifest.vdf" '"require_tool_appid"'; then
     install -Dm644 "${RES}/proton-toolmanifest.vdf" "${proton_dir}/toolmanifest.vdf"
   fi
 
   # The toolmanifest's commandline is relative to the tool dir, so the shim must sit next to `proton`.
-  cmp -s "${RES}/pocknix-proton" "${proton_dir}/pocknix-proton" 2>/dev/null \
+  same "${RES}/pocknix-proton" "${proton_dir}/pocknix-proton" \
     || install -Dm755 "${RES}/pocknix-proton" "${proton_dir}/pocknix-proton"
 
   # DXVK 3 rejects a6xx and account-listed Valve tools can't be hidden, so swap in the
   # 2.7 donor (Valve's own dlls, same wine lineage). One-dll cmp = write-free loop
   # (a DXVK bump changes every dll); tmp+mv so a mid-swap launch never sees a half dir.
-  local dxvk="${proton_dir}/files/lib/wine/dxvk" probe
+  # cp -a keeps the donor's mtime, so a probe with exactly that mtime skips even the cmp; a match
+  # by content (a donor rebuilt unchanged) takes the donor's mtime so the next pass skips it too.
+  local dxvk="${proton_dir}/files/lib/wine/dxvk" src dst
   if [ "${GPU_DXVK3}" = no ] && [ -d "${DXVK2_DONOR}" ] && [ -d "${dxvk}" ]; then
-    probe="$(cd "${DXVK2_DONOR}" && find . -type f -name '*.dll' | sort | head -1)"
-    if [ -n "${probe}" ] && ! cmp -s "${DXVK2_DONOR}/${probe}" "${dxvk}/${probe}"; then
+    [ -f "${DXVK2_DONOR}/${DXVK2_PROBE}" ] \
+      || DXVK2_PROBE="$(cd "${DXVK2_DONOR}" && find . -type f -name '*.dll' | sort | head -1)"
+    src="${DXVK2_DONOR}/${DXVK2_PROBE}" dst="${dxvk}/${DXVK2_PROBE}"
+    if [ -n "${DXVK2_PROBE}" ] && { [ "${dst}" -nt "${src}" ] || [ "${dst}" -ot "${src}" ]; } \
+       && ! { cmp -s "${src}" "${dst}" && touch -r "${src}" "${dst}"; }; then
       rm -rf "${dxvk}.pocknix-tmp"
       cp -a "${DXVK2_DONOR}" "${dxvk}.pocknix-tmp" \
         && rm -rf "${dxvk}" \
@@ -77,24 +99,24 @@ apply_slr() {
     [ -d "${slr_dir}" ] || continue
     manifest="${slr_dir}toolmanifest.vdf"
     [ -f "${manifest}" ] || continue
-    cmp -s "${RES}/pocknix-proton" "${slr_dir}pocknix-proton" 2>/dev/null \
+    same "${RES}/pocknix-proton" "${slr_dir}pocknix-proton" \
       || install -Dm755 "${RES}/pocknix-proton" "${slr_dir}pocknix-proton"
     # Steam caches this manifest per client session, so after a tool update it launches Valve's
-    # "/_v2-entry-point" until restart: claim that NAME too. The marker grep decides whose bytes
+    # "/_v2-entry-point" until restart: claim that NAME too. The marker check decides whose bytes
     # a file holds — never copy any version of our shim over .real.
     entry="${slr_dir}_v2-entry-point"
     real="${slr_dir}_v2-entry-point.real"
-    if [ -f "${entry}" ] && ! grep -q pocknix-proton-wrapper "${entry}"; then
+    if [ -f "${entry}" ] && ! has "${entry}" pocknix-proton-wrapper; then
       cp -p "${entry}" "${real}"
     fi
-    if [ -f "${real}" ] && ! grep -q pocknix-proton-wrapper "${real}"; then
+    if [ -f "${real}" ] && ! has "${real}" pocknix-proton-wrapper; then
       # tmp+mv: Steam may exec this exact path mid-write, and mv keeps it always runnable.
-      cmp -s "${RES}/pocknix-proton" "${entry}" 2>/dev/null || {
+      same "${RES}/pocknix-proton" "${entry}" || {
         install -m755 "${RES}/pocknix-proton" "${entry}.pocknix-tmp" \
           && mv -f "${entry}.pocknix-tmp" "${entry}"
       }
     fi
-    if grep -q '"/_v2-entry-point ' "${manifest}"; then
+    if has "${manifest}" '"/_v2-entry-point '; then
       sed -i 's|"/_v2-entry-point |"/pocknix-proton |' "${manifest}"
     fi
   done
@@ -110,17 +132,22 @@ apply() {
 
   # One symlink to the constant tool dir, so pacman updates flow through without a re-link.
   local sysd name
-  mkdir -p "${STEAM}/compatibilitytools.d"
+  [ -d "${STEAM}/compatibilitytools.d" ] || mkdir -p "${STEAM}/compatibilitytools.d"
   for sysd in /usr/share/steam/compatibilitytools.d/*/; do
     [ -d "${sysd}" ] || continue
-    name="$(basename "${sysd}")"
+    name="${sysd%/}"; name="${name##*/}"
     [ -e "${STEAM}/compatibilitytools.d/${name}" ] || ln -sfn "${sysd%/}" "${STEAM}/compatibilitytools.d/${name}"
   done
 }
 
 case "${1:-}" in
   --watch)
-    while :; do apply; sleep 20; done
+    # A pipe this shell holds both ends of never reaches EOF: a timed read on it is a sleep
+    # that starts no process. If it cannot be opened, /dev/null ends every read at once and
+    # sleep does the waiting.
+    { exec {TICK}<> <(:); } 2>/dev/null || exec {TICK}</dev/null
+    tick() { read -r -t "$1" -u "${TICK}" && return; [ $? -gt 128 ] || sleep "$1"; }
+    while :; do apply; tick 20; done
     ;;
   *)
     apply
