@@ -100,6 +100,33 @@ chroot_mount() {
   mount -t sysfs sys     "${root}/sys"
   mount -t tmpfs tmpfs   "${root}/run"
   chroot_resolv "${root}"
+  # One package cache for the rootfs and every build chroot, so pacman fetches each file once
+  # rather than once per chroot and per build. Files a chroot cached itself move into it.
+  local pc="${root}/var/cache/pacman/pkg"
+  if ! mountpoint -q "${pc}"; then
+    mkdir -p "${PKG_CACHE_DIR}" "${pc}"
+    find "${pc}" -maxdepth 1 -type f -name '*.pkg.tar.*' ! -name '*.part' \
+      -exec mv -n -t "${PKG_CACHE_DIR}" {} + 2>/dev/null || true
+    mount --bind "${PKG_CACHE_DIR}" "${pc}"
+  fi
+  prune_localrepo_copies
+}
+
+# pacman caches its file:// installs from build/localrepo too. A package rebuilt at the same version
+# would then fail its checksum against the stale copy, so those never outlive a chroot session.
+prune_localrepo_copies() {
+  local f
+  for f in "${LOCALREPO_DIR}"/*.pkg.tar.* "${LOCALREPO_SHARED_DIR}"/*.pkg.tar.*; do
+    if [ -f "${f}" ]; then rm -f "${PKG_CACHE_DIR}/${f##*/}"; fi
+  done
+}
+
+# Anything mounted below <dir>? Captured first: under pipefail a SIGPIPE'd findmnt | grep -q would
+# read as "nothing mounted", and rm -rf follows bind mounts.
+mounted_under() {
+  local mounts
+  mounts="$(findmnt -rno TARGET)" || return 0
+  grep -q "^$1/" <<< "${mounts}"
 }
 
 # Give the chroot a working /etc/resolv.conf. On systemd-resolved hosts (Fedora,
@@ -122,9 +149,10 @@ chroot_resolv() {
 }
 chroot_umount() {
   local root="$1"
-  for m in run sys proc dev/pts dev; do
+  for m in var/cache/pacman/pkg run sys proc dev/pts dev; do
     mountpoint -q "${root}/${m}" && umount -lf "${root}/${m}" || true
   done
+  prune_localrepo_copies
 }
 
 # install qemu-user-static into the rootfs when cross-building from x86_64

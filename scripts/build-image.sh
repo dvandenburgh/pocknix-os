@@ -42,6 +42,25 @@ append_local_repo() {
     "${out}"
 }
 
+# The image keeps each installed package in its own /var/cache/pacman/pkg, as it did while pacman
+# downloaded straight into the rootfs. Hard links into build/cache and build/localrepo make that free.
+link_installed_into_cache() {
+  local root="$1" dst="$1/var/cache/pacman/pkg" d dir f n=0
+  ! mountpoint -q "${dst}" || die "${dst} is still the shared cache's mount point"
+  for d in "${root}"/var/lib/pacman/local/*/; do
+    d="$(basename "${d}")"
+    for dir in "${PKG_CACHE_DIR}" "${LOCAL_REPO_DIR}" "${LOCAL_REPO_SHARED_DIR}"; do
+      for f in "${dir}/${d}"-aarch64.pkg.tar.* "${dir}/${d}"-any.pkg.tar.*; do
+        [ -f "${f}" ] || continue
+        case "${f}" in *.part) continue ;; esac
+        ln -f "${f}" "${dst}/" 2>/dev/null || cp -f "${f}" "${dst}/"
+        n=$((n + 1))
+      done
+    done
+  done
+  log "linked ${n} package files into the image's pacman cache"
+}
+
 # fontconfig installs and caches long before any pocknix package, so the package's own prune can
 # leave an image dirty: re-prune after the last transaction.
 prune_fontconfig_compat_links() {
@@ -353,6 +372,7 @@ main() {
   bootstrap_steam_seed "${ROOTFS_DIR}"
 
   chroot_umount "${ROOTFS_DIR}"; trap - EXIT
+  link_installed_into_cache "${ROOTFS_DIR}"
 
   # The rootfs is complete. Assembling it into a flashable image (partitions, boot KERNEL,
   # first-boot config) is a separate step: scripts/build-sd-image.sh (make sd-image).

@@ -35,7 +35,7 @@ trap cleanup EXIT
 # by an interrupted build would take the real localrepo with it. Never rm with one in place.
 wipe_chroot() {
   cleanup
-  ! findmnt -rno TARGET | grep -q "^${BROOT}/" || die "still mounted under ${BROOT}, not wiping it"
+  ! mounted_under "${BROOT}" || die "still mounted under ${BROOT}, not wiping it"
   rm -rf "${BROOT}"
 }
 

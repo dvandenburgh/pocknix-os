@@ -11,7 +11,12 @@ tarball="${CACHE_DIR}/${ALARM_TARBALL}"
 fetch_alarm_tarball
 
 log "extracting rootfs -> ${ROOTFS_DIR}"
-[ -d "${ROOTFS_DIR}" ] && { chroot_umount "${ROOTFS_DIR}" || true; rm -rf "${ROOTFS_DIR}"; }
+# rm -rf follows bind mounts, and a chroot binds the host's /dev and the shared package cache.
+if [ -d "${ROOTFS_DIR}" ]; then
+  chroot_umount "${ROOTFS_DIR}" || true
+  ! mounted_under "${ROOTFS_DIR}" || die "still mounted under ${ROOTFS_DIR}, not wiping it"
+  rm -rf "${ROOTFS_DIR}"
+fi
 mkdir -p "${ROOTFS_DIR}"
 # bsdtar preserves the ALARM tarball's xattrs/ownership better than gnu tar
 if have bsdtar; then

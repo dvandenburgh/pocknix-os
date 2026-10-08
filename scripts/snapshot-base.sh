@@ -179,8 +179,12 @@ done
 # file appears here (seen: pocknix-base pulled into the manifest, then failing
 # its mirror fetch). The sync dbs are the discriminator: only a version that an
 # ALARM repo actually carries is base material.
-for src in "${sources[@]}"; do
-  for f in "${src}"/var/cache/pacman/pkg/*.pkg.tar.*; do
+# The build's downloads sit in the shared cache; a chroot's own cache only holds files from
+# before that existed.
+cachedirs=("${PKG_CACHE_DIR}")
+for src in "${sources[@]}"; do cachedirs+=("${src}/var/cache/pacman/pkg"); done
+for cdir in "${cachedirs[@]}"; do
+  for f in "${cdir}"/*.pkg.tar.*; do
     case "${f}" in *.sig) continue ;; esac
     b="$(basename "${f}")"; b="${b%-*}"                     # drop -<arch>.pkg.tar.*
     name="${b%-*-*}"; ver="${b#"${name}-"}"
@@ -273,8 +277,6 @@ ${missing}"
 # re-download 404s if ALARM bumps a package in between). Only packages that
 # never hit a cache (tarball-preinstalled, never upgraded) come from the mirror.
 mkdir -p "${OUT}" 2>/dev/null || die "${OUT} not creatable — one-time: sudo install -d -o $(id -un) ${BUILD_DIR}/snapshot"
-cachedirs=()
-for src in "${sources[@]}"; do cachedirs+=("${src}/var/cache/pacman/pkg"); done
 curlcfg="${tmp}/curl.cfg"; shafile="${tmp}/sha.check"
 todl=0 cached=0
 for name in "${!want[@]}"; do
