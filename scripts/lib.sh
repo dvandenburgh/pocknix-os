@@ -129,9 +129,21 @@ chroot_umount() {
 
 # install qemu-user-static into the rootfs when cross-building from x86_64
 maybe_install_qemu() {
-  local root="$1"
+  local root="$1" entry flags
   [ "$(uname -m)" = "aarch64" ] && return 0   # native, nothing to do
   [ -f "${QEMU_AARCH64_STATIC}" ] || die "cross-building on $(uname -m) needs ${QEMU_AARCH64_STATIC} (install qemu-user-static + binfmt)"
+  # The chroots run under qemu via binfmt_misc, and makepkg's `sudo pacman` only gains root if
+  # the handler has flag C. Debian/Ubuntu register qemu-aarch64 without it (it shows POF).
+  entry="$(grep -l '^magic 7f454c46020101.*0200b700$' /proc/sys/fs/binfmt_misc/* 2>/dev/null | head -n 1 || true)"
+  { [ -n "${entry}" ] && grep -qx enabled "${entry}"; } \
+    || die "no enabled aarch64 binfmt handler on $(uname -m): install qemu-user-static with its binfmt registration (systemd-binfmt or binfmt-support)"
+  flags="$(sed -n 's/^flags: //p' "${entry}")"
+  case "${flags}" in
+    *C*) ;;
+    *) die "binfmt ${entry##*/} has flags '${flags}', without C: sudo in the build chroot cannot gain root.
+  Copy its line from /usr/lib/binfmt.d/ into /etc/binfmt.d/ with 'C' added to the flags, then run
+  'systemctl restart systemd-binfmt'" ;;
+  esac
   install -Dm755 "${QEMU_AARCH64_STATIC}" "${root}${QEMU_AARCH64_STATIC}"
 }
 
