@@ -36,6 +36,7 @@ not and cannot relicense them. The main ones:
 | Mesa | `packages/soc/mesa` | MIT |
 | MangoHud | `packages/soc/mangohud` | MIT |
 | FEX-Emu | `packages/soc/fex-emu` | MIT |
+| SteamOS Vapor desktop theme (Valve) | `packages/shared/steamos-vapor-theme` | GPL-2.0-or-later, GPL-3.0 (per its metadata) |
 | alsa-ucm-conf material | `devices/sm8250` BSP | BSD-3-Clause |
 | Packaged emulators, tools, and libraries | `packages/*` | each project's own license |
 
@@ -47,6 +48,9 @@ binaries is recorded next to them (for example
 ROCKNIX additionally licenses its distribution branding and artwork under CC BY-NC-SA.
 pocknix-os does not ship ROCKNIX branding; only their GPL-licensed software, scripts, and
 patches are used.
+
+From Valve's SteamOS desktop presets only the Vapor theme files are packaged. SteamOS's
+wallpapers, avatars, and Steam Deck logo (splash and distributor icon) are not shipped.
 
 ## Source availability
 

@@ -1,0 +1,48 @@
+# steamos-vapor-theme - the Vapor look of SteamOS's desktop mode, from Valve's
+# steamdeck-kde-presets. Only the theme is fetched (its metadata states GPL); Valve's wallpapers,
+# game-character avatars and Steam Deck logo splash stay out. Build with ./nodeps: makepkg -s
+# would drag all of KDE/Qt into the chroot for a data package.
+pkgname=steamos-vapor-theme
+pkgver=3.9.5
+pkgrel=1
+# Jovian's mirror of Valve's source tarballs; raw files rather than the tag's 21 MB of wallpapers.
+_commit=7bce81847a0163cc2fb7b100acce70982c324c93
+pkgdesc="SteamOS's Vapor desktop theme: colour schemes, Plasma style, global theme, Konsole profile"
+arch=('any')
+url="https://github.com/Jovian-Experiments/steamdeck-kde-presets"
+license=('GPL-2.0-or-later' 'GPL-3.0-only')
+depends=('breeze' 'breeze-icons' 'breeze-cursors')   # the global theme's style, icons, cursor
+_lnf=plasma/look-and-feel/com.valve.vapor.desktop
+_files=(color-schemes/Vapor.colors
+        color-schemes/VGUI.colors
+        plasma/desktoptheme/Vapor/colors
+        plasma/desktoptheme/Vapor/metadata.json
+        "${_lnf}/metadata.json"
+        "${_lnf}/contents/defaults"
+        "${_lnf}/contents/plasmoidsetupscripts/org.kde.plasma.systemtray.js"
+        "${_lnf}/contents/previews/preview.png"
+        konsole/Vapor.colorscheme
+        konsole/Vapor.profile
+        icons/hicolor/scalable/actions/steam-gaming-return.svg)
+source=()
+for _f in "${_files[@]}"; do
+  source+=("${pkgname}-${pkgver}-${_f//\//_}::https://raw.githubusercontent.com/Jovian-Experiments/steamdeck-kde-presets/${_commit}/usr/share/${_f}")
+done
+sha256sums=('19c1c4d88907c2f08bc322659fdedf7c820d05d85f744b099f0ce7e6dcbc737e'
+            'b4a33b51adc74a425c04742f5463a36766c20021bc227bbe00b39a87779cc70a'
+            'f8072d099020e746565655ff11424ff251d391dbaa95283c3f14ef2d8f307d85'
+            '981ee7eb1a3828e620d2f7f6fb5f96f94d6a3b7e45b1a66cfa65ec51415b49f3'
+            '4f60e6d03959707219b2ab1a53ea4a4291f109a954c133a0a9cbc416b9446137'
+            'bb8268045d0bb2987b96afbca9e229276159c2c123a424863ada1e86a2ddfe67'
+            '3f64406c5aa622abf5f9da6b34aaccb8c0ab91e3a3c9871ef07d675a2d0631c7'
+            '6df7f0c00aed4f43d680ded4042be11ad37591c111e1e70ab1ef9169069cc9b7'
+            '0cb2258e636953dd0ff584d41433b16864276960a306b8aacf2fb2769b6bc94b'
+            'b9ce5ce76a7c1e9d6d4120c51bbc0f56dbc6f90040f4c68562e0066b434f2c83'
+            '9182e8800c9c5ac9d326bcb49f30a41f9a5aa99f3e0c875c423d7e65bd1f3f4b')
+
+package() {
+  local f
+  for f in "${_files[@]}"; do
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}-${f//\//_}" "${pkgdir}/usr/share/${f}"
+  done
+}
