@@ -111,6 +111,13 @@ setup_chroot() {
   printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > "${BROOT}/etc/sudoers.d/builder"
   chmod 0440 "${BROOT}/etc/sudoers.d/builder"
 
+  # ALARM's makepkg.conf packs with single-threaded xz and leaves MAKEFLAGS unset: under qemu the
+  # xz pass outlasts most compiles (fex-rootfs carries a 1.1 GB squashfs) and make-based packages
+  # build on one core. makepkg's zstd command is already multi-threaded (-T0).
+  install -d "${BROOT}/etc/makepkg.conf.d"
+  printf '%s\n' "PKGEXT='.pkg.tar.zst'" 'MAKEFLAGS="-j$(nproc)"' \
+    > "${BROOT}/etc/makepkg.conf.d/pocknix.conf"
+
   # Local [pocknix] repo so a package can depend on another locally-built one
   # (e.g. pocknix-steam -> gamescope, gtk2). Points at the bind-mounted /localrepo.
   # SigLevel Never, same reason as build-image.sh's append_local_repo: make publish signs
@@ -154,8 +161,9 @@ build_one() {
     local uptodate=1 nlist=0 p f
     while IFS= read -r p; do
       nlist=$((nlist+1))
-      f="${repo_dir}/$(basename "${p}")"
-      if [ ! -f "${f}" ] || [ -n "$(find "${pkgdir}" -newer "${f}" -print -quit)" ]; then
+      # Matched without the extension: seeded and older builds are .xz, new ones .zst.
+      f="$(artifact_file "${repo_dir}" "$(basename "${p%.pkg.tar.*}")")" || f=""
+      if [ -z "${f}" ] || [ -n "$(find "${pkgdir}" -newer "${f}" -print -quit)" ]; then
         uptodate=0; break
       fi
       case "${name}" in linux-pocknix-*)
