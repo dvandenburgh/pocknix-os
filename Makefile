@@ -84,10 +84,17 @@ trim: ## Reclaim space: drop the regenerable kernel SOURCE trees (keeps KERNEL+m
 	@sudo rm -rf build/kernel/*/linux-* build/kernel/*/mkbootimg-src
 	@echo "trimmed kernel source tree (regenerated on next 'make kernel'); kept out/, rootfs, image, cache"
 
+# rm -rf follows bind mounts, and an interrupted build can leave its chroots' mounts (the host's
+# /dev among them) in place, so a clean then deletes the host's device nodes. Refuse instead.
+NO_BUILD_MOUNTS = ! findmnt -rno TARGET 2>/dev/null | grep -q '^$(CURDIR)/build/' \
+	|| { echo "error: still mounted under $(CURDIR)/build (an interrupted build): reboot, or unmount it, first" >&2; exit 1; }
+
 clean: ## Remove build output: rootfs, image, kernel, package chroots (keeps download cache)
+	@$(NO_BUILD_MOUNTS)
 	@sudo rm -rf build/rootfs build/image build/localrepo build/kernel build/pkgbuild-root*
 	@echo "cleaned build artifacts (download cache kept)"
 
 distclean: ## Remove all build output including caches
+	@$(NO_BUILD_MOUNTS)
 	@sudo rm -rf build/rootfs build/image build/localrepo build/kernel build/pkgbuild-root* build/cache
 	@echo "removed all build output"
