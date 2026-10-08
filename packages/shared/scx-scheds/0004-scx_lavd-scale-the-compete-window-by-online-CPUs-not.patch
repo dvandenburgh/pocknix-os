@@ -1,0 +1,51 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Changwoo Min <changwoo@igalia.com>
+Date: Sun, 13 Sep 2026 00:47:10 +0900
+Subject: [PATCH] scx_lavd: scale the compete window by online CPUs, not active
+ ones
+
+3ff16ec62 ("scx_lavd: Scale the deadline compete window by the
+oversubscription ratio") shrinks the window by nr_active / nr_queued.
+Core compaction changes nr_active in steps at every sys_stat interval,
+so tasks enqueued around a step get windows of different size and
+vtimes that no longer compare. It also sizes the active set for about
+half utilization, so nr_queued exceeds nr_active at light load and the
+burst boost shrinks on a machine that is not oversubscribed.
+
+Use the number of online CPUs, which changes only on hotplug, so the
+window moves only with the averaged queue length. This eliminates the
+micro-stuttering under mild system load with no regression in
+hackbench.
+
+Signed-off-by: Changwoo Min <changwoo@igalia.com>
+---
+ scheds/rust/scx_lavd/src/bpf/lat_cri.bpf.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/scheds/rust/scx_lavd/src/bpf/lat_cri.bpf.c b/scheds/rust/scx_lavd/src/bpf/lat_cri.bpf.c
+index 8f4bee400..1196eb118 100644
+--- a/scheds/rust/scx_lavd/src/bpf/lat_cri.bpf.c
++++ b/scheds/rust/scx_lavd/src/bpf/lat_cri.bpf.c
+@@ -349,7 +349,7 @@ static u64 calc_virtual_deadline_delta(struct task_struct *p,
+ static u64 calc_compete_window(void)
+ {
+ 	u64 nr_q = sys_stat.nr_queued_task;
+-	u64 nr_a = max(sys_stat.nr_active, 1);
++	u64 nr_c = nr_cpus_onln;
+ 
+ 	/*
+ 	 * The compete window is meant to boost bursty tasks that wake and
+@@ -362,8 +362,8 @@ static u64 calc_compete_window(void)
+ 	 * oversubscription ratio so that the window scales inversely with the
+ 	 * number of enqueued tasks.
+ 	 */
+-	if (nr_q > nr_a)
+-		return (LAVD_DL_COMPETE_WINDOW * nr_a) / nr_q;
++	if (nr_q > nr_c)
++		return (LAVD_DL_COMPETE_WINDOW * nr_c) / nr_q;
+ 	return LAVD_DL_COMPETE_WINDOW;
+ }
+ 
+-- 
+2.55.0
+

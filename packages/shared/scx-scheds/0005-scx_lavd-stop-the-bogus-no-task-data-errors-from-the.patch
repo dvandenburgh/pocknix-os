@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Changwoo Min <changwoo@igalia.com>
+Date: Tue, 1 Sep 2026 16:57:48 +0900
+Subject: [PATCH] scx_lavd: stop the bogus "no task data" errors from the futex
+ hooks
+
+scx_lavd prints one of these per futex call from every RT or DL task:
+
+  BPF stderr of prog fexit___futex_wait:
+  scx_task_data:83 no task data
+
+The futex hooks are attached system-wide, so they fire for tasks
+sched_ext does not manage. Those have no task_ctx, but the boost helpers
+ask for one anyway and scx_task_data() reports the miss as an error.
+They already treat a NULL task_ctx as "not under sched_ext", so the
+lookup could never have succeeded and the message is pure noise.
+
+Skip RT and DL tasks in __inc_futex_boost() and __dec_futex_boost(),
+which every futex hook goes through. That also avoids a pointless task
+storage lookup, and keeps the test out of the common task_ctx path,
+which only the system-wide hooks can reach with a non-scx task.
+
+Signed-off-by: Changwoo Min <changwoo@igalia.com>
+---
+ scheds/rust/scx_lavd/src/bpf/lock.bpf.c | 24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/scheds/rust/scx_lavd/src/bpf/lock.bpf.c b/scheds/rust/scx_lavd/src/bpf/lock.bpf.c
+index cd2bd445f..9a15a911d 100644
+--- a/scheds/rust/scx_lavd/src/bpf/lock.bpf.c
++++ b/scheds/rust/scx_lavd/src/bpf/lock.bpf.c
+@@ -17,7 +17,17 @@
+ static void __inc_futex_boost(struct cpu_ctx *cpuc)
+ {
+ 	struct task_struct *p = bpf_get_current_task_btf();
+-	task_ctx *taskc = get_task_ctx(p);
++	task_ctx *taskc;
++
++	/*
++	 * These hooks are system-wide, so they also fire for RT and DL
++	 * tasks. sched_ext does not manage those, so they have no task_ctx
++	 * and get_task_ctx() would report the miss as an error.
++	 */
++	if (rt_or_dl_task(p))
++		return;
++
++	taskc = get_task_ctx(p);
+ 
+ 	if (taskc) {
+ 		if (!cpuc)
+@@ -36,7 +46,17 @@ static void __inc_futex_boost(struct cpu_ctx *cpuc)
+ static void __dec_futex_boost(struct cpu_ctx *cpuc)
+ {
+ 	struct task_struct *p = bpf_get_current_task_btf();
+-	task_ctx *taskc = get_task_ctx(p);
++	task_ctx *taskc;
++
++	/*
++	 * These hooks are system-wide, so they also fire for RT and DL
++	 * tasks. sched_ext does not manage those, so they have no task_ctx
++	 * and get_task_ctx() would report the miss as an error.
++	 */
++	if (rt_or_dl_task(p))
++		return;
++
++	taskc = get_task_ctx(p);
+ 
+ 	if (taskc && test_task_flag(taskc, LAVD_FLAG_FUTEX_BOOST)) {
+ 		if (!cpuc)
+-- 
+2.55.0
+

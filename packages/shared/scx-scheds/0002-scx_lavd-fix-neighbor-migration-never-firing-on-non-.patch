@@ -1,0 +1,80 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Changwoo Min <changwoo@igalia.com>
+Date: Wed, 9 Sep 2026 15:56:41 +0900
+Subject: [PATCH] scx_lavd: fix neighbor migration never firing on non-SMT
+ machines
+
+pick_idle_cpu() gates neighbor migration on !i_smt_empty, but on a machine
+without SMT it set i_smt_empty to true unconditionally. So a waking task
+could never be donated to a neighbor cpdom. Without SMT a core is a CPU, so
+alias the SMT mask to the idle cpumask and derive i_smt_empty from it. The
+fully-idle fast paths come alive too, harmlessly.
+
+Measured with memtier_benchmark against memcached on a 2x96-core EPYC 9R45
+without SMT, 24 LLC domains of 8 CPUs, 10 runs per point, --performance
+with 3-10 ms slices. Throughput is unchanged within the run-to-run spread
+(-1.8% to +0.7%). The tail improves where domains get crowded: pinned to
+two LLCs at 75% of saturation, p99 drops from 7.34 to 6.86 ms and p99.9
+from 13.45 to 10.97 ms; unpinned at 75%, p99 drops from 5.27 to 3.99 ms
+with p99.9 flat. At 100% the tails are unchanged.
+
+Signed-off-by: Changwoo Min <changwoo@igalia.com>
+---
+ scheds/rust/scx_lavd/src/bpf/idle.bpf.c | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/scheds/rust/scx_lavd/src/bpf/idle.bpf.c b/scheds/rust/scx_lavd/src/bpf/idle.bpf.c
+index 1ae10aa70..b2b367f42 100644
+--- a/scheds/rust/scx_lavd/src/bpf/idle.bpf.c
++++ b/scheds/rust/scx_lavd/src/bpf/idle.bpf.c
+@@ -865,7 +865,8 @@ s32 pick_idle_cpu(struct pick_ctx *ctx, bool extend_ovrflw, bool *is_idle)
+ 	/* NOTE: There is a sticky domain. */
+ 
+ 	/*
+-	 * If there is no idle CPU, stay on the sticky CPU or domain.
++	 * If there is no idle CPU even partially,
++	 * stay on the sticky CPU or domain.
+ 	 */
+ 	idle_cpumask = scx_bpf_get_idle_cpumask();
+ 	if (!init_idle_i_mask(ctx, idle_cpumask))
+@@ -881,13 +882,13 @@ s32 pick_idle_cpu(struct pick_ctx *ctx, bool extend_ovrflw, bool *is_idle)
+ 	/* NOTE: There is at least one idle CPU. */
+ 
+ 	/*
+-	 * If SMT is enabled and the sticky CPU is fully idle, stay on it.
++	 * If the sticky CPU is fully idle, stay on it.
+ 	 */
+-	if (is_smt_active) {
++	if (is_smt_active)
+ 		idle_smtmask = scx_bpf_get_idle_smtmask();
+-		i_smt_empty = bpf_cpumask_empty(idle_smtmask);
+-	} else
+-		i_smt_empty = true;
++	else
++		idle_smtmask = idle_cpumask;
++	i_smt_empty = bpf_cpumask_empty(idle_smtmask);
+ 
+ 	if (!i_smt_empty && sticky_cpu >= 0 &&
+ 	    bpf_cpumask_test_cpu(sticky_cpu, idle_smtmask) &&
+@@ -898,8 +899,7 @@ s32 pick_idle_cpu(struct pick_ctx *ctx, bool extend_ovrflw, bool *is_idle)
+ 	}
+ 
+ 	/*
+-	 * If SMT is enabled and there is a fully idle CPU
+-	 * in the sticky domain, stay on it.
++	 * If there is a fully idle CPU in the sticky domain, stay on it.
+ 	 */
+ 	if (!i_smt_empty) {
+ 		if (!init_idle_ato_masks(ctx, idle_smtmask))
+@@ -1047,7 +1047,7 @@ unlock_out:
+ 	/*
+ 	 * Clean up.
+ 	 */
+-	if (idle_smtmask)
++	if (is_smt_active && idle_smtmask)
+ 		scx_bpf_put_idle_cpumask(idle_smtmask);
+ 	if (idle_cpumask)
+ 		scx_bpf_put_idle_cpumask(idle_cpumask);
+-- 
+2.55.0
+

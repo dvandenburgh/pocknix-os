@@ -1,0 +1,60 @@
+# scx-scheds - sched_ext schedulers; scx_lavd is the default CPU scheduler (pocknix-lavd.service).
+# Shadows the base's copy by repo order, so a newer base scx never reaches devices while this
+# package is published: retire it once an upstream release carries the series.
+pkgname=scx-scheds
+pkgver=1.1.3
+pkgrel=1
+_commit=c8728c6b6a3fde451f0f10b95f99aad7a32a750a
+_rustver=1.99.0
+pkgdesc='sched_ext schedulers and tools'
+arch=('aarch64')
+url='https://github.com/sched-ext/scx'
+license=('GPL-2.0-only')
+depends=('bash' 'bpf' 'libgcc' 'glibc' 'jq' 'libseccomp' 'libbpf' 'libelf' 'protobuf' 'zlib')
+makedepends=('clang' 'git' 'llvm' 'llvm-libs' 'python')
+options=('!lto' '!debug')
+source=("scx::git+https://github.com/sched-ext/scx.git#commit=${_commit}"
+        "https://static.rust-lang.org/dist/rust-${_rustver}-aarch64-unknown-linux-gnu.tar.xz"
+        '0001-scx_lavd-validate-cached-CPU-pick-against-cpus_ptr-o.patch'
+        '0002-scx_lavd-fix-neighbor-migration-never-firing-on-non-.patch'
+        '0003-scx_lavd-Fix-the-autopilot-configuration-binding.patch'
+        '0004-scx_lavd-scale-the-compete-window-by-online-CPUs-not.patch'
+        '0005-scx_lavd-stop-the-bogus-no-task-data-errors-from-the.patch')
+sha256sums=('SKIP'
+            '5a30ce742be0835d9b23fc862db5cbbbc71464e1c9b1fca22917e10e4ba32a92'
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+_toolchain() {
+  export PATH="${srcdir}/rust/bin:${PATH}"
+  # Crate downloads cached beside the other sources so rebuilds stay offline.
+  export CARGO_HOME="${SRCDEST:-${srcdir}}/cargo-home"
+}
+
+prepare() {
+  "${srcdir}/rust-${_rustver}-aarch64-unknown-linux-gnu/install.sh" \
+    --prefix="${srcdir}/rust" --disable-ldconfig \
+    --components=rustc,cargo,rust-std-aarch64-unknown-linux-gnu >/dev/null
+  _toolchain
+  cd scx
+  # Patch numbers are never reused; dropped ones are listed in PATCHES.md.
+  local p
+  for p in "${srcdir}"/00[0-9][0-9]-*.patch; do
+    patch -p1 < "${p}"
+  done
+  cargo fetch --locked --target aarch64-unknown-linux-gnu
+}
+
+build() {
+  _toolchain
+  cd scx
+  # Same member set as the base's package, so this upgrade drops none of its binaries.
+  cargo build --release --frozen --workspace \
+    --exclude scx_rlfifo --exclude scx_mitosis --exclude scx_characterize \
+    --exclude xtask --exclude vmlinux_docify --exclude scx_arena_selftests
+}
+
+package() {
+  cd scx
+  find target/release -maxdepth 1 -type f -executable ! -name '*.so' \
+    -exec install -Dm755 -t "${pkgdir}/usr/bin/" {} +
+}
