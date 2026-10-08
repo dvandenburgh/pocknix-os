@@ -19,7 +19,7 @@ install='pocknix-branding.install'
 # librsvg: the watermark and particle frames are drawn from SVG at build time, so no rendered
 # PNG is committed.
 makedepends=('plymouth' 'librsvg')
-source=('watermark.svg' 'logo.svg' 'throbber.svg' 'still.svg' 'electrons.awk'
+source=('watermark.svg' 'logo.svg' 'throbber.svg' 'still.svg' 'particles.awk'
         'Splash.qml' 'splash-metadata.json' 'wordmark.png'
         'wallpaper-1920x1080.png' 'wallpaper-metadata.json'
         'pocknix-branding-init' 'pocknix-branding-init.service')
@@ -55,15 +55,12 @@ package() {
   # logo + wordmark replace the Arch watermark (sized in logical px, see watermark.svg), and the
   # orbiting particles replace the spinner's throbber frames
   install -Dm644 "${srcdir}/render/watermark.png" "${theme}/watermark.png"
+  install -Dm644 "${srcdir}/render/watermark.png" "${theme}/watermark.png"
   install -Dm644 "${srcdir}/render/watermark-still.png" "${theme}/watermark-still.png"
   rm -f "${theme}"/throbber-*.png
   install -m644 "${srcdir}"/render/throbber-*.png "${theme}/"
 
-  # Name/Description/ImageDir must point at OUR dir. Black field and white mark follow the
-  # SteamOS boot screen. Watermark (256 high) and throbber (208) share .40625 = 13/32: exact in
-  # binary, so both resolve to the same logo box on any screen. Messages move to the corner,
-  # off the wordmark. The logo sits above centre with the spinner below it; pocknix-steam-splash
-  # reads the field and alignment back, so game mode matches.
+  # Name/Description/ImageDir point at OUR dir; black field and white mark follow SteamOS's boot screen. Watermark (256 high) and throbber (208) share .40625 = 13/32: exact in binary, so both resolve to the same logo box on any screen. Messages move to the corner, off the wordmark; pocknix-steam-splash reads the field back and aligns to the same box for game mode.
   sed -i -e '/^Name\[[^]]*\]=/d' \
          -e 's|^Name=.*|Name=Pocknix|' \
          -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo, its protons and electrons orbiting while it boots.|' \

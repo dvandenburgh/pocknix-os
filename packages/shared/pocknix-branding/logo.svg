@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Pocknix handheld mark: a handheld in an atom, on a transparent ground so it sits on any field.
-     White on black like SteamOS's boot screen. The electrons move, so electrons.awk draws them
-     (in Steam Deck blue and the OLED accent); the orbits and body mask here must match it.
-     Thin outline and a dimmed white on purpose: it fronts the boot, so it stays quiet.
-     Colours are SteamOS's boot palette: a white mark, Steam Deck blue (#1a9fff) and the OLED
-     model's accent (#ec5129), so the boot reads as a SteamOS device. -->
+     White on black like SteamOS's boot screen. Its protons and electrons move, so particles.awk draws them (Steam Deck blue and the OLED accent); the orbits and body mask here must match it. Thin outline and a dimmed white on purpose: it fronts the boot, so it stays quiet. Colours are SteamOS's boot palette: a white mark, Steam Deck blue (#1a9fff) and the OLED model's accent (#ec5129), so the boot reads as a SteamOS device.
 <svg xmlns="http://www.w3.org/2000/svg" width="776" height="725" viewBox="124 146 776 725">
   <style>
     .hand  { fill: none; stroke: #ffffff; }
@@ -12,7 +8,6 @@
     .orbit { fill: none; stroke: #ffffff; stroke-width: 7; }
     .warm  { fill: #ec5129; }
     .cool  { fill: #1a9fff; }
-
   </style>
   <defs>
     <!-- the orbits pass behind the handheld, not through it -->
@@ -47,5 +42,4 @@
   <circle class="cool" cx="291.6" cy="222.9" r="19.2"/>
   <circle class="cool" cx="873.3" cy="558.7" r="19.2"/>
   <circle class="cool" cx="357.2" cy="851.3" r="19.2"/>
-
 </svg>
