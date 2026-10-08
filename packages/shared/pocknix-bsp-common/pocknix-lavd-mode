@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # pocknix-lavd-mode — get/set/toggle the scx_lavd power mode, persisted in
 # /var/lib/pocknix/lavd-mode. Switching mid-game is safe: sched_ext swaps schedulers live and
 # tasks fall back to EEVDF for the moment scx_lavd is down. Setting a mode needs root.
@@ -6,26 +6,33 @@ MODE_FILE=/var/lib/pocknix/lavd-mode
 GAME_MODE_FILE=/run/pocknix/game-mode
 DEFAULT=autopilot
 
-current() {
-  m="$(cat "${MODE_FILE}" 2>/dev/null)"
+# read_mode and effective run every tick of `run`, so they set m with builtins, never forking.
+read_mode() {  # -> m
+  m=""
+  IFS= read -r m 2>/dev/null < "${MODE_FILE}"
   # sanitize: an unknown word here would exec `scx_lavd --<garbage>` and crash-loop
   case "${m}" in autopilot|performance|balanced|powersave) ;; *) m="${DEFAULT}" ;; esac
+}
+
+current() {
+  read_mode
   printf '%s\n' "${m}"
 }
 
 # Per-game override record; format and lifetime documented in pocknix-fancontrol.
-effective() {
+effective() {  # -> m
+  local pid _ lavd
   if read -r pid _ lavd 2>/dev/null < "${GAME_MODE_FILE}"; then
     case "${lavd}" in
       autopilot|performance|balanced|powersave)
         if [ -n "${pid}" ] && [ -d "/proc/${pid}" ]; then
-          printf '%s\n' "${lavd}"
+          m="${lavd}"
           return
         fi
         ;;
     esac
   fi
-  current
+  read_mode
 }
 
 case "${1:-}" in
@@ -35,18 +42,23 @@ case "${1:-}" in
   run)
     child=""
     trap 'kill "${child}" 2>/dev/null; exit 0' INT TERM
+    # Timed read on a pipe held open at both ends: the 3 s tick without forking sleep. If it
+    # cannot be opened, /dev/null ends every read at once and sleep does the waiting.
+    { exec {TICK}<> <(:); } 2>/dev/null || exec {TICK}</dev/null
+    tick() { read -r -t "$1" -u "${TICK}" && return; [ $? -gt 128 ] || sleep "$1"; }
     running=""
     while :; do
-      want="$(effective)"
+      effective
+      want="${m}"
       if [ "${want}" != "${running}" ] || ! kill -0 "${child}" 2>/dev/null; then
         [ -n "${child}" ] && { kill "${child}" 2>/dev/null; wait "${child}" 2>/dev/null; }
         # Values from Valve's Steam Frame: 0.5 ms slices while a pinned task waits (every game
         # is pinned); deadline order even on lightly loaded CPUs instead of FIFO.
-        /usr/bin/scx_lavd "--${want}" --pinned-slice-us 500 --lb-local-dsq-util-pct 0 &
+        /usr/bin/scx_lavd "--${want}" --pinned-slice-us 500 --lb-local-dsq-util-pct 0 {TICK}<&- &
         child=$!
         running="${want}"
       fi
-      sleep 3
+      tick 3
     done
     ;;
   toggle|autopilot|performance|balanced|powersave)
