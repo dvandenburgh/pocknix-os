@@ -7,6 +7,8 @@ User guides for pocknix-os. New here? Start with the [project README](../README.
 - [emulation-setup.md](emulation-setup.md) - where to put ROMs, BIOS, and firmware, how to launch
   games, and how to tweak emulator settings
 - [waydroid.md](waydroid.md) - running Android apps: setup, installing apps, and app shortcuts
+- [desktop-controls.md](desktop-controls.md) - using the controller in desktop mode: moving
+  between icons, the pointer, and typing on the on-screen keyboard
 - [install-to-internal.md](install-to-internal.md) - moving pocknix from the SD card onto the
   device's internal storage, the bootloader menu that picks what boots, uninstalling, and
   restoring the factory bootloader
