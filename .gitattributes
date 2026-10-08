@@ -1,5 +1,8 @@
-# A Windows checkout turns scripts CRLF, and systemd fails a "/bin/sh\r" shebang with
-# 203/EXEC. These paths hold scripts units exec directly, whatever their extension.
-*.sh        text eol=lf
-overlay/**  text eol=lf
-packages/shared/pocknix-bsp-common/* text eol=lf
+# LF in the repo and in every checkout, Windows included. A CR after a shebang fails systemd units
+# with 203/EXEC and scripts with "bad interpreter", and bash -n and makepkg reject a CRLF PKGBUILD;
+# Windows editors keep whatever line endings they read.
+* text=auto eol=lf
+
+# Patches keep their exact bytes: a patch to a CRLF file carries CRLF lines it must not lose.
+*.patch -text
+*.patch.disabled -text
