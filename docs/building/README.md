@@ -52,6 +52,7 @@ The device family defaults to `sm8550` (Retroid Pocket 6, AYN Odin 2 family); ad
 
 ```bash
 git clone https://github.com/shuuri-labs/pocknix-os && cd pocknix-os
+make host-setup                              # host packages + qemu's binfmt C flag
 make check                                   # read the host lines: fix anything MISSING
 
 # 1. firmware: fetches the pinned ROCKNIX parts (~10 MB) and the SM8550 firmware (~120 MB)

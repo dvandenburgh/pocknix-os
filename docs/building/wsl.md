@@ -66,16 +66,14 @@ you prefer to keep your main clone on the Windows side, see
 
 ## 4. Host packages and the qemu flag
 
-Install the **Ubuntu** packages from [linux-host.md](linux-host.md#1-host-packages), then:
-
 ```bash
-make check
+make host-setup
 ```
 
-On Ubuntu the `qemu aarch64 binfmt` line will say **`POF lacks C`**. Fix it as described in
-[The qemu binfmt C flag](linux-host.md#3-the-qemu-binfmt-c-flag-x86_64-hosts) - it is the same
-three commands on WSL, and the fix survives `wsl --shutdown` and Windows reboots. Run `make check`
-again and confirm every host line says `ok`, including `btrfs (make sd-image)`.
+It installs the Ubuntu packages from [linux-host.md](linux-host.md#1-host-packages) and gives the
+qemu registration the `C` flag Ubuntu leaves out ([why](linux-host.md#3-the-qemu-binfmt-c-flag-x86_64-hosts));
+the fix survives `wsl --shutdown` and Windows reboots. It ends with `make check`: confirm every host
+line says `ok`, including `btrfs (make sd-image)`.
 
 Current WSL kernels include btrfs and loop devices. If `make check` reports btrfs `MISSING`, run
 `wsl --update` in PowerShell, then `wsl --shutdown`, and check again.
