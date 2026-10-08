@@ -102,12 +102,10 @@ qemu-user - see [docs/building/](docs/building/README.md)):
 sudo make packages PKG="pocknix-decky"    # -> build/localrepo/<pkg>-*.pkg.tar.zst
 ```
 
-**A full image** (same Linux host with root; the kernel build is 1-2 hours):
+**A full image** (same Linux host with root; the kernel build is 1-2 hours the first time):
 
 ```bash
-sudo make kernel
-sudo make build
-sudo make sd-image      # -> build/image/<soc>/
+make image              # every step, asking sudo once -> build/image/<soc>/
 ```
 
 Packages compress as `.pkg.tar.zst` (seeded and older ones as `.pkg.tar.xz`), so glob

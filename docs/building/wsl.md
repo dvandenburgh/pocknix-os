@@ -83,17 +83,13 @@ Current WSL kernels include btrfs and loop devices. If `make check` reports btrf
 Exactly as on any Linux host - see the [Quick start](README.md#quick-start):
 
 ```bash
-make sync                                    # firmware -> vendor/
-sudo make seed
-sudo make kernel
-make pending
-sudo make build
-sudo make sd-image
+make image                                   # -> build/image/sm8550/pocknix-sm8550-sd.img
 ```
 
-A `wsl --shutdown` or a Windows Update reboot stops a running build. Re-run the same target:
-`make build` keeps every package it already finished, and `make kernel` starts its compile over
-(with ccache installed, the objects it already built come straight from the cache).
+A `wsl --shutdown` or a Windows Update reboot stops a running build. Run `make image` again: the
+firmware is not fetched again, `make build` keeps every package it already finished, and `make kernel` starts
+its compile over (with ccache installed, the objects it already built come straight from the
+cache).
 
 ## 6. Flash the image from Windows
 
