@@ -1,0 +1,3 @@
+# SteamOS's terminal profile. Konsole ships no konsolerc of its own, so this is its default.
+[Desktop Entry]
+DefaultProfile=Vapor.profile
