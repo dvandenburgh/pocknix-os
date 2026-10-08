@@ -120,6 +120,8 @@ A package whose build needs packages pocknix builds itself (for example `pocknix
 ## Space and time
 
 Plan on roughly **80 GB free** for a full build (build chroot, rootfs, kernel tree with debug info,
-caches, and the image). Rough times on a recent 8-core x86_64 PC: kernel 20-40 minutes,
-`make seed` depends on your connection (several GB), `make build` one to three hours under qemu,
-`make sd-image` 10-20 minutes. An aarch64 host is faster for the package and rootfs steps.
+caches, and the image). Rough times on a recent 8-core x86_64 PC: kernel 20-40 minutes the first
+time, `make seed` depends on your connection (several GB), `make build` one to three hours under
+qemu, `make sd-image` 10-20 minutes. An aarch64 host is faster for the package and rootfs steps.
+`make kernel` does nothing when `kernel/<soc>/` has not changed since its last build, and with
+ccache installed a small kernel change rebuilds in minutes.

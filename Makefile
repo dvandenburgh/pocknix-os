@@ -25,7 +25,7 @@ bootstrap: ## Download + verify + extract the ALARM base rootfs (root, Linux)
 build: ## Image build: bootstrap -> packages -> assemble; needs 'make kernel' first (root, Linux); POCKNIX_EMULATION=1 bakes in the emulation layer
 	@$(SCRIPTS)/build-image.sh
 
-kernel: ## Build only the in-project kernel (linux-pocknix-<soc>)
+kernel: ## Build only the in-project kernel (linux-pocknix-<soc>); does nothing if its inputs are unchanged
 	@$(SCRIPTS)/build-kernel.sh
 
 packages: ## Build local pocknix-* packages -> build/localrepo (root); skips up-to-date ones. PKG="a b" forces a subset
@@ -82,7 +82,7 @@ du: ## Show build/ disk usage breakdown (find the space hogs)
 
 trim: ## Reclaim space: drop the regenerable kernel SOURCE trees (keeps KERNEL+modules+rootfs+image)
 	@sudo rm -rf build/kernel/*/linux-* build/kernel/*/mkbootimg-src
-	@echo "trimmed kernel source tree (regenerated on next 'make kernel'); kept out/, rootfs, image, cache"
+	@echo "trimmed kernel source tree (re-extracted when 'make kernel' next has something to build); kept out/, rootfs, image, cache"
 
 # rm -rf follows bind mounts, and an interrupted build can leave its chroots' mounts (the host's
 # /dev among them) in place, so a clean then deletes the host's device nodes. Refuse instead.

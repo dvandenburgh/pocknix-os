@@ -9,7 +9,7 @@
 #     + patch stack in numeric subdir order: kernel/${SOC}/patches/*/
 #     + the SoC tree's device trees (kernel/${SOC}/dts) with ensured Makefile entries
 #     + the SoC config (kernel/${SOC}/config/linux.aarch64.conf)
-#   -> make Image dtbs modules
+#   -> make Image modules + the shipped boards' dtbs
 #   -> boot image = gzip(Image) ++ appended DTBs, dummy ramdisk, mkbootimg (header v0)
 #
 # We boot a plain ext4 root with NO initramfs (UFS/SCSI/ext4 are built-in), so the
@@ -40,7 +40,27 @@ else
   have "${CROSS}gcc" || die "cross-building on $(uname -m): need ${CROSS}gcc (or set CROSS_COMPILE)"
   log "cross-compiling with ${CROSS}"
 fi
-kmake() { make -C "${KSRC}" ARCH=arm64 ${CROSS:+CROSS_COMPILE=${CROSS}} "$@"; }
+KMAKE_ARGS=(ARCH=arm64)
+[ -z "${CROSS}" ] || KMAKE_ARGS+=("CROSS_COMPILE=${CROSS}")
+# The source is re-extracted for every build, so ccache is what keeps unchanged objects. Its cache
+# lives in build/cache for sudo and user runs alike; 10G holds both SoCs' debug-info objects.
+if have ccache; then
+  [ -n "${CCACHE_DIR:-}" ] || export CCACHE_DIR="${CACHE_DIR}/ccache" CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-10G}"
+  KMAKE_ARGS+=("CC=ccache ${CROSS}gcc")
+  log "compiling through ccache (${CCACHE_DIR})"
+fi
+kmake() { make -C "${KSRC}" "${KMAKE_ARGS[@]}" "$@"; }
+
+# Everything the boot image is built from: kernel/<soc>/, this script, the profile values it bakes
+# in and the compiler. Unchanged inputs and an intact out/ leave nothing for a build to do.
+inputs_hash() {
+  {
+    printf '%s\n' "${KERNEL_VERSION}" "${KERNEL_SOURCE_SHA256}" "${KERNEL_CMDLINE}" \
+      "${DEVICE_HOSTNAME}" "${BOOTLOADER}" "${MKBOOTIMG_COMMIT}" "$("${CROSS}gcc" --version | head -n 1)"
+    cd "${POCKNIX_ROOT}" && find "kernel/${SOC}" scripts/build-kernel.sh -type f -print0 \
+      | sort -z | xargs -0 sha256sum
+  } | sha256sum | cut -d' ' -f1
+}
 
 fetch_source() {
   mkdir -p "${CACHE_DIR}" "${KBUILD}"
@@ -302,8 +322,14 @@ configure() {
 }
 
 build_kernel() {
-  log "building Image + dtbs + modules (-j${JOBS}) — this takes a while"
-  kmake -j"${JOBS}" Image dtbs modules
+  # Only the boards kernel/<soc>/dts ships: `make dtbs` would also build ~400 that stage_dtbs drops.
+  local dts dtbs=()
+  for dts in "${KERNEL_DIR}"/dts/*/*.dts; do
+    [ -f "${dts}" ] || continue
+    dtbs+=("$(basename "$(dirname "${dts}")")/$(basename "${dts}" .dts).dtb")
+  done
+  log "building Image + modules + ${#dtbs[@]} dtbs (-j${JOBS}) — this takes a while"
+  kmake -j"${JOBS}" Image modules "${dtbs[@]}"
 }
 
 # `make dtbs` builds ~400 upstream boards; shipping them all adds ~43 MB to the
@@ -377,6 +403,12 @@ assemble_bootimg() {
 }
 
 main() {
+  local inputs; inputs="$(inputs_hash)"
+  if [ "$#" -eq 0 ] && [ "${POCKNIX_FORCE_REBUILD:-0}" != 1 ] && [ -f "${KBUILD}/out/Image" ] \
+     && [ -f "${IMAGE_DIR}/KERNEL" ] && [ "$(cat "${KBUILD}/out/inputs" 2>/dev/null)" = "${inputs}" ]; then
+    ok "${KERNEL_PKG}: nothing changed since the last build (POCKNIX_FORCE_REBUILD=1 rebuilds anyway)"
+    return 0
+  fi
   fetch_source
   apply_patches
   install_dts
@@ -410,6 +442,7 @@ main() {
   # per-SoC dirs now, so the downstream marker checks are insurance against
   # manual copies/renames rather than a shared-dir necessity.
   printf '%s' "${SOC}" > "${KBUILD}/out/soc"
+  printf '%s\n' "${inputs}" > "${KBUILD}/out/inputs"
   ok "${KERNEL_PKG} build complete"
 }
 main "$@"
