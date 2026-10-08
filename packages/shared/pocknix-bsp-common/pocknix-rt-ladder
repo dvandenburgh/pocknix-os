@@ -1,0 +1,31 @@
+#!/bin/sh
+# Realtime goes to the kernel threads that move frames and audio, not to the compositor:
+# GPU submit and display commit RR 99, audio/video irq threads RR 80 (rtkit's PipeWire ceiling).
+# Matched by name: irq numbers change across boots. The soundwire irqs only appear once the
+# ADSP has booted, and a new irq thread sets itself FIFO 50 on its first run, overwriting an
+# earlier chrt: so every pass re-applies, for the whole window, with no early exit.
+KTHREADS='^(gpu-worker|crtc_event:|card0-crtc|atomic-worker-)'
+IRQS='^irq/[0-9]+-(soundwire|swr|iris)'
+
+# Lowest-capacity CPUs keep irq work off the cores games are pinned to (0-2 on sm8550).
+littles() {
+  for c in /sys/devices/system/cpu/cpu[0-9]*; do
+    echo "${c##*cpu} $(cat "${c}/cpu_capacity" 2>/dev/null)"
+  done | sort -k2n | awk 'NR == 1 { min = $2 } $2 == min { l = l s $1; s = "," } END { print l }'
+}
+
+cpus="$(littles)"
+# One awk over /proc/*/stat per pass (field 40 = rt priority, 41 = policy, 2 = SCHED_RR), so
+# chrt only runs for threads that are not there yet. cat skips pids that exit mid-glob.
+for _ in $(seq 90); do
+  cat /proc/[0-9]*/stat 2>/dev/null | awk -v k="${KTHREADS}" -v i="${IRQS}" '
+    { c = substr($2, 2, length($2) - 2) }
+    c ~ k && !($41 == 2 && $40 == 99) { print $1, 99 }
+    c ~ i && !($41 == 2 && $40 == 80) { split(c, a, "[/-]"); print $1, 80, a[2] }' |
+  while read -r pid prio irq; do
+    chrt -r -p "${prio}" "${pid}" 2>/dev/null
+    [ -n "${irq}" ] && [ -n "${cpus}" ] && echo "${cpus}" > "/proc/irq/${irq}/smp_affinity_list" 2>/dev/null
+  done
+  sleep 1
+done
+exit 0

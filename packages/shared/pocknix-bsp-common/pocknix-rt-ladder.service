@@ -1,0 +1,10 @@
+[Unit]
+Description=Realtime priorities for GPU, display and audio kernel threads
+
+[Service]
+# exec, not oneshot: it keeps re-applying for 90 s after start and must not hold up boot.
+Type=exec
+ExecStart=/usr/lib/pocknix/pocknix-rt-ladder
+
+[Install]
+WantedBy=multi-user.target
