@@ -25,7 +25,6 @@ source=('watermark.svg' 'logo.svg' 'throbber.svg' 'still.svg' 'electrons.awk'
         'pocknix-branding-init' 'pocknix-branding-init.service')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
-
 _spinner=/usr/share/plymouth/themes/spinner
 
 build() {
@@ -44,7 +43,6 @@ build() {
     rsvg-convert "${w}/throbber.svg" -o "${w}/throbber-${n%.svg}.png"
   done
   rsvg-convert "${w}/still.svg" -o "${w}/watermark-still.png"
-
 }
 
 package() {
