@@ -62,7 +62,34 @@ fi
 dst="${VENDOR_DIR}/rocknix-${SOC}"
 log "  reference scripts + firmware overlay -> vendor/ (gitignored)"
 mkdir -p "${dst}/filesystem"
-rsync -a --delete "${ROCKNIX_DEVICE_DIR}/filesystem/" "${dst}/filesystem/"
+# ROCKNIX moved the SM8550 firmware out of its tree in 14ab5da8 (2026-08-03), into its
+# extra-firmware repo at a commit each checkout pins in package.mk. Without the in-tree copy, fetch
+# that commit's ${ROCKNIX_SOC}/ (git checks it by id); sm8250 has no overlay either way.
+fw="${FW_SRC_REL#"rocknix-${SOC}/filesystem/"}"
+if [ -d "${ROCKNIX_DEVICE_DIR}/filesystem/${fw}" ] || [ "${SOC}" = sm8250 ]; then
+  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/filesystem/" "${dst}/filesystem/"
+else
+  need_tool git
+  mk="${ROCKNIX_PROJECT_DIR}/packages/linux-firmware/extra-firmware/package.mk"
+  rev="$(sed -n 's/^PKG_VERSION="\([0-9a-f]\{40\}\)"$/\1/p' "${mk}" 2>/dev/null || true)"
+  site="$(sed -n 's/^PKG_SITE="\(.*\)"$/\1/p' "${mk}" 2>/dev/null || true)"
+  [ -n "${rev}" ] && [ -n "${site}" ] \
+    || die "no ${ROCKNIX_SOC} firmware in this ROCKNIX checkout, and no extra-firmware pin at ${mk}:
+  add projects/ROCKNIX/packages/linux-firmware/extra-firmware to its sparse checkout"
+  xfw="${VENDOR_DIR}/extra-firmware"
+  have="$(git -C "${xfw}" rev-parse -q --verify HEAD 2>/dev/null || true)"
+  if [ "${have}" != "${rev}" ] || [ ! -d "${xfw}/${ROCKNIX_SOC}" ]; then
+    log "  ${site} ${rev:0:12} (${ROCKNIX_SOC}/ only) -> vendor/extra-firmware"
+    [ -d "${xfw}/.git" ] || git init -q "${xfw}"
+    git -C "${xfw}" sparse-checkout set "${ROCKNIX_SOC}" \
+      && git -C "${xfw}" fetch -q --depth 1 --filter=blob:none "${site}" "${rev}" \
+      && git -C "${xfw}" -c advice.detachedHead=false checkout -q --force --detach FETCH_HEAD \
+      || die "could not fetch ${site} at ${rev}"
+  fi
+  rsync -a --delete --exclude="/${fw}" "${ROCKNIX_DEVICE_DIR}/filesystem/" "${dst}/filesystem/"
+  mkdir -p "${dst}/filesystem/${fw}"
+  rsync -a --delete "${xfw}/${ROCKNIX_SOC}/" "${dst}/filesystem/${fw}/"
+fi
 for p in \
     "emulators/standalone/steam" \
     "apps/gamescope" \
