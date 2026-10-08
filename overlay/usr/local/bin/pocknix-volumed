@@ -30,7 +30,7 @@
 #    rsinput-gamepad, not the rocker, so the virtual device never actually emits the rocker's
 #    volume events -> no double-counting.)
 #  - wpctl runs with a TIMEOUT so a stuck PipeWire call can never block key handling (the freeze).
-import sys, os, time, select, subprocess
+import sys, os, time, select, struct, subprocess
 try:
     from evdev import InputDevice, list_devices, ecodes
 except ImportError:
@@ -78,11 +78,26 @@ def has_volume_keys(dev):
     keys = dev.capabilities().get(ecodes.EV_KEY, [])
     return ecodes.KEY_VOLUMEUP in keys or ecodes.KEY_VOLUMEDOWN in keys
 
+LONG_BITS = struct.calcsize("L") * 8
+
+def may_have_volume_keys(path):
+    # Check sysfs first: opening a gamepad node tells KWin's game controller plugin that a game took
+    # the pad (it pauses until the close), and this rescans every RESCAN_SECS.
+    try:
+        with open("/sys/class/input/%s/device/capabilities/key" % os.path.basename(path)) as f:
+            words = f.read().split()
+    except OSError:
+        return True
+    bits = 0
+    for word in words:
+        bits = (bits << LONG_BITS) | int(word, 16)
+    return any(bits >> code & 1 for code in (ecodes.KEY_VOLUMEUP, ecodes.KEY_VOLUMEDOWN))
+
 def scan(known_paths):
     # Open any NEW device that reports the volume keys (keyed by path so we don't reopen held ones).
     found = {}
     for path in list_devices():
-        if path in known_paths:
+        if path in known_paths or not may_have_volume_keys(path):
             continue
         try:
             dev = InputDevice(path)
