@@ -2,7 +2,7 @@
 # Build with ./nodeps: makepkg -s would drag all of KDE/Qt into the chroot for a data package.
 pkgname=pocknix-desktop-kde
 pkgver=0.1.0
-pkgrel=2
+pkgrel=3
 pkgdesc="pocknix KDE defaults shared by the Plasma desktop flavours"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -14,11 +14,13 @@ depends=('bash'
          'kscreen'           # kscreen-doctor drives the rotated-DSI transform
          'plasma-nm'
          'bluedevil')
-# These files lived in pocknix-desktop up to -26; a lone install against that would collide.
-conflicts=('pocknix-desktop<0.1.0-27')
+# These files lived in pocknix-desktop up to -26, and kwinrc in pocknix-desktop-plasma -1; a lone
+# install against either would collide.
+conflicts=('pocknix-desktop<0.1.0-27' 'pocknix-desktop-plasma<0.1.0-2')
 source=('pocknix-desktop-rotate' 'pocknix-desktop-rotate.desktop'
-        'ksplashrc' 'powerdevilrc' 'kscreenlockerrc' '50-kde-power-key.sh')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        'ksplashrc' 'powerdevilrc' 'kscreenlockerrc' '50-kde-power-key.sh'
+        'kwinrc' 'plasmakeyboardrc')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-desktop-rotate"   "${pkgdir}/usr/bin/pocknix-desktop-rotate"
@@ -27,6 +29,8 @@ package() {
   install -Dm644 "${srcdir}/ksplashrc"                "${pkgdir}/etc/xdg/ksplashrc"
   install -Dm644 "${srcdir}/powerdevilrc"             "${pkgdir}/etc/xdg/powerdevilrc"
   install -Dm644 "${srcdir}/kscreenlockerrc"          "${pkgdir}/etc/xdg/kscreenlockerrc"
+  install -Dm644 "${srcdir}/kwinrc"                   "${pkgdir}/etc/xdg/kwinrc"
+  install -Dm644 "${srcdir}/plasmakeyboardrc"         "${pkgdir}/etc/xdg/plasmakeyboardrc"
   install -Dm755 "${srcdir}/50-kde-power-key.sh" \
     "${pkgdir}/usr/lib/pocknix/desktop.d/50-kde-power-key.sh"
 }
