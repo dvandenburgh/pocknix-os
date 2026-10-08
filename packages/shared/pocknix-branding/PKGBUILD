@@ -16,7 +16,7 @@ install='pocknix-branding.install'
 # them drift. Building against the installed theme keeps the spinner in step with whatever
 # plymouth version the image ships, while the OUTPUT still lands in our own directory - which
 # is what makes it survive a plymouth upgrade (the reason a custom theme dir was wanted).
-# librsvg: the watermark and electron frames are drawn from SVG at build time, so no rendered
+# librsvg: the watermark and particle frames are drawn from SVG at build time, so no rendered
 # PNG is committed.
 makedepends=('plymouth' 'librsvg')
 source=('watermark.svg' 'logo.svg' 'throbber.svg' 'still.svg' 'electrons.awk'
@@ -36,10 +36,10 @@ build() {
   cp -L "${srcdir}"/{watermark.svg,logo.svg,throbber.svg,still.svg,wordmark.png} "${w}/"
   rsvg-convert "${w}/watermark.svg" -o "${w}/watermark.png"
   # two-step redraws its throbber at 30 fps over a fixed 2 s loop: 60 frames, one per redraw
-  awk -v frames=60 -v out="${w}" -f "${srcdir}/electrons.awk"
-  for f in "${w}"/electrons-*.svg; do
-    n="${f##*/electrons-}"
-    cp "${f}" "${w}/electrons.svg"
+  awk -v frames=60 -v out="${w}" -f "${srcdir}/particles.awk"
+  for f in "${w}"/particles-*.svg; do
+    n="${f##*/particles-}"
+    cp "${f}" "${w}/particles.svg"
     rsvg-convert "${w}/throbber.svg" -o "${w}/throbber-${n%.svg}.png"
   done
   rsvg-convert "${w}/still.svg" -o "${w}/watermark-still.png"
@@ -53,7 +53,7 @@ package() {
   cp -a "${_spinner}/." "${theme}/"
   mv "${theme}/spinner.plymouth" "${theme}/pocknix.plymouth"
   # logo + wordmark replace the Arch watermark (sized in logical px, see watermark.svg), and the
-  # orbiting electrons replace the spinner's throbber frames
+  # orbiting particles replace the spinner's throbber frames
   install -Dm644 "${srcdir}/render/watermark.png" "${theme}/watermark.png"
   install -Dm644 "${srcdir}/render/watermark-still.png" "${theme}/watermark-still.png"
   rm -f "${theme}"/throbber-*.png
@@ -66,7 +66,7 @@ package() {
   # reads the field and alignment back, so game mode matches.
   sed -i -e '/^Name\[[^]]*\]=/d' \
          -e 's|^Name=.*|Name=Pocknix|' \
-         -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo, its electrons orbiting while it boots.|' \
+         -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo, its protons and electrons orbiting while it boots.|' \
          -e "s|^ImageDir=.*|ImageDir=/usr/share/plymouth/themes/pocknix|" \
          -e 's|^BackgroundStartColor=.*|BackgroundStartColor=0x000000|' \
          -e 's|^BackgroundEndColor=.*|BackgroundEndColor=0x000000|' \
