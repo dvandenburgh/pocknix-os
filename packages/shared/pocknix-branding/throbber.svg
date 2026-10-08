@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- One throbber frame: the electrons only, in the same box and mapping as the logo in
-     watermark.svg. The PKGBUILD renders it once per electrons-NNNN.svg. -->
+<!-- One throbber frame: the moving particles only, in the same box and mapping as the logo in
+     watermark.svg. The PKGBUILD renders it once per particles-NNNN.svg. -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="220" height="208" viewBox="0 0 220 208">
-  <image x="0" y="1.25" width="220" height="205.5" xlink:href="electrons.svg"/>
+  <image x="0" y="1.25" width="220" height="205.5" xlink:href="particles.svg"/>
 </svg>
