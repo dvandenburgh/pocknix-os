@@ -99,7 +99,7 @@ npx tsc --noEmit      # must be clean
 qemu-user - see [docs/building/](docs/building/README.md)):
 
 ```bash
-sudo make packages PKG="pocknix-decky"    # -> build/localrepo/<pkg>-*.pkg.tar.xz
+sudo make packages PKG="pocknix-decky"    # -> build/localrepo/<pkg>-*.pkg.tar.zst
 ```
 
 **A full image** (same Linux host with root; the kernel build is 1-2 hours):
@@ -110,8 +110,9 @@ sudo make build
 sudo make sd-image      # -> build/image/<soc>/
 ```
 
-Packages compress as `.pkg.tar.xz`, so glob `*.pkg.tar.*`. Never sign or publish anything -
-releases go through the maintainer's staged publish flow.
+Packages compress as `.pkg.tar.zst` (seeded and older ones as `.pkg.tar.xz`), so glob
+`*.pkg.tar.*`. Never sign or publish anything - releases go through the maintainer's staged
+publish flow.
 
 ## Testing on a device
 
@@ -223,7 +224,7 @@ Concretely:
    0% lost the colour permanently.
 3. Reboot. Expected: the rings come back at the same colour and brightness.
 
-Rollback: `pacman -U /var/cache/pacman/pkg/pocknix-decky-<old>.pkg.tar.xz`
+Rollback: `pacman -U /var/cache/pacman/pkg/pocknix-decky-<old>.pkg.tar.*`
 ```
 
 "It works on my device" without these steps means the PR sits until I can work out how to
