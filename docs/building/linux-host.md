@@ -10,7 +10,7 @@ builds on this page.
 
 ```bash
 sudo apt install build-essential bc flex bison python3 git rsync patch dwarves libssl-dev libelf-dev \
-  cpio zstd xz-utils curl libarchive-tools parted gdisk dosfstools btrfs-progs \
+  cpio zstd xz-utils curl libarchive-tools parted gdisk dosfstools btrfs-progs ccache \
   gcc-aarch64-linux-gnu qemu-user-static
 ```
 
@@ -18,7 +18,7 @@ sudo apt install build-essential bc flex bison python3 git rsync patch dwarves l
 
 ```bash
 sudo dnf install make gcc bc flex bison python3 git rsync patch dwarves openssl-devel elfutils-libelf-devel \
-  cpio zstd xz curl bsdtar parted gdisk dosfstools btrfs-progs \
+  cpio zstd xz curl bsdtar parted gdisk dosfstools btrfs-progs ccache \
   gcc-aarch64-linux-gnu qemu-user-static-aarch64
 ```
 
@@ -26,10 +26,11 @@ sudo dnf install make gcc bc flex bison python3 git rsync patch dwarves openssl-
 
 ```bash
 sudo pacman -S --needed base-devel bc python git rsync pahole cpio zstd xz curl libarchive \
-  parted gptfdisk dosfstools btrfs-progs aarch64-linux-gnu-gcc qemu-user-static qemu-user-static-binfmt
+  parted gptfdisk dosfstools btrfs-progs ccache aarch64-linux-gnu-gcc qemu-user-static qemu-user-static-binfmt
 ```
 
-On an **aarch64** host, leave out the cross compiler and qemu: everything runs natively.
+On an **aarch64** host, leave out the cross compiler and qemu: everything runs natively. `ccache`
+is optional: with it, `make kernel` after a small kernel change recompiles only what changed.
 
 ## 2. Check the host
 

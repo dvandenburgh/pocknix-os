@@ -95,7 +95,7 @@ sudo make sd-image
 
 A `wsl --shutdown` or a Windows Update reboot stops a running build. Re-run the same target:
 `make build` keeps every package it already finished, and `make kernel` starts its compile over
-(the source download is cached).
+(with ccache installed, the objects it already built come straight from the cache).
 
 ## 6. Flash the image from Windows
 
