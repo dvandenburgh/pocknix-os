@@ -53,12 +53,18 @@ The device family defaults to `sm8550` (Retroid Pocket 6, AYN Odin 2 family); ad
 ```bash
 git clone https://github.com/shuuri-labs/pocknix-os && cd pocknix-os
 make host-setup                              # host packages + qemu's binfmt C flag
-make check                                   # read the host lines: fix anything MISSING
+make image                                   # -> build/image/sm8550/pocknix-sm8550-sd.img
+```
 
-# 1. firmware: fetches the pinned ROCKNIX parts (~10 MB) and the SM8550 firmware (~120 MB)
-make sync                                    # -> vendor/ (gitignored)
+Run `make image` as yourself: it asks `sudo` once, for the steps that need root. The firmware, the
+kernel and every package skip themselves when already current, so after an interruption (or a
+change) the same command redoes only what it must; the rootfs and the image are always rebuilt.
+These are the steps it runs, and each is a target of its own:
 
-# 2-5. kernel, packages, rootfs, image
+```bash
+make check                                   # host lines must say ok (make host-setup fixes most)
+make sync                                    # firmware: the pinned ROCKNIX parts (~10 MB) and the
+                                             #   SM8550 firmware (~120 MB) -> vendor/ (gitignored)
 sudo make seed                               # optional on aarch64, strongly recommended on x86_64
 sudo make kernel
 make pending                                 # what `make build` would still compile
@@ -90,7 +96,8 @@ publish. Compiling it under qemu takes hours; updating your checkout (`git pull`
 
 ### Useful build options
 
-Set these on the `make` command line, after `sudo` (for example `sudo SD_SSH=on make sd-image`):
+Set these on the `make` command line (for example `make image SD_SSH=on`, or
+`sudo SD_SSH=on make sd-image` for a single step):
 
 | Option | Effect |
 |---|---|

@@ -84,6 +84,12 @@ would add a second `C`.
 Follow the [Quick start](README.md#quick-start). In short:
 
 ```bash
+make image                                   # -> build/image/<soc>/pocknix-<soc>-sd.img
+```
+
+or step by step:
+
+```bash
 make sync                                    # firmware -> vendor/
 sudo make seed && sudo make kernel && make pending
 sudo make build && sudo make sd-image

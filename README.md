@@ -156,13 +156,11 @@ See the [Pocknix Control docs](docs/pocknix-control.md) for the full tour.
 pocknix-os builds a full image (kernel included) from this repo. The build needs a **Linux host with root** (it chroots): aarch64 natively (an Arch/Fedora VM on Apple Silicon or an ARM cloud box), or an x86_64 PC or WSL2 on Windows, which run the ARM steps under qemu-user. [docs/building/](docs/building/README.md) covers host setup for each. Quick start:
 
 ```bash
-make check          # preflight (runs anywhere, no root)
-sudo make kernel    # compile the kernel -> boot image
-sudo make build     # bootstrap + packages + assemble the rootfs
-sudo make sd-image  # flashable SD image -> build/image/<soc>/
+make host-setup     # host packages + qemu's binfmt flag (Debian/Ubuntu, Fedora, Arch)
+make image          # firmware, kernel, packages, rootfs -> flashable SD image in build/image/<soc>/
 ```
 
-`make help` lists every target. Kernel enablement is committed under `kernel/`; only stock Linux source and firmware are fetched at build time.
+`make image` runs the other targets in order and asks `sudo` once; `make help` lists every target. Kernel enablement is committed under `kernel/`; only stock Linux source and firmware are fetched at build time.
 
 ## Contributing
 

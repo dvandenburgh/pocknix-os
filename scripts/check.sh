@@ -42,7 +42,7 @@ if [ "$(uname -s)" = "Linux" ]; then
     v9fs|9p|drvfs|fuseblk|ntfs*|vfat|msdos|exfat) note "checkout filesystem" "${fs}: build from a Linux filesystem instead" ;;
     *) note "checkout filesystem" "${fs:-?} ok" ;;
   esac
-  grep -qw btrfs /proc/filesystems 2>/dev/null || modprobe -n btrfs 2>/dev/null \
+  grep -qw btrfs /proc/filesystems 2>/dev/null || PATH="${PATH}:/usr/sbin:/sbin" modprobe -n btrfs 2>/dev/null \
     && note "btrfs (make sd-image)" "ok" || note "btrfs (make sd-image)" "MISSING in this kernel"
   have ccache && note "ccache (make kernel)" "ok" \
     || note "ccache (make kernel)" "not installed (optional: kernel rebuilds recompile everything)"
