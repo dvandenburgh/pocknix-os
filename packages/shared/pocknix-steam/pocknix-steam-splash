@@ -1,6 +1,6 @@
 #!/bin/bash
 # pocknix-steam-splash <WxH> -- <steam command...>: gamescope's child for game mode. Maps the
-# wordmark until Big Picture is up, then execs Steam so gamescope's child pid is still Steam.
+# boot logo until Big Picture is up, then execs Steam so gamescope's child pid is still Steam.
 #
 # Under gamescope -e only windows with a Steam app id can take focus, and nothing is focused until
 # GAMESCOPECTRL_BASELAYER_APPID names one. So the window is tagged STEAM_GAME=769 (Steam's own id)
@@ -11,8 +11,6 @@ set -u
 TAG=pocknix-steam-splash
 THEME=/usr/share/plymouth/themes/pocknix
 WATERMARK="${THEME}/watermark.png"
-# A theme that animates its logo through the throbber ships it at rest in the same box.
-[ -r "${THEME}/watermark-still.png" ] && WATERMARK="${THEME}/watermark-still.png"
 WINDOW_NAME=pocknix-steam-splash
 STEAM_APPID=769
 
@@ -28,7 +26,10 @@ T0="${POCKNIX_STEAM_T0:-$(date +%s)}"
 # two-step draws the watermark DeviceScale-times its size, placed by truncated logical-pixel maths,
 # on its BackgroundStartColor; read all of it back so boot -> game mode stays one still screen.
 # Unset alignments take two-step's defaults; a missing DeviceScale falls back to 1 (never off-screen).
-ply_key() { sed -n "s/^$1=[[:space:]]*//p" "$2" 2>/dev/null | tail -n 1; }
+ply_key() {  # <key> <file>: plymouth allows spaces around the "=", so this does too
+  sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\(.*[^[:space:]]\)[[:space:]]*$/\1/p" "$2" 2>/dev/null \
+    | tail -n 1
+}
 num_or() { [[ "$1" =~ ^[0-9]*\.?[0-9]+$ ]] && printf '%s' "$1" || printf '%s' "$2"; }
 SCALE="$(ply_key DeviceScale /etc/plymouth/plymouthd.conf)"
 [[ "${SCALE}" =~ ^[1-9]$ ]] || SCALE=1

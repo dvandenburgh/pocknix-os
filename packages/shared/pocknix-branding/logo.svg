@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Pocknix handheld mark: a handheld in an atom, on a transparent ground so it sits on any field.
-     White on black like SteamOS's boot screen. The electrons move, so electrons.awk draws them
-     (in Steam Deck blue and the OLED accent); the orbits and body mask here must match it. -->
+     White on black like SteamOS's boot screen. Its protons and electrons move, so particles.awk
+     draws them (OLED accent and Steam Deck blue); the orbits and body mask here must match it. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="776" height="725" viewBox="124 146 776 725">
   <style>
     .hand  { fill: none; stroke: #ffffff; }
