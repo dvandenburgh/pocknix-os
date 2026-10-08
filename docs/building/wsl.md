@@ -52,7 +52,7 @@ The distro's virtual disk lives on `C:` by default and grows as the build fills 
 ## 3. Clone inside Linux, not on C:
 
 ```bash
-cd ~ && git clone https://github.com/shuuri-labs/pocknix-os && cd pocknix-os
+cd ~ && git clone https://github.com/dvandenburgh/pocknix-os && cd pocknix-os
 ```
 
 **Do not build from `/mnt/c/...`.** Windows drives are mounted over a network-style filesystem with

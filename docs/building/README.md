@@ -51,7 +51,7 @@ The device family defaults to `sm8550` (Retroid Pocket 6, AYN Odin 2 family); ad
 `DEVICE=sm8250` to the `make` commands for the Retroid Pocket 5 / Flip 2.
 
 ```bash
-git clone https://github.com/shuuri-labs/pocknix-os && cd pocknix-os
+git clone https://github.com/dvandenburgh/pocknix-os && cd pocknix-os
 make host-setup                              # host packages + qemu's binfmt C flag
 make image                                   # -> build/image/sm8550/pocknix-sm8550-sd.img
 ```
