@@ -16,7 +16,7 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-sync: ## Vendor the ROCKNIX kernel + device integration for the selected DEVICE's SoC
+sync: ## Fetch the device firmware into vendor/ from the pinned ROCKNIX (POCKNIX_SYNC_SCOPE=all also moves kernel/)
 	@$(SCRIPTS)/sync.sh
 
 bootstrap: ## Download + verify + extract the ALARM base rootfs (root, Linux)

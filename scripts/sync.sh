@@ -16,23 +16,54 @@
 #
 # Thorch auto-fetches ROCKNIX nightly at build (gitignored); we pin + commit a
 # nightly snapshot instead (reproducible, clone-standalone). We track nightly
-# (`next`), not stable. Set DISTRIBUTION_DIR to your ROCKNIX 'distribution'
-# checkout (expected on a `next`-based branch, e.g. thor-suspend-merge).
+# (`next`), not stable. vendor/ alone comes from the ROCKNIX_COMMIT pin, which
+# this script fetches; to move kernel/, set DISTRIBUTION_DIR to your own ROCKNIX
+# 'distribution' checkout (expected on a `next`-based branch, e.g. thor-suspend-merge).
 
 source "$(dirname "$0")/lib.sh"
 
-[ -d "${ROCKNIX_DEVICE_DIR}" ] || die "ROCKNIX device dir not found: ${ROCKNIX_DEVICE_DIR}
-  set DISTRIBUTION_DIR to your 'distribution' checkout, e.g.
-  export DISTRIBUTION_DIR=\$HOME/Documents/Coding/distribution"
+# The ROCKNIX package dirs vendor/ keeps for reference, under projects/ROCKNIX/packages/.
+REFS=(emulators/standalone/steam apps/gamescope compat/fex-emu hardware/quirks linux)
 
-SCOPE="${POCKNIX_SYNC_SCOPE:-all}"
-case "${SCOPE}" in all|vendor) ;; *) die "POCKNIX_SYNC_SCOPE='${SCOPE}': use all (default) or vendor" ;; esac
+# vendor/distribution is sync's own checkout: only the paths sync reads, for every SoC kernel/
+# carries, at ROCKNIX_COMMIT. A shallow blobless fetch keeps it to about 10 MB.
+if [ "${DISTRIBUTION_DIR}" = "${VENDOR_DIR}/distribution" ]; then
+  need_tool git
+  paths=(projects/ROCKNIX/packages/linux-firmware/extra-firmware)
+  for p in "${REFS[@]}"; do paths+=("projects/ROCKNIX/packages/${p}"); done
+  for k in "${POCKNIX_ROOT}"/kernel/*/kernel.conf; do
+    s="$(sed -n 's/^: "${ROCKNIX_SOC:=\(.*\)}"$/\1/p' "${k}")"
+    [ -z "${s}" ] || paths+=("projects/ROCKNIX/devices/${s}")
+  done
+  if [ "$(git -C "${DISTRIBUTION_DIR}" rev-parse -q --verify HEAD 2>/dev/null)" != "${ROCKNIX_COMMIT}" ] \
+     || [ ! -d "${ROCKNIX_DEVICE_DIR}" ]; then
+    log "ROCKNIX ${ROCKNIX_COMMIT:0:12} (only the paths sync reads) -> vendor/distribution"
+    [ -d "${DISTRIBUTION_DIR}/.git" ] || git init -q "${DISTRIBUTION_DIR}"
+    git -C "${DISTRIBUTION_DIR}" sparse-checkout set "${paths[@]}" \
+      && git -C "${DISTRIBUTION_DIR}" fetch -q --depth 1 --filter=blob:none "${ROCKNIX_URL}" "${ROCKNIX_COMMIT}" \
+      && git -C "${DISTRIBUTION_DIR}" -c advice.detachedHead=false checkout -q --force --detach FETCH_HEAD \
+      || die "could not fetch ${ROCKNIX_URL} at ${ROCKNIX_COMMIT}"
+  fi
+fi
+
+if [ ! -d "${ROCKNIX_DEVICE_DIR}" ]; then
+  [ "${DISTRIBUTION_DIR}" != "${VENDOR_DIR}/distribution" ] \
+    || die "ROCKNIX ${ROCKNIX_COMMIT:0:12} has no devices/${ROCKNIX_SOC}: pin a commit that does (ROCKNIX_COMMIT)"
+  die "ROCKNIX device dir not found: ${ROCKNIX_DEVICE_DIR}
+  ${DISTRIBUTION_DIR} is your own ROCKNIX checkout: add projects/ROCKNIX/devices/${ROCKNIX_SOC} to it,
+  or move it aside and make sync fetches the pinned commit into vendor/distribution itself"
+fi
+
+# Moving the committed kernel is the maintainer's step, so it has to be asked for: a stale
+# ../distribution left over from older instructions must not rewrite kernel/ on a plain make sync.
+SCOPE="${POCKNIX_SYNC_SCOPE:-vendor}"
+case "${SCOPE}" in all|vendor) ;; *) die "POCKNIX_SYNC_SCOPE='${SCOPE}': use vendor (default) or all" ;; esac
 
 log "syncing ROCKNIX ${ROCKNIX_SOC} from ${ROCKNIX_PROJECT_DIR}"
 
 # --- committed kernel enablement -> kernel/${SOC}/ --------------------------
-# POCKNIX_SYNC_SCOPE=vendor skips it: a build host only needs vendor/, and this would move the
-# committed pin to whatever the distribution/ checkout holds.
+# Only with POCKNIX_SYNC_SCOPE=all: a build host needs vendor/ alone, and this moves the committed
+# pin to whatever the distribution/ checkout holds.
 if [ "${SCOPE}" = all ]; then
   # The full patch stack ROCKNIX applies for this SoC, in order (PKG_PATCH_DIRS=
   # "mainline ${DEVICE} ... 7.0"). Stored as numbered subdirs so the build applies
@@ -55,7 +86,7 @@ if [ "${SCOPE}" = all ]; then
   rsync -a          "${ROCKNIX_DEVICE_DIR}/config/kernel-firmware.dat" "${KERNEL_DIR}/config/"
   rsync -a --delete "${ROCKNIX_DEVICE_DIR}/bootloader/"               "${KERNEL_DIR}/bootloader/"
 else
-  log "  kernel/${SOC}/ left as committed (POCKNIX_SYNC_SCOPE=vendor)"
+  log "  kernel/${SOC}/ left as committed (POCKNIX_SYNC_SCOPE=all moves it)"
 fi
 
 # --- gitignored build-time material -> vendor/ -----------------------------
@@ -90,12 +121,7 @@ else
   mkdir -p "${dst}/filesystem/${fw}"
   rsync -a --delete "${xfw}/${ROCKNIX_SOC}/" "${dst}/filesystem/${fw}/"
 fi
-for p in \
-    "emulators/standalone/steam" \
-    "apps/gamescope" \
-    "compat/fex-emu" \
-    "hardware/quirks" \
-    "linux"; do
+for p in "${REFS[@]}"; do
   src="${ROCKNIX_PROJECT_DIR}/packages/${p}"
   if [ ! -d "${src}" ]; then
     warn "  (missing) ${src}"
@@ -105,6 +131,10 @@ for p in \
   mkdir -p "${dst}/reference/${p}"
   rsync -a --delete "${src}/" "${dst}/reference/${p}/"
 done
+
+# Which ROCKNIX commit vendor/ came from, so make image can tell when the pin has moved.
+git -C "${DISTRIBUTION_DIR}" rev-parse -q --verify HEAD > "${dst}/.rocknix-commit" 2>/dev/null \
+  || rm -f "${dst}/.rocknix-commit"
 
 if [ "${SCOPE}" = all ]; then
   ok "sync complete:

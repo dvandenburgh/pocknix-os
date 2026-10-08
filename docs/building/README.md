@@ -33,8 +33,8 @@ and is still the fastest way to build everything from source.
 ## What a build does
 
 1. **Firmware** - `make sync` puts the device firmware (Wi-Fi, audio, battery) into `vendor/`
-   (gitignored, never redistributed), from ROCKNIX's `extra-firmware` repo at the commit your
-   ROCKNIX checkout pins.
+   (gitignored, never redistributed). It fetches the parts of ROCKNIX it needs at the commit
+   `config/pocknix.conf` pins, then ROCKNIX's `extra-firmware` repo at the commit that one pins.
 2. **Kernel** - `make kernel` builds the committed kernel (`kernel/<soc>/`) into a boot image.
 3. **Packages** - `make build` first builds every pocknix package that is not already in
    `build/localrepo/`; `make seed` fills that from the published repo so only real changes compile.
@@ -54,15 +54,8 @@ The device family defaults to `sm8550` (Retroid Pocket 6, AYN Odin 2 family); ad
 git clone https://github.com/shuuri-labs/pocknix-os && cd pocknix-os
 make check                                   # read the host lines: fix anything MISSING
 
-# 1. firmware: a sparse ROCKNIX checkout (only the parts pocknix uses); make sync then fetches
-#    the SM8550 folder of ROCKNIX's extra-firmware at the commit that checkout pins (~120 MB)
-git clone --depth 1 --branch next --filter=blob:none --sparse \
-  https://github.com/ROCKNIX/distribution ../distribution
-git -C ../distribution sparse-checkout set projects/ROCKNIX/devices/SM8550 projects/ROCKNIX/packages/linux \
-  projects/ROCKNIX/packages/emulators/standalone/steam projects/ROCKNIX/packages/apps/gamescope \
-  projects/ROCKNIX/packages/compat/fex-emu projects/ROCKNIX/packages/hardware/quirks \
-  projects/ROCKNIX/packages/linux-firmware/extra-firmware
-POCKNIX_SYNC_SCOPE=vendor make sync          # vendor/ only; leaves the committed kernel/ alone
+# 1. firmware: fetches the pinned ROCKNIX parts (~10 MB) and the SM8550 firmware (~120 MB)
+make sync                                    # -> vendor/ (gitignored)
 
 # 2-5. kernel, packages, rootfs, image
 sudo make seed                               # optional on aarch64, strongly recommended on x86_64
@@ -75,9 +68,13 @@ sudo make sd-image                           # -> build/image/sm8550/pocknix-sm8
 Flash the image with Balena Etcher, Rufus, or `dd`, then follow
 [How to install](../../README.md#how-to-install) in the project README.
 
-For an SD card **for SM8250**, sparse-checkout `projects/ROCKNIX/devices/SM8250` instead of
-`SM8550`. SM8250 has no firmware overlay (its blobs come from Arch's `linux-firmware`), so
-nothing is fetched for it.
+For an SD card **for SM8250**, add `DEVICE=sm8250` as above. SM8250 has no firmware overlay (its
+blobs come from Arch's `linux-firmware`), so `make sync` fetches no firmware for it.
+
+If you keep a ROCKNIX checkout of your own at `../distribution` (or point `DISTRIBUTION_DIR` at
+one), `make sync` uses it instead of the pinned commit. With `POCKNIX_SYNC_SCOPE=all` it also
+refreshes the committed kernel inputs in `kernel/<soc>/` from it: that is how the kernel moves to a
+newer ROCKNIX.
 
 ### Before `make build`: read `make pending`
 
