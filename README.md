@@ -153,7 +153,7 @@ See the [Pocknix Control docs](docs/pocknix-control.md) for the full tour.
 
 ## Building from source
 
-pocknix-os builds a full image (kernel included) from this repo. The build needs an **aarch64 Linux host with root** (it chroots); an Arch/Fedora VM on Apple Silicon or an ARM cloud box both work. Quick start:
+pocknix-os builds a full image (kernel included) from this repo. The build needs a **Linux host with root** (it chroots): aarch64 natively (an Arch/Fedora VM on Apple Silicon or an ARM cloud box), or an x86_64 PC or WSL2 on Windows, which run the ARM steps under qemu-user. [docs/building/](docs/building/README.md) covers host setup for each. Quick start:
 
 ```bash
 make check          # preflight (runs anywhere, no root)
