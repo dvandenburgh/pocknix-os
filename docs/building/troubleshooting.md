@@ -50,6 +50,17 @@ The host ran out of memory. Close other programs, add swap, or lower the kernel 
 
 ## Firmware and kernel
 
+**`error patch failed to apply: .../kernel/<soc>/patches/...`**
+
+`make kernel` applies every file under `kernel/<soc>/patches/`, tracked by git or not. If the error
+lists changes git does not know about, they are usually left from an older `make sync` that pulled
+ROCKNIX's newer patch stack into `kernel/`. Restore the committed tree and build again:
+
+```bash
+git checkout -- kernel/sm8550 && git clean -fd kernel/sm8550
+make image
+```
+
 **`error ROCKNIX device dir not found: ...`**
 
 Your own ROCKNIX checkout (`../distribution` or `DISTRIBUTION_DIR`) lacks this SoC's device dir.
