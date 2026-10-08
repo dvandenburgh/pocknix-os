@@ -16,23 +16,32 @@ install='pocknix-branding.install'
 # them drift. Building against the installed theme keeps the spinner in step with whatever
 # plymouth version the image ships, while the OUTPUT still lands in our own directory - which
 # is what makes it survive a plymouth upgrade (the reason a custom theme dir was wanted).
-# librsvg: the watermark is drawn from SVG at build time, so no rendered PNG is committed.
+# librsvg: the watermark and electron frames are drawn from SVG at build time, so no rendered
+# PNG is committed.
 makedepends=('plymouth' 'librsvg')
-source=('watermark.svg' 'logo.svg'
+source=('watermark.svg' 'logo.svg' 'throbber.svg' 'electrons.awk'
         'Splash.qml' 'splash-metadata.json' 'wordmark.png'
         'wallpaper-1920x1080.png' 'wallpaper-metadata.json'
         'pocknix-branding-init' 'pocknix-branding-init.service')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 _spinner=/usr/share/plymouth/themes/spinner
 
 build() {
   # makepkg symlinks local sources into srcdir, and librsvg refuses <image> hrefs that resolve
   # outside the referencing file's directory, so render from real copies.
-  rm -rf "${srcdir}/watermark"
-  install -d "${srcdir}/watermark"
-  cp -L "${srcdir}/watermark.svg" "${srcdir}/logo.svg" "${srcdir}/wordmark.png" "${srcdir}/watermark/"
-  rsvg-convert "${srcdir}/watermark/watermark.svg" -o "${srcdir}/watermark.png"
+  local w="${srcdir}/render" f n
+  rm -rf "${w}"
+  install -d "${w}"
+  cp -L "${srcdir}"/{watermark.svg,logo.svg,throbber.svg,wordmark.png} "${w}/"
+  rsvg-convert "${w}/watermark.svg" -o "${w}/watermark.png"
+  # two-step redraws its throbber at 30 fps over a fixed 2 s loop: 60 frames, one per redraw
+  awk -v frames=60 -v out="${w}" -f "${srcdir}/electrons.awk"
+  for f in "${w}"/electrons-*.svg; do
+    n="${f##*/electrons-}"
+    cp "${f}" "${w}/electrons.svg"
+    rsvg-convert "${w}/throbber.svg" -o "${w}/throbber-${n%.svg}.png"
+  done
 }
 
 package() {
@@ -42,20 +51,25 @@ package() {
   install -d "${theme}"
   cp -a "${_spinner}/." "${theme}/"
   mv "${theme}/spinner.plymouth" "${theme}/pocknix.plymouth"
-  # logo + wordmark replace the Arch watermark (sized in logical px, see watermark.svg)
-  install -Dm644 "${srcdir}/watermark.png" "${theme}/watermark.png"
+  # logo + wordmark replace the Arch watermark (sized in logical px, see watermark.svg), and the
+  # orbiting electrons replace the spinner's throbber frames
+  install -Dm644 "${srcdir}/render/watermark.png" "${theme}/watermark.png"
+  rm -f "${theme}"/throbber-*.png
+  install -m644 "${srcdir}"/render/throbber-*.png "${theme}/"
 
-  # Name/Description/ImageDir must point at OUR dir. Black field and white mark follow the
-  # SteamOS boot screen. The logo sits above centre with the spinner below it;
-  # pocknix-steam-splash reads the field and alignments back, so game mode matches.
+  # Name/Description/ImageDir point at OUR dir; black field and white mark follow SteamOS's boot
+  # screen. two-step tops the watermark at a(H-h) but centres the throbber on aH, so a = 13/32 gives
+  # the 256-high watermark and the 208-high throbber one top on any screen (256a = 208/2).
+  # Messages move to the corner, off the wordmark; pocknix-steam-splash reads the field back.
   sed -i -e '/^Name\[[^]]*\]=/d' \
          -e 's|^Name=.*|Name=Pocknix|' \
-         -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo over the stock spinner.|' \
+         -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo, its electrons orbiting while it boots.|' \
          -e "s|^ImageDir=.*|ImageDir=/usr/share/plymouth/themes/pocknix|" \
          -e 's|^BackgroundStartColor=.*|BackgroundStartColor=0x000000|' \
          -e 's|^BackgroundEndColor=.*|BackgroundEndColor=0x000000|' \
-         -e 's|^WatermarkVerticalAlignment=.*|WatermarkVerticalAlignment=.40|' \
-         -e 's|^VerticalAlignment=.*|VerticalAlignment=.86|' \
+         -e 's|^WatermarkVerticalAlignment=.*|WatermarkVerticalAlignment=.40625|' \
+         -e 's|^VerticalAlignment=.*|VerticalAlignment=.40625|' \
+         -e 's|^MessageBelowAnimation=.*|MessageBelowAnimation=false|' \
          "${theme}/pocknix.plymouth"
 
   # --- Plasma splash (KSplash look-and-feel) -------------------------------------------
