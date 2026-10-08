@@ -109,6 +109,14 @@ it. If you did change that package, the compile is expected.
 `make seed` cannot reach the published repo. Check the connection (or proxy) from the build host;
 the build itself still works without seeding, it just compiles every package.
 
+**`error still mounted under .../build/pkgbuild-root-<soc>, not wiping it`**
+
+An earlier build was interrupted and left the package chroot's mounts in place, including a bind
+mount of the host's `/dev`. Reboot to clear them (on WSL, `wsl --shutdown` in PowerShell), check
+that `findmnt | grep pkgbuild-root` prints nothing, then run the build again. Never delete anything
+under `build/` while they are there: `rm -rf` follows the `/dev` bind mount and removes the host's
+device nodes. `make clean` refuses in that state for the same reason.
+
 **`error chroot base upgrade failed — refusing to build against a stale base`**
 
 The package build chroot could not reach the Arch Linux ARM mirrors. Re-run when the network is
