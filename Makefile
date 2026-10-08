@@ -9,7 +9,7 @@ SCRIPTS := scripts
 
 .DEFAULT_GOAL := help
 
-.PHONY: help sync bootstrap build kernel packages sd-image snapshot base-diff extend-base stage stage-check publish stage-shared stage-check-shared publish-shared publish-image install check du trim clean distclean
+.PHONY: help sync bootstrap build kernel packages seed pending sd-image snapshot base-diff extend-base stage stage-check publish stage-shared stage-check-shared publish-shared publish-image install check du trim clean distclean
 
 help: ## Show this help
 	@echo "pocknix-os build targets:"
@@ -30,6 +30,12 @@ kernel: ## Build only the in-project kernel (linux-pocknix-<soc>)
 
 packages: ## Build local pocknix-* packages -> build/localrepo (root); skips up-to-date ones. PKG="a b" forces a subset
 	@$(SCRIPTS)/build-packages.sh $(PKG)
+
+seed: ## Fill build/localrepo from the published repo, so 'make build' compiles only what differs (root)
+	@$(SCRIPTS)/seed-localrepo.sh
+
+pending: ## List the packages 'make build' would compile (missing or stale in build/localrepo)
+	@$(SCRIPTS)/pending.sh
 
 sd-image: ## Build a flashable SD boot-test image (needs build + kernel) (root, Linux)
 	@$(SCRIPTS)/build-sd-image.sh

@@ -176,3 +176,42 @@ EOF
     cp -f "${CONFIG_DIR}/pacman.conf.in" "${out}"
   fi
 }
+
+# Every artifact `make build` wants for this SOC, one "repo-dir|pkg-dir|pkgname|version|arch"
+# line each: build-packages.sh's dirs, socs gating and makepkg --packagelist naming, read from
+# the PKGBUILDs alone so pending.sh and seed-localrepo.sh need no build chroot.
+local_artifacts() {
+  local d devsoc socs repo
+  for d in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
+    [ -f "${d}PKGBUILD" ] || continue
+    case "${d}" in */devices/*/packages/*)
+      devsoc="$(unset SOC; . "${d%/packages/*}/profile.conf" >/dev/null 2>&1; printf '%s' "${SOC}")"
+      [ "${devsoc}" = "${SOC}" ] || continue
+    ;; esac
+    case "${d}" in */packages/soc/*)
+      socs=""; read -r socs 2>/dev/null < "${d}socs" || true
+      case " ${socs} " in *" ${SOC} "*) ;; *) continue ;; esac
+    ;; esac
+    repo="${LOCALREPO_DIR}"
+    case "${d}" in */packages/shared/*) repo="${LOCALREPO_SHARED_DIR}" ;; esac
+    # PKGBUILDs are not written for set -eu, and some read ${startdir} like makepkg sets it.
+    # shellcheck disable=SC2034,SC2154  # the sourced PKGBUILD sets arch, pkgname, pkgver, pkgrel
+    (
+      cd "${d}" && set +eu && startdir="${PWD}" && source ./PKGBUILD >/dev/null 2>&1
+      a=aarch64; [[ " ${arch[*]} " == *" any "* ]] && a=any
+      for p in "${pkgname[@]}"; do
+        printf '%s|%s|%s|%s|%s\n' "${repo}" "${d%/}" "${p}" "${epoch:+${epoch}:}${pkgver}-${pkgrel}" "${a}"
+      done
+    )
+  done
+}
+
+# The file in <repo-dir> for <name-version-arch>, never a signature or a partial download.
+artifact_file() {  # <repo-dir> <name-version-arch>
+  local f
+  for f in "$1/$2.pkg.tar."*; do
+    case "${f}" in *.sig|*.part) continue ;; esac
+    [ -f "${f}" ] && { printf '%s\n' "${f}"; return 0; }
+  done
+  return 1
+}
