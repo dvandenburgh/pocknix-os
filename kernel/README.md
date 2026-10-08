@@ -78,7 +78,7 @@ These files are mirrored from the maintainer's ROCKNIX `distribution/` checkout
 
 ```bash
 export DISTRIBUTION_DIR=$HOME/Documents/Coding/distribution
-make sync     # refreshes kernel/ — review `git diff`, then commit
+POCKNIX_SYNC_SCOPE=all make sync     # refreshes kernel/ — review `git diff`, then commit
 ```
 
 `make sync` overwrites this directory from your distribution checkout, so treat changes here

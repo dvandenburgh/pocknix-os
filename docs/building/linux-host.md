@@ -79,22 +79,20 @@ would add a second `C`.
 Follow the [Quick start](README.md#quick-start). In short:
 
 ```bash
-POCKNIX_SYNC_SCOPE=vendor DISTRIBUTION_DIR=../distribution make sync   # firmware -> vendor/
+make sync                                    # firmware -> vendor/
 sudo make seed && sudo make kernel && make pending
 sudo make build && sudo make sd-image
 ```
-
-`DISTRIBUTION_DIR` defaults to `../distribution`, next to the pocknix-os checkout, so you can leave
-it out if you cloned ROCKNIX there.
 
 ## Notes
 
 - **Keep the checkout on a normal Linux filesystem** (ext4, btrfs, xfs). The chroots need Unix
   owners, modes and device nodes, and the kernel tree needs case-sensitive names; `make check` flags
   a checkout on NTFS, FAT or a Windows drive.
-- `make sync` without `POCKNIX_SYNC_SCOPE=vendor` also refreshes the **committed** kernel inputs in
-  `kernel/<soc>/` from your ROCKNIX checkout. That is how the maintainer moves the kernel pin; for a
-  plain build you want the committed kernel, so use the vendor scope.
+- With a ROCKNIX checkout of your own at `../distribution`, `make sync` uses it instead of the
+  pinned commit, and `POCKNIX_SYNC_SCOPE=all make sync` also refreshes the **committed** kernel
+  inputs in `kernel/<soc>/` from it. That is how the maintainer moves the kernel pin; a plain build
+  needs neither.
 - The build chroot (`build/pkgbuild-root-<soc>/`) is created once, reused, and recreated by itself
   when the pinned base changes. If it ever gets into a bad state, make sure nothing is still
   mounted inside it (`findmnt | grep pkgbuild-root` prints nothing; on WSL, `wsl --shutdown`

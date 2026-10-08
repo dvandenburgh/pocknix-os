@@ -85,7 +85,7 @@ Current WSL kernels include btrfs and loop devices. If `make check` reports btrf
 Exactly as on any Linux host - see the [Quick start](README.md#quick-start):
 
 ```bash
-POCKNIX_SYNC_SCOPE=vendor make sync          # after the ROCKNIX checkout in the Quick start
+make sync                                    # firmware -> vendor/
 sudo make seed
 sudo make kernel
 make pending
