@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- The watermark with the electrons at rest (throbber frame 1), for pocknix-steam-splash:
-     game mode holds this still where plymouth animated. Same box as watermark.svg. -->
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-     width="220" height="256" viewBox="0 0 220 256">
-  <image x="0" y="0" width="220" height="256" xlink:href="watermark.png"/>
-  <image x="0" y="0" width="220" height="208" xlink:href="throbber-0001.png"/>
-</svg>
