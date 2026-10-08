@@ -1,0 +1,4 @@
+# Desktop Plasma looks like SteamOS's desktop mode. Plasma Mobile pins its own global theme
+# immutably in ~/.config/plasma-mobile/kdeglobals, so that flavour keeps Breeze.
+[KDE]
+LookAndFeelPackage=com.valve.vapor.desktop
