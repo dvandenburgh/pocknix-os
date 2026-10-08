@@ -83,13 +83,19 @@ fetch_source() {
 }
 
 apply_patches() {
-  local d p n
+  local d p n stray
+  # Every file under patches/ is applied, so files git does not track there (an old
+  # POCKNIX_SYNC_SCOPE=all sync, a half-done edit) are the usual reason a patch stops applying.
+  stray="$(git -c safe.directory='*' -C "${POCKNIX_ROOT}" status --porcelain -- "${KERNEL_DIR#"${POCKNIX_ROOT}/"}/patches" 2>/dev/null || true)"
   for d in "${KERNEL_DIR}"/patches/*/; do
     [ -d "${d}" ] || continue
     n=0
     for p in "${d}"*.patch; do
       [ -f "${p}" ] || continue
-      patch -p1 -d "${KSRC}" < "${p}" >/dev/null || die "patch failed to apply: ${p}"
+      patch -p1 -d "${KSRC}" < "${p}" >/dev/null || die "patch failed to apply: ${p}${stray:+
+  kernel/${SOC}/patches differs from what git has committed:
+${stray}
+  if those changes are not yours: git checkout -- kernel/${SOC} && git clean -fd kernel/${SOC}}"
       n=$((n+1))
     done
     log "applied $(basename "${d}"): ${n} patches"
