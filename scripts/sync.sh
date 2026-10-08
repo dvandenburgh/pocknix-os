@@ -25,29 +25,38 @@ source "$(dirname "$0")/lib.sh"
   set DISTRIBUTION_DIR to your 'distribution' checkout, e.g.
   export DISTRIBUTION_DIR=\$HOME/Documents/Coding/distribution"
 
+SCOPE="${POCKNIX_SYNC_SCOPE:-all}"
+case "${SCOPE}" in all|vendor) ;; *) die "POCKNIX_SYNC_SCOPE='${SCOPE}': use all (default) or vendor" ;; esac
+
 log "syncing ROCKNIX ${ROCKNIX_SOC} from ${ROCKNIX_PROJECT_DIR}"
 
 # --- committed kernel enablement -> kernel/${SOC}/ --------------------------
-# The full patch stack ROCKNIX applies for this SoC, in order (PKG_PATCH_DIRS=
-# "mainline ${DEVICE} ... 7.0"). Stored as numbered subdirs so the build applies
-# them in the same order: 10-mainline -> 20-<soc> -> 30-version.
-log "  kernel enablement -> kernel/${SOC}/ (committed)"
-mkdir -p "${KERNEL_DIR}/patches/10-mainline" \
-         "${KERNEL_DIR}/patches/20-${SOC}" \
-         "${KERNEL_DIR}/patches/30-version" \
-         "${KERNEL_DIR}/dts" "${KERNEL_DIR}/config" "${KERNEL_DIR}/bootloader"
-# generic ROCKNIX backports applied BEFORE device patches
-rsync -a --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/mainline/" "${KERNEL_DIR}/patches/10-mainline/"
-# the SoC device patches
-rsync -a --delete "${ROCKNIX_DEVICE_DIR}/patches/linux/"                     "${KERNEL_DIR}/patches/20-${SOC}/"
-# generic version-specific patches applied AFTER device patches (dir name set in
-# kernel.conf - ROCKNIX keeps using "7.0" for the 7.1.x series)
-rsync -a --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/${ROCKNIX_VERSION_PATCH_DIR:-${KERNEL_VERSION%.*}}/" "${KERNEL_DIR}/patches/30-version/"
-# dts / config / bootloader packaging
-rsync -a --delete "${ROCKNIX_DEVICE_DIR}/linux/dts/"                 "${KERNEL_DIR}/dts/"
-rsync -a          "${ROCKNIX_DEVICE_DIR}/linux/linux.aarch64.conf"   "${KERNEL_DIR}/config/"
-rsync -a          "${ROCKNIX_DEVICE_DIR}/config/kernel-firmware.dat" "${KERNEL_DIR}/config/"
-rsync -a --delete "${ROCKNIX_DEVICE_DIR}/bootloader/"               "${KERNEL_DIR}/bootloader/"
+# POCKNIX_SYNC_SCOPE=vendor skips it: a build host only needs vendor/, and this would move the
+# committed pin to whatever the distribution/ checkout holds.
+if [ "${SCOPE}" = all ]; then
+  # The full patch stack ROCKNIX applies for this SoC, in order (PKG_PATCH_DIRS=
+  # "mainline ${DEVICE} ... 7.0"). Stored as numbered subdirs so the build applies
+  # them in the same order: 10-mainline -> 20-<soc> -> 30-version.
+  log "  kernel enablement -> kernel/${SOC}/ (committed)"
+  mkdir -p "${KERNEL_DIR}/patches/10-mainline" \
+           "${KERNEL_DIR}/patches/20-${SOC}" \
+           "${KERNEL_DIR}/patches/30-version" \
+           "${KERNEL_DIR}/dts" "${KERNEL_DIR}/config" "${KERNEL_DIR}/bootloader"
+  # generic ROCKNIX backports applied BEFORE device patches
+  rsync -a --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/mainline/" "${KERNEL_DIR}/patches/10-mainline/"
+  # the SoC device patches
+  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/patches/linux/"                     "${KERNEL_DIR}/patches/20-${SOC}/"
+  # generic version-specific patches applied AFTER device patches (dir name set in
+  # kernel.conf - ROCKNIX keeps using "7.0" for the 7.1.x series)
+  rsync -a --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/${ROCKNIX_VERSION_PATCH_DIR:-${KERNEL_VERSION%.*}}/" "${KERNEL_DIR}/patches/30-version/"
+  # dts / config / bootloader packaging
+  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/linux/dts/"                 "${KERNEL_DIR}/dts/"
+  rsync -a          "${ROCKNIX_DEVICE_DIR}/linux/linux.aarch64.conf"   "${KERNEL_DIR}/config/"
+  rsync -a          "${ROCKNIX_DEVICE_DIR}/config/kernel-firmware.dat" "${KERNEL_DIR}/config/"
+  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/bootloader/"               "${KERNEL_DIR}/bootloader/"
+else
+  log "  kernel/${SOC}/ left as committed (POCKNIX_SYNC_SCOPE=vendor)"
+fi
 
 # --- gitignored build-time material -> vendor/ -----------------------------
 dst="${VENDOR_DIR}/rocknix-${SOC}"
@@ -70,6 +79,10 @@ for p in \
   rsync -a --delete "${src}/" "${dst}/reference/${p}/"
 done
 
-ok "sync complete:
+if [ "${SCOPE}" = all ]; then
+  ok "sync complete:
   kernel/${SOC}/  (committed)  $(find "${KERNEL_DIR}/patches" -name '*.patch' 2>/dev/null | wc -l | tr -d ' ') patches + dts + config
   vendor/         (gitignored) reference scripts + firmware overlay"
+else
+  ok "sync complete: vendor/ (gitignored) reference scripts + firmware overlay"
+fi
