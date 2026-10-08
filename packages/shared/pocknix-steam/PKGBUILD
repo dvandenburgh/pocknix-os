@@ -36,7 +36,7 @@ package() {
   install -Dm755 "${srcdir}/steam"                 "${pkgdir}/usr/bin/steam"
   install -Dm644 "${srcdir}/steam.desktop"         "${pkgdir}/usr/share/applications/steam.desktop"
   # The native ARM client is not a system package, so nothing else provides the themed `steam`
-  # icon that steam.desktop and pocknix-desktop's return-to-gamemode.desktop both reference.
+  # icon that steam.desktop references.
   install -Dm644 "${srcdir}/steam-256.png"         "${pkgdir}/usr/share/icons/hicolor/256x256/apps/steam.png"
   install -Dm644 "${srcdir}/steam-512.png"         "${pkgdir}/usr/share/icons/hicolor/512x512/apps/steam.png"
   # Pre-completed OOBE registry seed: the Deck OOBE's "required update" step tries to update
