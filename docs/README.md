@@ -17,4 +17,6 @@ User guides for pocknix-os. New here? Start with the [project README](../README.
 
 See "Building from source" in the [project README](../README.md) and
 [CONTRIBUTING.md](../CONTRIBUTING.md) for how to build, test, and submit a change.
+[building/](building/README.md) has the full build setup for aarch64 and x86_64 Linux hosts and
+for Windows with WSL2.
 Maintainer procedures and infrastructure notes live in the maintainer's private notes repo.

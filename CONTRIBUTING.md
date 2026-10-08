@@ -95,14 +95,14 @@ npm run build         # regenerates dist/index.js - this IS committed, see Packa
 npx tsc --noEmit      # must be clean
 ```
 
-**A single package** (needs an **aarch64 Linux host with root** - an Arch/Fedora VM on Apple
-Silicon or an ARM cloud box both work):
+**A single package** (needs a **Linux host with root**: aarch64, or x86_64 / WSL2 through
+qemu-user - see [docs/building/](docs/building/README.md)):
 
 ```bash
 sudo make packages PKG="pocknix-decky"    # -> build/localrepo/<pkg>-*.pkg.tar.xz
 ```
 
-**A full image** (same aarch64 Linux host with root; the kernel build is 1-2 hours):
+**A full image** (same Linux host with root; the kernel build is 1-2 hours):
 
 ```bash
 sudo make kernel
