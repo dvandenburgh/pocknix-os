@@ -1,0 +1,8 @@
+# KWin's game controller plugin (upstream default: off) makes the pad a keyboard and pointer in
+# Plasma, and pauses while a game has the pad open. Plasma Mobile writes the same InputMethod in
+# its own layer above this one.
+[Plugins]
+gamecontrollerEnabled=true
+
+[Wayland]
+InputMethod=/usr/share/applications/org.kde.plasma.keyboard.desktop

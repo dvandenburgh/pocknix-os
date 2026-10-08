@@ -1,0 +1,4 @@
+# While the on-screen keyboard is up, arrow keys move a highlight over it and Enter presses the
+# highlighted key: KWin's game controller plugin sends both, so the D-pad and A can type.
+[General]
+keyboardNavigationEnabled=true
