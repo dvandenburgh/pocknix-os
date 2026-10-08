@@ -6,6 +6,10 @@ builds on this page.
 
 ## 1. Host packages
 
+**Quickest:** `make host-setup` installs the packages below for a Debian/Ubuntu, Fedora or Arch
+family distro (it uses `sudo`) and, on x86_64, applies the [qemu flag fix](#3-the-qemu-binfmt-c-flag-x86_64-hosts)
+when it is needed. Or install them yourself:
+
 **Ubuntu / Debian:**
 
 ```bash
@@ -61,8 +65,9 @@ flag. **Debian and Ubuntu register qemu-aarch64 without it** (`POF`), and the bu
 error binfmt qemu-aarch64 has flags 'POF', without C: sudo in the build chroot cannot gain root.
 ```
 
-Re-register it with `C` added. A file in `/etc/binfmt.d/` with the same name as the distro's file in
-`/usr/lib/binfmt.d/` replaces it, and survives reboots and package updates:
+`make host-setup` does this for you. By hand: re-register it with `C` added. A file in
+`/etc/binfmt.d/` with the same name as the distro's file in `/usr/lib/binfmt.d/` replaces it, and
+survives reboots and package updates:
 
 ```bash
 src="$(grep -l ':qemu-aarch64:' /usr/lib/binfmt.d/*.conf | head -n 1)"; echo "${src}"
