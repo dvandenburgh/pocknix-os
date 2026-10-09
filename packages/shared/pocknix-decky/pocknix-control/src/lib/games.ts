@@ -10,13 +10,19 @@ export function gameDisplayName(game: GameRef | null | undefined): string {
 // Steam's appStore overview; this name pattern is the fallback when no overview exists.
 const NON_GAME_NAME = /^(Proton[ 0-9]|Proton (Hotfix|EasyAntiCheat|BattlEye)|Steam Linux Runtime|Steamworks Common)/i;
 
-function isGame(appid: string, name: string): boolean {
+export function isGame(appid: string, name = ""): boolean {
   try {
     const overview: any = window.appStore?.GetAppOverviewByAppID?.(Number(appid));
     if (typeof overview?.app_type === "number") return overview.app_type !== 4;
   } catch (error) {
   }
   return !NON_GAME_NAME.test(name);
+}
+
+export function installedSteamGames(config: Config): string[] {
+  return (config.installedGames || [])
+    .filter((game) => game?.appid && isGame(String(game.appid), game.name || ""))
+    .map((game) => String(game.appid));
 }
 
 // Non-Steam shortcuts have no appmanifest, so only deckDesktopApps sees them. Their appids are

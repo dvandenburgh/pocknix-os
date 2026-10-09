@@ -2,7 +2,7 @@ export interface GameTweak {
   enabled?: boolean;
   name?: string;
   fexProfile?: string;
-  /** Audio buffer in ms (PULSE_LATENCY_MSEC exported by pocknix-proton-wrapper); "" = game default. */
+  /** Audio buffer in ms (PULSE_LATENCY_MSEC exported by pocknix-game-launch); "" = game default. */
   audioLatency?: string;
   /** Turnip series pin (e.g. "25.2"); the wrapper resolves arch + point release. "" = default. */
   mesaVersion?: string;
@@ -32,7 +32,7 @@ export interface InstalledGame {
 export interface FexProfile {
   label: string;
   config?: Record<string, string>;
-  /** Complete STEAM_COMPAT_FEX_CONFIG string for Valve's x86 FEX; "" = not expressible. */
+  /** STEAM_COMPAT_FEX_CONFIG string pocknix-game-launch exports for Valve's x86 FEX; "" = none. */
   steam?: string;
 }
 

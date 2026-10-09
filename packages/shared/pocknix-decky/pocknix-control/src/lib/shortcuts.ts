@@ -1,6 +1,8 @@
 // Replaces the stock "Add a Non-Steam Game" flow: Steam's file browser cannot open a new
 // window under the Plasma Mobile X11 session, so Decky's in-UI picker feeds this instead.
 
+import { ensureLaunchWrapper } from "./launchOptions";
+
 const WINDOWS_EXE = /\.(exe|bat|msi)$/i;
 
 // Constant internal name from proton-cachyos' compatibilitytool.vdf; survives version bumps.
@@ -28,5 +30,6 @@ export async function addShortcut(name: string, path: string, useProton: boolean
   apps.SetShortcutExe?.(appId, quote(path));
   apps.SetShortcutStartDir?.(appId, quote(dir));
   if (useProton) apps.SpecifyCompatTool?.(appId, PROTON_TOOL);
+  ensureLaunchWrapper(String(appId >>> 0));
   return appId;
 }

@@ -1,7 +1,6 @@
 import { ModalRoot, ToggleField } from "@decky/ui";
 import { useEffect, useState } from "react";
 import { getConfig, saveTweaks } from "../backend";
-import { fexSteamString, syncFexLaunchOption } from "../lib/launchOptions";
 import { clone } from "../lib/util";
 import type { Config } from "../types";
 import { ConfigSection } from "./ConfigSection";
@@ -43,8 +42,6 @@ export function GameSettingsModal({ appid, name, closeModal }: { appid: string; 
           update((next) => {
             next.tweaks.games[appid] = { ...(next.tweaks.games[appid] || {}), enabled: on, name };
           });
-          const profile = on ? String(gameSettings.fexProfile ?? config.tweaks.global.fexProfile ?? "") : "";
-          syncFexLaunchOption(appid, fexSteamString(profile, config.fexProfiles));
         }}
       />
       {enabled ? (

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .system import atomically_write
 
-# The tweaks file is consumed at game launch by pocknix-proton-wrapper; the profile contract
+# The tweaks file is consumed at game launch by pocknix-game-launch; the profile contract
 # ships with that wrapper, so the plugin-dir copy is only a fallback for a missing pocknix-steam.
 TWEAKS_CONFIG = Path("/etc/pocknix/game-tweaks.json")
 FEX_PROFILES_CONFIG = Path("/usr/share/pocknix/fex-profiles.json")
@@ -63,7 +63,7 @@ def load_fex_contract():
 
 
 def fex_profile_labels(contract):
-    # "steam" = the profile's STEAM_COMPAT_FEX_CONFIG string (see src/lib/launchOptions.ts).
+    # "steam" = the profile's STEAM_COMPAT_FEX_CONFIG string (exported by pocknix-game-launch).
     return {
         name: {
             "label": profile.get("label", name.title()),

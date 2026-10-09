@@ -1,16 +1,12 @@
-// Valve's fex-compat-tool reads STEAM_COMPAT_FEX_CONFIG at the top of the x86 launch chain,
-// before our proton shim exists — a game's launch options are the only channel that reaches
-// it. ARM Protons ignore the variable (wrapper FEX_APP_CONFIG path).
+// Every Steam game and every non-Steam shortcut (emulator tiles, ROM managers, a Windows .exe on
+// Proton) launches through pocknix-game-launch, which applies the per-game tweaks at launch
+// time, so a settings change never has to touch launch options.
 
-import type { FexProfile } from "../types";
-
+// Bare name: Steam runs launch options through a shell with the system PATH (/usr/bin).
+const LAUNCHER = "pocknix-game-launch";
+const COMMAND = "%command%";
+// Written by Pocknix Control before the launcher existed; the launcher exports it itself now.
 const FEX_TOKEN = /STEAM_COMPAT_FEX_CONFIG=("[^"]*"|\S*)\s*/g;
-
-/** "" = remove the token: "default"'s string equals Valve's own defaults exactly. */
-export function fexSteamString(profileId: string | undefined, profiles: Record<string, FexProfile>): string {
-  if (!profileId || profileId === "default") return "";
-  return profiles[profileId]?.steam || "";
-}
 
 function getLaunchOptions(appid: string): Promise<string | null> {
   return new Promise((resolve) => {
@@ -38,20 +34,66 @@ function getLaunchOptions(appid: string): Promise<string | null> {
   });
 }
 
-/** Rewrites only our token, preserving the user's options; bails rather than clobber
- *  when the current value can't be read. */
-export async function syncFexLaunchOption(appid: string, steam: string): Promise<void> {
-  const apps = window.SteamClient?.Apps;
-  if (!apps?.SetAppLaunchOptions) return;
-  const current = await getLaunchOptions(appid);
-  if (current === null) return;
+/** null = already wrapped. Keeps the user's own options around %command%. */
+export function wrapLaunchOptions(current: string): string | null {
   const stripped = current.replace(FEX_TOKEN, "").trim();
-  let next: string;
-  if (steam) {
-    const rest = stripped.includes("%command%") ? stripped : ["%command%", stripped].filter(Boolean).join(" ");
-    next = `STEAM_COMPAT_FEX_CONFIG=${steam} ${rest}`;
-  } else {
-    next = stripped === "%command%" ? "" : stripped;
-  }
-  if (next !== current.trim()) apps.SetAppLaunchOptions(Number(appid), next);
+  if (stripped.includes(LAUNCHER)) return stripped === current.trim() ? null : stripped;
+  if (stripped.includes(COMMAND)) return stripped.replace(COMMAND, `${LAUNCHER} ${COMMAND}`);
+  // Without %command% Steam appends bare options as arguments, so they stay after it.
+  return [`${LAUNCHER} ${COMMAND}`, stripped].filter(Boolean).join(" ");
+}
+
+/** Bails rather than clobber when the current value can't be read. */
+export async function ensureLaunchWrapper(appid: string): Promise<boolean> {
+  const apps = window.SteamClient?.Apps;
+  if (!apps?.SetAppLaunchOptions) return false;
+  const current = await getLaunchOptions(appid);
+  if (current === null) return false;
+  const next = wrapLaunchOptions(current);
+  if (next !== null) apps.SetAppLaunchOptions(Number(appid), next);
+  return true;
+}
+
+export async function wrapShortcuts(appids: string[]): Promise<void> {
+  for (const appid of appids) await ensureLaunchWrapper(appid);
+}
+
+export async function wrapAllGames(appids: string[]): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < appids.length) await ensureLaunchWrapper(appids[next++]);
+  };
+  await Promise.all(Array.from({ length: Math.min(8, appids.length) }, worker));
+}
+
+/** New installs get wrapped once their download queues; returns the unregister. */
+export function registerDownloadWrapper(isGame: (appid: string) => boolean): () => void {
+  const downloads = window.SteamClient?.Downloads;
+  if (!downloads?.RegisterForDownloadItems) return () => {};
+  const pending = new Set<string>();
+  let timer: number | undefined;
+  const flush = () => {
+    timer = undefined;
+    const ids = Array.from(pending);
+    pending.clear();
+    wrapAllGames(ids.filter(isGame));
+  };
+  // Each queue item is { item_data: [{ appid, ... }] }: the appids live in item_data.
+  const handle = downloads.RegisterForDownloadItems((_paused: boolean, items: any[]) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      for (const entry of Object.values(item?.item_data || {}) as any[]) {
+        const appid = String(entry?.appid ?? "");
+        if (appid && appid !== "0") pending.add(appid);
+      }
+    }
+    if (timer === undefined) timer = window.setTimeout(flush, 1500);
+  });
+  return () => {
+    if (timer !== undefined) window.clearTimeout(timer);
+    try {
+      handle?.unregister?.();
+    } catch (error) {
+    }
+  };
 }

@@ -4,12 +4,13 @@
 # The plugin frontend (dist/index.js) is prebuilt and committed — no node at package build time.
 pkgname=pocknix-decky
 pkgver=0.1.0
-pkgrel=41
+pkgrel=43
 pkgdesc="Decky Loader (under FEX, namespaced binfmt) + Pocknix Control QAM plugin"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
-depends=('fex-emu' 'fex-rootfs')
+# Every game's launch options name pocknix-game-launch, which pocknix-steam 67 introduced.
+depends=('fex-emu' 'fex-rootfs' 'pocknix-steam>=0.1.0-67')
 _loaderver=v3.2.9
 source=('pocknix-decky-run' 'pocknix-decky-sync' 'pocknix-decky-killall' 'pocknix-decky-sync.service'
         'pocknix-decky-loader.service' 'PluginLoader.json'

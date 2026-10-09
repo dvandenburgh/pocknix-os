@@ -2,7 +2,6 @@ import { ButtonItem, ConfirmModal, PanelSectionRow, TextField, ToggleField, show
 import { useEffect, useState } from "react";
 import { availableCompatTools, registerForCompatTool, setCompatTool } from "../lib/compat";
 import type { CompatTool } from "../lib/compat";
-import { fexSteamString, syncFexLaunchOption } from "../lib/launchOptions";
 import { SelectEdit } from "./widgets";
 import type { Config } from "../types";
 
@@ -163,10 +162,7 @@ export function TweakFields({ config, appid, values, patch }: {
         label="FEX Preset"
         value={fexValue}
         options={fexOptions}
-        onChange={(id) => {
-          patch({ fexProfile: id });
-          syncFexLaunchOption(appid, fexSteamString(String(id), presets));
-        }}
+        onChange={(id) => patch({ fexProfile: id })}
       />
       <SelectEdit label="Audio Buffer" value={audioValue} options={audioLatencyOptions} onChange={(id) => patch({ audioLatency: id })} />
       <SelectEdit label="Mesa Version" value={mesaValue} options={mesaOptions} onChange={(id) => patch({ mesaVersion: id })} />
