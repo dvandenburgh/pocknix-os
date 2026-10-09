@@ -99,8 +99,9 @@ if [ "${POCKNIX_PANEL_ROTATE_SHADER:-0}" = "1" ]; then
   GS_ROTATE=(--force-composition-rotation)
 fi
 
-# Do NOT add a core pin here: scx_lavd places the bursty threads itself and needs the littles free
-# for batch work; a hard taskset fights it.
+# Do NOT pin the client itself: scx_lavd places the bursty threads itself and needs the littles free
+# for batch work. Game launches get the big cores through steam-launch-wrapper instead.
+. /usr/lib/pocknix/pocknix-steam-env
 
 # Log to a file, never the tty: tty1 is what shows between compositors on a session switch and
 # must stay blank. Do NOT exec gamescope either, since the session switch pkills it by name.
