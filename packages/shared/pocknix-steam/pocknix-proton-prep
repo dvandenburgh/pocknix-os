@@ -1,7 +1,7 @@
 #!/bin/bash
-# ORDER: system tools must be mirrored in before the client STARTS (pocknix-steam runs this
-# synchronously). --watch re-applies the sm8250 DXVK swap, since Steam restores a tool's files on
-# every update. Per-game tweaks no longer touch compat tools: see pocknix-game-launch.
+# ORDER: system tools must be mirrored in, and proton-prep.d hooks run, before the client STARTS
+# (pocknix-steam runs this synchronously). --watch picks up tools installed mid-session. Per-game
+# tweaks no longer touch compat tools: see pocknix-game-launch.
 set -u
 
 STEAM="${HOME}/.local/share/Steam"
@@ -22,6 +22,7 @@ ARM_PROTONS=(
   "Proton 11.0 (ARM64)"
   "Proton Experimental (ARM64)"
 )
+HOOKS=/usr/lib/pocknix/proton-prep.d
 
 # --watch re-runs apply every 20 s for the whole session, so its steady-state checks are builtins.
 # Every file they read is text (vdf, shell), which read -d '' takes whole.
@@ -141,6 +142,7 @@ swap_dxvk() { # <proton dir>
   fi
 }
 
+
 # Undo the old entry-point claim (steam <= 0.1.0-66) so the runtime runs as Valve ships it. The
 # shim file stays: Steam caches the manifest per client session and may still exec it until restart.
 restore_slr() { # <runtime dir>
@@ -157,14 +159,9 @@ restore_slr() { # <runtime dir>
 
 apply() {
   prune_legacy_tools
-  local common entry slr_dir
+  local common slr_dir
   while IFS= read -r common; do
     [ -d "${common}" ] || continue
-    if [ "${GPU_DXVK3}" = no ] && [ -d "${DXVK2_DONOR}" ]; then
-      for entry in "${ARM_PROTONS[@]}"; do
-        swap_dxvk "${common}/${entry}"
-      done
-    fi
     for slr_dir in "${common}"/SteamLinuxRuntime*; do
       [ -d "${slr_dir}" ] && restore_slr "${slr_dir}"
     done
@@ -180,6 +177,16 @@ apply() {
   done
 }
 
+# Fixups other packages need in place before the client starts (one pass each); they own
+# their own watching, so --watch never runs them.
+run_hooks() {
+  local hook
+  for hook in "${HOOKS}"/*; do
+    [ -x "${hook}" ] || continue
+    "${hook}" || echo "[pocknix-proton-prep] hook ${hook##*/} failed" >&2
+  done
+}
+
 case "${1:-}" in
   --watch)
     # A pipe this shell holds both ends of never reaches EOF: a timed read on it is a sleep
@@ -191,5 +198,6 @@ case "${1:-}" in
     ;;
   *)
     apply
+    run_hooks
     ;;
 esac
