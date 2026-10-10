@@ -116,7 +116,7 @@ function gameDisplayName(game) {
 // The backend lists every appmanifest in steamapps, tools included. app_type 4 = tool in
 // Steam's appStore overview; this name pattern is the fallback when no overview exists.
 const NON_GAME_NAME = /^(Proton[ 0-9]|Proton (Hotfix|EasyAntiCheat|BattlEye)|Steam Linux Runtime|Steamworks Common)/i;
-function isGame(appid, name) {
+function isGame(appid, name = "") {
     try {
         const overview = window.appStore?.GetAppOverviewByAppID?.(Number(appid));
         if (typeof overview?.app_type === "number")
@@ -125,6 +125,11 @@ function isGame(appid, name) {
     catch (error) {
     }
     return !NON_GAME_NAME.test(name);
+}
+function installedSteamGames(config) {
+    return (config.installedGames || [])
+        .filter((game) => game?.appid && isGame(String(game.appid), game.name || ""))
+        .map((game) => String(game.appid));
 }
 // Non-Steam shortcuts have no appmanifest, so only deckDesktopApps sees them. Their appids are
 // unsigned and above 2^31, hence the >>> 0: some builds hand out the signed-int32 form.
@@ -460,9 +465,118 @@ function StickLights({ config, setConfig, reload }) {
                                 .catch(() => reload()) }) }))] }), led.enabled && (led.linked ? (SP_JSX.jsx(DFL.PanelSection, { title: "BOTH STICKS", children: SP_JSX.jsx(ColorControls, { zone: "both", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitBoth }) })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSection, { title: "LEFT STICK", children: SP_JSX.jsx(ColorControls, { zone: "left", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitLeft }) }), SP_JSX.jsx(DFL.PanelSection, { title: "RIGHT STICK", children: SP_JSX.jsx(ColorControls, { zone: "right", hsv: rightHsv, brightness: led.right.brightness, onCommit: commitRight }) })] })))] }));
 }
 
+// Every Steam game and every non-Steam shortcut (emulator tiles, ROM managers, a Windows .exe on
+// Proton) launches through pocknix-game-launch, which applies the per-game tweaks at launch
+// time, so a settings change never has to touch launch options.
+// Bare name: Steam runs launch options through a shell with the system PATH (/usr/bin).
+const LAUNCHER = "pocknix-game-launch";
+const COMMAND = "%command%";
+// Written by Pocknix Control before the launcher existed; the launcher exports it itself now.
+const FEX_TOKEN = /STEAM_COMPAT_FEX_CONFIG=("[^"]*"|\S*)\s*/g;
+function getLaunchOptions(appid) {
+    return new Promise((resolve) => {
+        const apps = window.SteamClient?.Apps;
+        if (!apps?.RegisterForAppDetails)
+            return resolve(null);
+        let registration;
+        let timer;
+        let done = false;
+        const finish = (value) => {
+            if (done)
+                return;
+            done = true;
+            if (timer !== undefined)
+                window.clearTimeout(timer);
+            // Steam may call back before RegisterForAppDetails returns; unregister on a microtask.
+            Promise.resolve().then(() => registration?.unregister?.());
+            resolve(value);
+        };
+        timer = window.setTimeout(() => finish(null), 3000);
+        try {
+            registration = apps.RegisterForAppDetails(Number(appid), (details) => {
+                finish(String(details?.strLaunchOptions ?? ""));
+            });
+        }
+        catch (error) {
+            finish(null);
+        }
+    });
+}
+/** null = already wrapped. Keeps the user's own options around %command%. */
+function wrapLaunchOptions(current) {
+    const stripped = current.replace(FEX_TOKEN, "").trim();
+    if (stripped.includes(LAUNCHER))
+        return stripped === current.trim() ? null : stripped;
+    if (stripped.includes(COMMAND))
+        return stripped.replace(COMMAND, `${LAUNCHER} ${COMMAND}`);
+    // Without %command% Steam appends bare options as arguments, so they stay after it.
+    return [`${LAUNCHER} ${COMMAND}`, stripped].filter(Boolean).join(" ");
+}
+/** Bails rather than clobber when the current value can't be read. */
+async function ensureLaunchWrapper(appid) {
+    const apps = window.SteamClient?.Apps;
+    if (!apps?.SetAppLaunchOptions)
+        return false;
+    const current = await getLaunchOptions(appid);
+    if (current === null)
+        return false;
+    const next = wrapLaunchOptions(current);
+    if (next !== null)
+        apps.SetAppLaunchOptions(Number(appid), next);
+    return true;
+}
+async function wrapShortcuts(appids) {
+    for (const appid of appids)
+        await ensureLaunchWrapper(appid);
+}
+async function wrapAllGames(appids) {
+    let next = 0;
+    const worker = async () => {
+        while (next < appids.length)
+            await ensureLaunchWrapper(appids[next++]);
+    };
+    await Promise.all(Array.from({ length: Math.min(8, appids.length) }, worker));
+}
+/** New installs get wrapped once their download queues; returns the unregister. */
+function registerDownloadWrapper(isGame) {
+    const downloads = window.SteamClient?.Downloads;
+    if (!downloads?.RegisterForDownloadItems)
+        return () => { };
+    const pending = new Set();
+    let timer;
+    const flush = () => {
+        timer = undefined;
+        const ids = Array.from(pending);
+        pending.clear();
+        wrapAllGames(ids.filter(isGame));
+    };
+    // Each queue item is { item_data: [{ appid, ... }] }: the appids live in item_data.
+    const handle = downloads.RegisterForDownloadItems((_paused, items) => {
+        if (!Array.isArray(items))
+            return;
+        for (const item of items) {
+            for (const entry of Object.values(item?.item_data || {})) {
+                const appid = String(entry?.appid ?? "");
+                if (appid && appid !== "0")
+                    pending.add(appid);
+            }
+        }
+        if (timer === undefined)
+            timer = window.setTimeout(flush, 1500);
+    });
+    return () => {
+        if (timer !== undefined)
+            window.clearTimeout(timer);
+        try {
+            handle?.unregister?.();
+        }
+        catch (error) {
+        }
+    };
+}
+
 // Drives the same state as Steam's own per-game compatibility dropdown (SpecifyCompatTool +
 // app details), so never store a shadow copy: the two UIs stay in sync by construction.
-
 
 // Steam's tool list is only reachable through its react-query hook, which throws
 // without Steam's QueryClient in context; a throwaway root under Steam's provider
@@ -564,6 +678,9 @@ function registerForCompatTool(appid, onChange) {
 }
 function setCompatTool(appid, tool) {
     window.SteamClient?.Apps?.SpecifyCompatTool?.(Number(appid), tool);
+    // A shortcut picked up after the load-time sweep still gets the launcher.
+    if (tool && Number(appid) >= 0x80000000)
+        ensureLaunchWrapper(appid);
 }
 /** Resolve an imported Proton pick against this device's tools. Unknown ARM-named tools
  *  fall back to the cachy ARM Proton; unknown x86-named ones to a Proton 11. */
@@ -578,67 +695,6 @@ function resolveCompatTool(wanted, tools) {
         ? tools.find((tool) => /cachy/i.test(haystack(tool)) && !/x86/i.test(haystack(tool)))
         : tools.find((tool) => /(^|\D)11(\D|$)/.test(haystack(tool)) && !/arm|cachy/i.test(haystack(tool)));
     return { tool: fallback?.name || "", fallback: true };
-}
-
-// Valve's fex-compat-tool reads STEAM_COMPAT_FEX_CONFIG at the top of the x86 launch chain,
-// before our proton shim exists — a game's launch options are the only channel that reaches
-// it. ARM Protons ignore the variable (wrapper FEX_APP_CONFIG path).
-const FEX_TOKEN = /STEAM_COMPAT_FEX_CONFIG=("[^"]*"|\S*)\s*/g;
-/** "" = remove the token: "default"'s string equals Valve's own defaults exactly. */
-function fexSteamString(profileId, profiles) {
-    if (!profileId || profileId === "default")
-        return "";
-    return profiles[profileId]?.steam || "";
-}
-function getLaunchOptions(appid) {
-    return new Promise((resolve) => {
-        const apps = window.SteamClient?.Apps;
-        if (!apps?.RegisterForAppDetails)
-            return resolve(null);
-        let registration;
-        let timer;
-        let done = false;
-        const finish = (value) => {
-            if (done)
-                return;
-            done = true;
-            if (timer !== undefined)
-                window.clearTimeout(timer);
-            // Steam may call back before RegisterForAppDetails returns; unregister on a microtask.
-            Promise.resolve().then(() => registration?.unregister?.());
-            resolve(value);
-        };
-        timer = window.setTimeout(() => finish(null), 3000);
-        try {
-            registration = apps.RegisterForAppDetails(Number(appid), (details) => {
-                finish(String(details?.strLaunchOptions ?? ""));
-            });
-        }
-        catch (error) {
-            finish(null);
-        }
-    });
-}
-/** Rewrites only our token, preserving the user's options; bails rather than clobber
- *  when the current value can't be read. */
-async function syncFexLaunchOption(appid, steam) {
-    const apps = window.SteamClient?.Apps;
-    if (!apps?.SetAppLaunchOptions)
-        return;
-    const current = await getLaunchOptions(appid);
-    if (current === null)
-        return;
-    const stripped = current.replace(FEX_TOKEN, "").trim();
-    let next;
-    if (steam) {
-        const rest = stripped.includes("%command%") ? stripped : ["%command%", stripped].filter(Boolean).join(" ");
-        next = `STEAM_COMPAT_FEX_CONFIG=${steam} ${rest}`;
-    }
-    else {
-        next = stripped === "%command%" ? "" : stripped;
-    }
-    if (next !== current.trim())
-        apps.SetAppLaunchOptions(Number(appid), next);
 }
 
 function SelectEdit({ label, value, options, onChange }) {
@@ -677,13 +733,6 @@ function ImportModal({ path, preview, game, onDone, closeModal }) {
         setBusy(true);
         try {
             const result = await applyConfig(path, source, game.appid, game.name);
-            try {
-                const cfg = await getConfig();
-                const profile = result.enabled ? String(result.fexProfile || cfg.tweaks.global.fexProfile || "") : "";
-                await syncFexLaunchOption(game.appid, fexSteamString(profile, cfg.fexProfiles));
-            }
-            catch (error) {
-            }
             if (result.protonTool) {
                 const tools = await availableCompatTools(game.appid);
                 const resolved = resolveCompatTool(result.protonTool, tools);
@@ -831,10 +880,7 @@ function TweakFields({ config, appid, values, patch }) {
     return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "Proton Version", value: compatValue, options: compatOptions, onChange: (name) => {
                     setCurrentTool(String(name));
                     setCompatTool(appid, String(name));
-                } }), SP_JSX.jsx(SelectEdit, { label: "FEX Preset", value: fexValue, options: fexOptions, onChange: (id) => {
-                    patch({ fexProfile: id });
-                    syncFexLaunchOption(appid, fexSteamString(String(id), presets));
-                } }), SP_JSX.jsx(SelectEdit, { label: "Audio Buffer", value: audioValue, options: audioLatencyOptions, onChange: (id) => patch({ audioLatency: id }) }), SP_JSX.jsx(SelectEdit, { label: "Mesa Version", value: mesaValue, options: mesaOptions, onChange: (id) => patch({ mesaVersion: id }) }), SP_JSX.jsx(XaliaToggle, { values: values, patch: patch }), SP_JSX.jsx(TouchField, { values: values, patch: patch }), SP_JSX.jsx(EnvVarsButton, { value: String(values.envVars ?? ""), onSave: (next) => patch({ envVars: next }) })] }));
+                } }), SP_JSX.jsx(SelectEdit, { label: "FEX Preset", value: fexValue, options: fexOptions, onChange: (id) => patch({ fexProfile: id }) }), SP_JSX.jsx(SelectEdit, { label: "Audio Buffer", value: audioValue, options: audioLatencyOptions, onChange: (id) => patch({ audioLatency: id }) }), SP_JSX.jsx(SelectEdit, { label: "Mesa Version", value: mesaValue, options: mesaOptions, onChange: (id) => patch({ mesaVersion: id }) }), SP_JSX.jsx(XaliaToggle, { values: values, patch: patch }), SP_JSX.jsx(TouchField, { values: values, patch: patch }), SP_JSX.jsx(EnvVarsButton, { value: String(values.envVars ?? ""), onSave: (next) => patch({ envVars: next }) })] }));
 }
 
 function clone(obj) {
@@ -879,10 +925,6 @@ function Games({ config, setConfig, reload }) {
             };
             return next;
         });
-        // Token policy mirrors the wrapper's merge: enabled = own-or-global profile, disabled = none.
-        const stored = tweaks.games[game.appid] || {};
-        const profile = enabled ? String(stored.fexProfile ?? tweaks.global.fexProfile ?? "") : "";
-        syncFexLaunchOption(game.appid, fexSteamString(profile, config.fexProfiles));
     };
     // "" is the explicit Default target, not "nothing selected"; store a sentinel
     // so it doesn't fall back to the running game in the selectedGame derivation.
@@ -913,15 +955,7 @@ function Games({ config, setConfig, reload }) {
     const storedLatency = String(values.audioLatency ?? "");
     const audioValue = audioLatencyOptions.some((option) => option.data === storedLatency) ? storedLatency : "";
     const showFields = editingDefault || perGameEnabled;
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "PERFORMANCE & GAME TWEAKS", children: [SP_JSX.jsx(SelectEdit, { label: "Game", value: game?.appid || "", options: editTargetOptions(config), onChange: setSelectedGame }), !editingDefault ? SP_JSX.jsx(DFL.ToggleField, { label: "Use Per-Game Settings", checked: perGameEnabled, onChange: setPerGameEnabled }) : null] }), showFields ? (SP_JSX.jsx(DFL.PanelSection, { title: "PERFORMANCE", children: editingDefault ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "CPU Scheduler", value: config.lavdMode, options: lavdOptions, onChange: (mode) => applyMode(setLavdMode, mode) }), SP_JSX.jsx(SelectEdit, { label: "Fan Curve", value: config.fanMode, options: fanOptions, onChange: (mode) => applyMode(setFanMode, mode) })] })) : (SP_JSX.jsx(PerfFields, { values: values, patch: patchSettings })) })) : null, showFields ? (SP_JSX.jsxs(DFL.PanelSection, { title: "GAME TWEAKS", children: [SP_JSX.jsx("div", { className: "pocknix-note", children: "Changes apply on next game launch" }), editingDefault ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "FEX Preset", value: fexValue, options: fexOptions, onChange: (id) => {
-                                    patchSettings({ fexProfile: id });
-                                    // Enabled games without their own profile inherit this pick; resync their tokens.
-                                    for (const [appid, entry] of Object.entries(tweaks.games)) {
-                                        if (entry?.enabled === true && !entry.fexProfile) {
-                                            syncFexLaunchOption(appid, fexSteamString(String(id), presets));
-                                        }
-                                    }
-                                } }), SP_JSX.jsx(SelectEdit, { label: "Audio Buffer", value: audioValue, options: audioLatencyOptions, onChange: (id) => patchSettings({ audioLatency: id }) }), SP_JSX.jsx(XaliaToggle, { values: values, patch: patchSettings }), SP_JSX.jsx(TouchField, { values: values, patch: patchSettings }), SP_JSX.jsx(EnvVarsButton, { value: String(values.envVars ?? ""), onSave: (next) => patchSettings({ envVars: next }) })] })) : (SP_JSX.jsx(TweakFields, { config: config, appid: game.appid, values: values, patch: patchSettings }))] })) : null, !editingDefault && perGameEnabled ? (SP_JSX.jsx(ConfigSection, { game: { appid: game.appid, name: game.name || "" }, reload: reload })) : null] }));
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "PERFORMANCE & GAME TWEAKS", children: [SP_JSX.jsx(SelectEdit, { label: "Game", value: game?.appid || "", options: editTargetOptions(config), onChange: setSelectedGame }), !editingDefault ? SP_JSX.jsx(DFL.ToggleField, { label: "Use Per-Game Settings", checked: perGameEnabled, onChange: setPerGameEnabled }) : null] }), showFields ? (SP_JSX.jsx(DFL.PanelSection, { title: "PERFORMANCE", children: editingDefault ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "CPU Scheduler", value: config.lavdMode, options: lavdOptions, onChange: (mode) => applyMode(setLavdMode, mode) }), SP_JSX.jsx(SelectEdit, { label: "Fan Curve", value: config.fanMode, options: fanOptions, onChange: (mode) => applyMode(setFanMode, mode) })] })) : (SP_JSX.jsx(PerfFields, { values: values, patch: patchSettings })) })) : null, showFields ? (SP_JSX.jsxs(DFL.PanelSection, { title: "GAME TWEAKS", children: [SP_JSX.jsx("div", { className: "pocknix-note", children: "Changes apply on next game launch" }), editingDefault ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "FEX Preset", value: fexValue, options: fexOptions, onChange: (id) => patchSettings({ fexProfile: id }) }), SP_JSX.jsx(SelectEdit, { label: "Audio Buffer", value: audioValue, options: audioLatencyOptions, onChange: (id) => patchSettings({ audioLatency: id }) }), SP_JSX.jsx(XaliaToggle, { values: values, patch: patchSettings }), SP_JSX.jsx(TouchField, { values: values, patch: patchSettings }), SP_JSX.jsx(EnvVarsButton, { value: String(values.envVars ?? ""), onSave: (next) => patchSettings({ envVars: next }) })] })) : (SP_JSX.jsx(TweakFields, { config: config, appid: game.appid, values: values, patch: patchSettings }))] })) : null, !editingDefault && perGameEnabled ? (SP_JSX.jsx(ConfigSection, { game: { appid: game.appid, name: game.name || "" }, reload: reload })) : null] }));
 }
 
 // Replaces the stock "Add a Non-Steam Game" flow: Steam's file browser cannot open a new
@@ -951,6 +985,7 @@ async function addShortcut(name, path, useProton) {
     apps.SetShortcutStartDir?.(appId, quote(dir));
     if (useProton)
         apps.SpecifyCompatTool?.(appId, PROTON_TOOL);
+    ensureLaunchWrapper(String(appId >>> 0));
     return appId;
 }
 
@@ -1375,8 +1410,6 @@ function GameSettingsModal({ appid, name, closeModal }) {
                     update((next) => {
                         next.tweaks.games[appid] = { ...(next.tweaks.games[appid] || {}), enabled: on, name };
                     });
-                    const profile = on ? String(gameSettings.fexProfile ?? config.tweaks.global.fexProfile ?? "") : "";
-                    syncFexLaunchOption(appid, fexSteamString(profile, config.fexProfiles));
                 } }), enabled ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(PerfFields, { values: values, patch: patch }), SP_JSX.jsx(TweakFields, { config: config, appid: appid, values: values, patch: patch }), SP_JSX.jsx(ConfigSection, { game: { appid, name }, reload: () => getConfig().then(setConfig).catch(() => { }) })] })) : null] }));
 }
 
@@ -1460,6 +1493,11 @@ function registerTouchLifetime() {
 var index = definePlugin(() => {
     const unpatchContextMenu = patchLibraryContextMenu();
     const unregisterTouch = registerTouchLifetime();
+    const unregisterDownloads = registerDownloadWrapper((appid) => isGame(appid));
+    getConfig()
+        .then((config) => wrapAllGames(installedSteamGames(config)))
+        .then(() => wrapShortcuts(nonSteamShortcuts().map((shortcut) => shortcut.appid)))
+        .catch(() => { });
     return {
         name: "Pocknix Control",
         content: SP_JSX.jsx(Content, {}),
@@ -1468,6 +1506,7 @@ var index = definePlugin(() => {
         onDismount() {
             unpatchContextMenu();
             unregisterTouch();
+            unregisterDownloads();
         },
     };
 });

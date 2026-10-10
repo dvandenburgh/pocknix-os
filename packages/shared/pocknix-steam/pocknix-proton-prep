@@ -1,7 +1,7 @@
 #!/bin/bash
 # ORDER: system tools must be mirrored in before the client STARTS (pocknix-steam runs this
-# synchronously); the downloaded app's toolmanifest is read at game launch and re-fixed by --watch,
-# since Steam restores its own on every update.
+# synchronously). --watch re-applies the sm8250 DXVK swap, since Steam restores a tool's files on
+# every update. Per-game tweaks no longer touch compat tools: see pocknix-game-launch.
 set -u
 
 STEAM="${HOME}/.local/share/Steam"
@@ -57,9 +57,12 @@ prune_legacy_tools() {
   done
 }
 
-apply_proton() { # <steamapps/common dir>
-  local proton_dir="${STEAM}/steamapps/common/$1"
-  [ -d "${proton_dir}" ] || return 0
+# Every library a tool can be installed to: the internal one plus libraryfolders.vdf's paths.
+library_commons() {
+  printf '%s\n' "${STEAM}/steamapps/common"
+  sed -n 's/^[[:space:]]*"path"[[:space:]]*"\(.*\)"[[:space:]]*$/\1\/steamapps\/common/p' \
+    "${STEAM}/steamapps/libraryfolders.vdf" 2>/dev/null
+}
 
   # Match the QUOTED key: ours names require_tool_appid in a comment, so an unquoted one self-matches.
   if has "${proton_dir}/toolmanifest.vdf" '"require_tool_appid"'; then
@@ -122,13 +125,50 @@ apply_slr() {
   done
 }
 
+# DXVK 3 needs storageBuffer8BitAccess, which turnip lacks on a6xx, and Valve's proton copies its
+# own dxvk dir into the prefix on every launch, so the 2.7 donor has to replace that dir. One-dll
+# cmp = write-free loop (a DXVK bump changes every dll); tmp+mv so a mid-swap launch never sees a
+# half dir.
+swap_dxvk() { # <proton dir>
+  local dxvk="$1/files/lib/wine/dxvk" probe
+  [ -d "${dxvk}" ] || return 0
+  probe="$(cd "${DXVK2_DONOR}" && find . -type f -name '*.dll' | sort | head -1)"
+  if [ -n "${probe}" ] && ! cmp -s "${DXVK2_DONOR}/${probe}" "${dxvk}/${probe}"; then
+    rm -rf "${dxvk}.pocknix-tmp"
+    cp -a "${DXVK2_DONOR}" "${dxvk}.pocknix-tmp" \
+      && rm -rf "${dxvk}" \
+      && mv "${dxvk}.pocknix-tmp" "${dxvk}"
+  fi
+}
+
+# Undo the old entry-point claim (steam <= 0.1.0-66) so the runtime runs as Valve ships it. The
+# shim file stays: Steam caches the manifest per client session and may still exec it until restart.
+restore_slr() { # <runtime dir>
+  local slr_dir="$1" entry="$1/_v2-entry-point" real="$1/_v2-entry-point.real"
+  if [ -f "${real}" ] && ! grep -q pocknix-proton-wrapper "${real}" \
+     && grep -q pocknix-proton-wrapper "${entry}" 2>/dev/null; then
+    mv -f "${real}" "${entry}"
+  fi
+  if grep -q '"/pocknix-proton ' "${slr_dir}/toolmanifest.vdf" 2>/dev/null; then
+    sed -i 's|"/pocknix-proton |"/_v2-entry-point |' "${slr_dir}/toolmanifest.vdf"
+  fi
+}
+}
+
 apply() {
   prune_legacy_tools
-  local entry
-  for entry in "${ARM_PROTONS[@]}"; do
-    apply_proton "${entry}"
-  done
-  apply_slr
+  local common entry slr_dir
+  while IFS= read -r common; do
+    [ -d "${common}" ] || continue
+    if [ "${GPU_DXVK3}" = no ] && [ -d "${DXVK2_DONOR}" ]; then
+      for entry in "${ARM_PROTONS[@]}"; do
+        swap_dxvk "${common}/${entry}"
+      done
+    fi
+    for slr_dir in "${common}"/SteamLinuxRuntime*; do
+      [ -d "${slr_dir}" ] && restore_slr "${slr_dir}"
+    done
+  done < <(library_commons | sort -u)
 
   # One symlink to the constant tool dir, so pacman updates flow through without a re-link.
   local sysd name

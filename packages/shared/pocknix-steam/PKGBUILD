@@ -2,7 +2,7 @@
 # gamescope launcher, and the ARM-Proton compat-tool plumbing.
 pkgname=pocknix-steam
 pkgver=0.1.0
-pkgrel=65
+pkgrel=67
 pkgdesc="Native ARM64 Steam Big Picture (gamescope) for the RP6 — installer + launcher"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -11,15 +11,18 @@ license=('GPL2')
 # the image bake in THIS rootfs, so they must stay depends. The remaining oddities are dlopen deps
 # the ARM client needs and nothing on a from-scratch ALARM base pulls in; see dev/steam.md.
 # ffmpeg (ffplay) + xorg-xprop: pocknix-steam-splash.
-depends=('gamescope' 'wget' 'unzip' 'curl' 'tar' 'gtk2' 'gdk-pixbuf2' 'openal' 'libcups' 'lsof'
+# Depends on pocknix-steam-full (a cycle pacman accepts): devices fielded before the metas
+# have this package but not the meta, and -Syu only installs a new name something requires.
+# Build with ./nodeps so makepkg -s does not drag the layer into the chroot.
+depends=('pocknix-steam-full'
+         'gamescope' 'wget' 'unzip' 'curl' 'tar' 'gtk2' 'gdk-pixbuf2' 'openal' 'libcups' 'lsof'
          'noto-fonts' 'noto-fonts-cjk' 'noto-fonts-emoji' 'networkmanager' 'mangohud'
          'pocknix-steamos-shim' 'xorg-server-xvfb' 'ffmpeg' 'xorg-xprop')
 install=pocknix-steam.install
 source=('pocknix-steam-install' 'pocknix-steam' 'pocknix-steam-splash' 'pocknix-steam-sync' 'steam' 'steam.desktop'
         'steam-256.png' 'steam-512.png' 'registry.vdf'
-        'proton-toolmanifest.vdf'
         'pocknix-proton-prep' 'pocknix-proton-prep.service'
-        'pocknix-proton' 'pocknix-proton-wrapper' 'fex-profiles.json'
+        'pocknix-game-launch' 'pocknix-steam-env' 'pocknix-proton-wrapper' 'fex-profiles.json'
         'pocknix-guestos-mount' 'pocknix-guestos.service' 'graphics_provider.json')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
@@ -39,11 +42,13 @@ package() {
   # Pre-completed OOBE registry seed: the Deck OOBE's "required update" step tries to update
   # SteamOS, which we are not, and dead-ends with "Updater apply error: 2".
   install -Dm644 "${srcdir}/registry.vdf"          "${pkgdir}/usr/share/pocknix-steam/registry.vdf"
-  install -Dm644 "${srcdir}/proton-toolmanifest.vdf"       "${pkgdir}/usr/share/pocknix-steam/proton-toolmanifest.vdf"
   install -Dm755 "${srcdir}/pocknix-proton-prep"           "${pkgdir}/usr/bin/pocknix-proton-prep"
   install -Dm644 "${srcdir}/pocknix-proton-prep.service"   "${pkgdir}/usr/lib/systemd/user/pocknix-proton-prep.service"
+  # Named bare in every game's launch options (Pocknix Control), so it must stay on PATH under
+  # this name: never move or rename it.
+  install -Dm755 "${srcdir}/pocknix-game-launch"           "${pkgdir}/usr/bin/pocknix-game-launch"
+  install -Dm644 "${srcdir}/pocknix-steam-env"             "${pkgdir}/usr/lib/pocknix/pocknix-steam-env"
   install -Dm755 "${srcdir}/pocknix-proton-wrapper"        "${pkgdir}/usr/lib/pocknix/pocknix-proton-wrapper"
-  install -Dm755 "${srcdir}/pocknix-proton"                "${pkgdir}/usr/share/pocknix-steam/pocknix-proton"
   install -Dm644 "${srcdir}/fex-profiles.json"             "${pkgdir}/usr/share/pocknix/fex-profiles.json"
   install -Dm755 "${srcdir}/pocknix-guestos-mount"         "${pkgdir}/usr/lib/pocknix/pocknix-guestos-mount"
   install -Dm644 "${srcdir}/pocknix-guestos.service"       "${pkgdir}/usr/lib/systemd/system/pocknix-guestos.service"

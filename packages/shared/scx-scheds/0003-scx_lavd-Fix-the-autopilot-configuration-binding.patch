@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tejun Heo <htejun@gmail.com>
+Date: Wed, 16 Sep 2026 14:02:26 -1000
+Subject: [PATCH] scx_lavd: Fix the autopilot configuration binding
+
+sys_stat.bpf.c defines is_autopilot_on weak next to the strong definition in
+util.bpf.c. Both survive the link: BTF keeps the weak variable and the ELF
+symbol resolves to the strong one, at different offsets in .rodata. The Rust
+skeleton writes the BTF offset and the update_sys_stat() relocation reads
+the ELF symbol, a byte nothing ever writes.
+
+So the autopilot flag the BPF side tests is never set: in the default
+autopilot mode do_autopilot() never runs and lavd stays in its initial power
+mode under any load. Remove the weak definition so both sides refer to the
+one in util.bpf.c.
+
+Fixes: 8964cb0356d2 ("[RFC] scx_lavd: initial refactor for separate unit compilation")
+---
+ scheds/rust/scx_lavd/src/bpf/sys_stat.bpf.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/scheds/rust/scx_lavd/src/bpf/sys_stat.bpf.c b/scheds/rust/scx_lavd/src/bpf/sys_stat.bpf.c
+index 6466ec5b1..cc3d97ad3 100644
+--- a/scheds/rust/scx_lavd/src/bpf/sys_stat.bpf.c
++++ b/scheds/rust/scx_lavd/src/bpf/sys_stat.bpf.c
+@@ -27,7 +27,6 @@ extern const volatile u64	slice_min_ns;
+ extern const volatile u64	slice_max_ns;
+ extern volatile bool		__weak no_core_compaction;
+ extern volatile bool		__weak reinit_cpumask_for_performance;
+-const volatile bool	__weak is_autopilot_on;
+ 
+ int do_autopilot(void);
+ u32 calc_avg32(u32 old_val, u32 new_val);
+-- 
+2.55.0
+

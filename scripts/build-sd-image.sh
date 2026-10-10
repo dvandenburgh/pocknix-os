@@ -120,9 +120,9 @@ EOF
     || die "Steam client not pre-extracted in the rootfs (/home/deck/.local/share/Steam) — run 'sudo make build' first."
 
   chroot "${root}" systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
-  # root-side helpers: deck can write neither binfmt_misc nor its own rtprio (SteamOS model)
+  # root-side helpers: deck cannot write binfmt_misc
   chroot "${root}" systemctl enable pocknix-fancontrol.service pocknix-fex-binfmt.service \
-        pocknix-volumed.service pocknix-gamescope-rt.service 2>/dev/null || true
+        pocknix-volumed.service 2>/dev/null || true
   chroot "${root}" systemctl enable pocknix-decky-sync.service pocknix-decky-loader.service 2>/dev/null || true
   # pocknix-flathub.service deliberately absent: at boot it fails on DNS (the NM dispatcher starts it).
   chroot "${root}" systemctl enable pocknix-waydroid-tuning.service 2>/dev/null || true
@@ -190,7 +190,7 @@ EOF
   chroot "${root}" systemctl enable iwd NetworkManager systemd-resolved seatd inputplumber \
         bluetooth upower udisks2 fstrim.timer \
         pocknix-diag.service pocknix-expand-root.service pocknix-session.service \
-        pocknix-lavd.service pocknix-gamescope-rt.service \
+        pocknix-lavd.service \
         >/dev/null 2>&1 || true
   # A well-known password is baked in, so sshd ships off. ALARM enables it: disable, not skip.
   if [ "${SD_SSH:-off}" = on ]; then

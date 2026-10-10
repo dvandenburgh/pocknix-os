@@ -9,11 +9,11 @@
 # pocknix-proton-prep (pocknix-steam) does the user-dir registration, since the tool dir is
 # root-owned and cannot symlink itself into ~/.local/share/Steam/compatibilitytools.d.
 pkgname=proton-cachyos
-_srctag=11.0-20260703
+_srctag=11.0-20261005
 _build=slr
 _major=${_srctag%%.*}
 pkgver=${_srctag//-/.}
-pkgrel=4
+pkgrel=1
 pkgdesc="CachyOS Proton (official ARM64 build) as a system Steam compatibility tool"
 arch=('aarch64')
 url="https://github.com/CachyOS/proton-cachyos"
@@ -25,7 +25,7 @@ source=("https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-${_
         'compatibilitytool.vdf.in'
         'toolmanifest.vdf'
         'pocknix-proton')
-sha512sums=('54514fc117f2f74cfbc8e9a321a0432513fd44d875ce1c0c48c72af0518d683f3d16ff755d213c0fb42d6e8a1db2a290e9ab883e3505baccc4f43e5e9e692a09'
+sha512sums=('81ca1b66e841d8f33acee1b1425d4854e3a3245860a6273e12dee1342bddca9ba7cdea41362aca14e33e6da93e4f01d69d281f1c7c59e3f720f97d6299b1c0fa'
             'SKIP'
             'SKIP'
             'SKIP')

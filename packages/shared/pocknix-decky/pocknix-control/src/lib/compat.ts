@@ -3,6 +3,7 @@
 import { findModule, findModuleExport } from "@decky/ui";
 import { Component, createElement } from "react";
 import type { ReactNode } from "react";
+import { ensureLaunchWrapper } from "./launchOptions";
 
 export interface CompatTool {
   name: string;
@@ -118,6 +119,8 @@ export function registerForCompatTool(appid: string, onChange: (tool: string) =>
 
 export function setCompatTool(appid: string, tool: string): void {
   window.SteamClient?.Apps?.SpecifyCompatTool?.(Number(appid), tool);
+  // A shortcut picked up after the load-time sweep still gets the launcher.
+  if (tool && Number(appid) >= 0x80000000) ensureLaunchWrapper(appid);
 }
 
 /** Resolve an imported Proton pick against this device's tools. Unknown ARM-named tools

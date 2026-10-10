@@ -38,4 +38,7 @@ fi
 mkdir -p "${STEAM}/package"
 echo steamdeck_publicbeta > "${STEAM}/package/beta"
 
+# Same game-launch pin + CPU topology as game mode.
+. /usr/lib/pocknix/pocknix-steam-env
+
 exec "${CLIENT}" "$@"

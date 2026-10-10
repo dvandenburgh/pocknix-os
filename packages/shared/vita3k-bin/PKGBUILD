@@ -2,8 +2,8 @@
 # upstream's rolling 'continuous' tag. That tag is force-updated, so pkgver carries the date we
 # vendored on; taking a newer build means bumping the date AND clearing the srccache copy.
 pkgname=vita3k-bin
-pkgver=0.2026.08.10
-pkgrel=2
+pkgver=0.2026.10.09
+pkgrel=1
 pkgdesc="Vita3K — PS Vita emulator, native aarch64 AppImage (vendored, rolling upstream)"
 arch=('aarch64')
 url="https://vita3k.org"
@@ -14,7 +14,7 @@ source=("Vita3K-${pkgver}.AppImage::https://github.com/Vita3K/Vita3K/releases/do
         'pocknix-vita3k.desktop')
 # The sha is what makes a moved 'continuous' tag fail loudly instead of shipping different
 # bytes under the same pkgver.
-sha256sums=('48a33c33086fcd00a037b58e0a98e1129b8322b007361c9b2ece9d039e32e195'
+sha256sums=('2cf6944c58b024e5fd917c06119b4f0634b141ec5d86a8bd061b52be142ec8cd'
             'SKIP')
 noextract=("Vita3K-${pkgver}.AppImage")
 

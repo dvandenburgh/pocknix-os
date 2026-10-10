@@ -3,9 +3,9 @@
 # GUEST thunks cross-compile with plain clang against a sysroot assembled from pinned
 # Arch x86_64 + lib32 packages, so the build stays inside the `make packages` chroot.
 pkgname=fex-emu
-_commit=e869aa644a16e4332cdc15c1ea0b4d13d482385d
-pkgver=2608.20260804.e869aa64
-pkgrel=3
+_commit=14c92681f4d62cf84d901460e0358de09c8847a7
+pkgver=2610.20261007.14c92681
+pkgrel=1
 pkgdesc="Fast usermode x86/x86-64 emulator for AArch64, built with host+guest thunks"
 arch=('aarch64')
 url="https://github.com/FEX-Emu/FEX"
@@ -32,10 +32,6 @@ _apihdr='7.1-1'
 _arch='https://archive.archlinux.org/packages'
 
 source=("fex::git+https://github.com/FEX-Emu/FEX.git#commit=${_commit}"
-        '0001-fexcore-aarch64-workaround-llvm18-ice.patch'
-        '0002-split-thunk-build-thunkgen-only.patch'
-        '0005-host-thunks-aarch64-char-signed-char.patch'
-        '0006-thunkgen-march-armv8-sve.patch'
         'toolchain_x86_64.cmake'
         'toolchain_x86_32.cmake'
         'Config.json'
@@ -51,7 +47,7 @@ noextract=('fexsysroot-glibc.pkg.tar.zst'
            'fexsysroot-gcc-libs.pkg.tar.zst'
            'fexsysroot-lib32-gcc-libs.pkg.tar.zst'
            'fexsysroot-linux-api-headers.pkg.tar.zst')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
@@ -59,10 +55,6 @@ prepare() {
   # FEX pins its deps (vixl, jemalloc, Vulkan-Headers, zydis) as submodules and makepkg's
   # git source does not recurse them.
   git submodule update --init --recursive
-  local p
-  for p in 0001 0002 0005 0006; do
-    patch -p1 < "${srcdir}/${p}-"*.patch
-  done
 
   msg2 "assembling x86 dev sysroot from pinned Arch x86_64 + lib32 packages"
   rm -rf "${srcdir}/sysroot"; mkdir -p "${srcdir}/sysroot"

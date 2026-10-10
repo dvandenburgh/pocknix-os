@@ -1,0 +1,33 @@
+# pocknix-steam-env — sourced by both Steam launchers. Pins every game launch to the board's big
+# cores via Valve's steam-launch-wrapper (shortcuts included), and gives Wine a CPU topology over
+# the same cores: a topology that disagrees with the pin shows the game CPUs it may not use.
+# Values already in the env win.
+_pocknix_cores="$(
+  for _dc in /usr/lib/pocknix/device.conf /etc/pocknix/device.conf; do
+    [ -r "${_dc}" ] && . "${_dc}"
+  done
+  printf '%s' "${POCKNIX_BIG_CORES:-}"
+)"
+_pocknix_list=""
+_pocknix_mask=0
+_pocknix_n=0
+for _part in $(printf '%s' "${_pocknix_cores}" | tr ',' ' '); do
+  _lo="${_part%-*}"
+  _hi="${_part#*-}"
+  case "${_lo}${_hi}" in *[!0-9]*|'') _pocknix_list=""; break ;; esac
+  _c="${_lo}"
+  while [ "${_c}" -le "${_hi}" ]; do
+    _pocknix_list="${_pocknix_list:+${_pocknix_list},}${_c}"
+    _pocknix_mask=$(( _pocknix_mask | (1 << _c) ))
+    _pocknix_n=$(( _pocknix_n + 1 ))
+    _c=$(( _c + 1 ))
+  done
+done
+# No guessed fallback: pinning to the wrong cluster is worse than not pinning.
+if [ -n "${_pocknix_list}" ]; then
+  _pocknix_topology="${_pocknix_n}:${_pocknix_list}"
+  export STEAM_LAUNCH_WRAPPER_AFFINITY_LIST="${STEAM_LAUNCH_WRAPPER_AFFINITY_LIST:-$(printf '0x%x' "${_pocknix_mask}")}"
+  export WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY:-${_pocknix_topology}}"
+  export PROTON_CPU_TOPOLOGY="${PROTON_CPU_TOPOLOGY:-${_pocknix_topology}}"
+fi
+unset _pocknix_cores _pocknix_list _pocknix_mask _pocknix_n _pocknix_topology _part _lo _hi _c _dc

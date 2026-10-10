@@ -24,6 +24,26 @@ _retire_powerd() {
   return 0
 }
 
+# The image overlay's root helper that held gamescope at RR 40 is retired; gamescope's threads
+# stay RR until the session restarts.
+_retire_gamescope_rt() {
+  [ -d /run/systemd/system ] && systemctl disable --now pocknix-gamescope-rt.service 2>/dev/null
+  rm -f /usr/local/bin/pocknix-gamescope-rt /etc/systemd/system/pocknix-gamescope-rt.service \
+        /etc/systemd/system/multi-user.target.wants/pocknix-gamescope-rt.service
+  return 0
+}
+
+# 60-pocknix-deck.conf replaces the overlay's limits file. Only the two versions the overlay
+# shipped are removed; a user-edited copy is left in place.
+_retire_gaming_limits() {
+  f=/etc/security/limits.d/60-pocknix-gaming.conf
+  [ -f "${f}" ] || return 0
+  case "$(sha256sum "${f}" | cut -d' ' -f1)" in
+    036a0245493fff6c5afaecc71970ba50f159e075a1d23acc5481799044fe7fab|\
+    2ad0dda0f16e3ee1951821eb156f55c6a35dbe65d33f0f7c997ab7615d41139e) rm -f "${f}" ;;
+  esac
+}
+
 # Enabled by its wants symlink; restart picks up a new daemon or profile file without a reboot.
 _perfd() {
   [ -d /run/systemd/system ] || return 0
@@ -32,14 +52,26 @@ _perfd() {
   systemctl restart pocknix-perfd.service 2>/dev/null || true
 }
 
+# Applies the kernel-thread priorities now rather than at the next boot; reruns are harmless.
+_rt_ladder() {
+  [ -d /run/systemd/system ] || return 0
+  systemctl restart --no-block pocknix-rt-ladder.service 2>/dev/null || true
+}
+
 post_install() {
   _migrate_fan_lavd
   _retire_powerd
+  _retire_gamescope_rt
+  _retire_gaming_limits
   _perfd
+  _rt_ladder
 }
 
 post_upgrade() {
   _migrate_fan_lavd
   _retire_powerd
+  _retire_gamescope_rt
+  _retire_gaming_limits
   _perfd
+  _rt_ladder
 }

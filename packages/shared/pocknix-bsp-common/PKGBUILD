@@ -4,7 +4,7 @@
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
 pkgrel=23
-pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, second-screen touch policy, power profiles daemon"
+pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, second-screen touch policy, power profiles daemon, realtime priority ladder, deck session limits"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
@@ -17,6 +17,7 @@ conflicts=('linux-pocknix-sm8550<7.2.6-6' 'linux-pocknix-sm8250<7.2.6-3')
 optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target'
             'scx-scheds: scx_lavd for pocknix-lavd.service (unit self-skips without it)')
 install=pocknix-bsp-common.install
+backup=('etc/security/limits.d/60-pocknix-deck.conf')
 source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         'drain-log-pre' 'drain-log-post'
         'inputplumber-sleep-pre' 'inputplumber-sleep-post'
@@ -33,11 +34,14 @@ source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         'iwd-wait-wlan0.conf'
         'pocknix-perfd' 'pocknix_perf.py' 'pocknix-perf' 'pocknix-perfd.service'
         'org.pocknix.Perf.service' 'org.pocknix.Perf.conf' 'power-profiles.conf'
-        '60-pocknix-sdl-xb360.conf' 'pocknix-sdl-xb360.sh')
+        '60-pocknix-sdl-xb360.conf' 'pocknix-sdl-xb360.sh'
+        'pocknix-rt-ladder' 'pocknix-rt-ladder.service' 'rtkit-limits.conf'
+        '60-pocknix-deck.conf')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+            'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-sleep" \
@@ -118,4 +122,11 @@ package() {
   ln -sf "../pocknix-perfd.service" "${pkgdir}/usr/lib/systemd/system/multi-user.target.wants/pocknix-perfd.service"
   install -Dm644 "${srcdir}/org.pocknix.Perf.service" "${pkgdir}/usr/share/dbus-1/system-services/org.pocknix.Perf.service"
   install -Dm644 "${srcdir}/org.pocknix.Perf.conf" "${pkgdir}/usr/share/dbus-1/system.d/org.pocknix.Perf.conf"
+
+  install -Dm755 "${srcdir}/pocknix-rt-ladder" "${pkgdir}/usr/lib/pocknix/pocknix-rt-ladder"
+  install -Dm644 "${srcdir}/pocknix-rt-ladder.service" "${pkgdir}/usr/lib/systemd/system/pocknix-rt-ladder.service"
+  ln -sf "../pocknix-rt-ladder.service" "${pkgdir}/usr/lib/systemd/system/multi-user.target.wants/pocknix-rt-ladder.service"
+  install -Dm644 "${srcdir}/rtkit-limits.conf" \
+    "${pkgdir}/usr/lib/systemd/system/rtkit-daemon.service.d/10-pocknix-limits.conf"
+  install -Dm644 "${srcdir}/60-pocknix-deck.conf" "${pkgdir}/etc/security/limits.d/60-pocknix-deck.conf"
 }
