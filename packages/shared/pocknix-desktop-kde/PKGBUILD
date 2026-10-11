@@ -2,7 +2,7 @@
 # Build with ./nodeps: makepkg -s would drag all of KDE/Qt into the chroot for a data package.
 pkgname=pocknix-desktop-kde
 pkgver=0.1.0
-pkgrel=3
+pkgrel=2.1
 pkgdesc="pocknix KDE defaults shared by the Plasma desktop flavours"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
