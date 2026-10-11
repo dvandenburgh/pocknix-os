@@ -18,6 +18,7 @@ One directory per SoC family (devices/README.md lists them; the notes below desc
 | `kernel.conf` | stock source pins and the ROCKNIX dirs to sync from |
 | `config-delta` | `scripts/config` arguments applied after the shared deltas in build-kernel.sh (optional) |
 | `config-assert` | symbols that must end up `=y`, checked after olddefconfig (optional) |
+| `common-skip` | `kernel/common` patches this SoC leaves out, one file name per line with a `# why` (optional; `make check` fails on a name not in common) |
 | `sync-keep` | our local delta, restored from git after `make sync`: `path` = our edit of an upstream file, `+path` = our own file, `-path` = deleted locally. 1000+ patches the sync deleted come back without a line; each warning sync prints is a merge to do by hand |
 
 ## Provenance — what's whose
@@ -27,9 +28,10 @@ ROCKNIX work**, not ours:
 
 - **Public ROCKNIX RP6/SM8550 support** — the RP6 panel (`0104`), touchscreen, backlight,
   audio, thermal, etc. From ROCKNIX's **`next` (nightly)** branch.
-- **jaewun's suspend/resume set** — `0203`, `1004`, `1009` here, and the UFS hibern8/clk-gating
-  + geni irq masking part in `kernel/common/patches/` (`1001`, `1006`–`1008`, `1010`, `1015`) plus the thorch s2idle stack
-  `1045`–`1051` (PCIe suspend OPP floor, rpmh suspend-state votes, lowest GPU OPP). From
+- **jaewun's suspend/resume set** — `1004`, `1009` (rsinput MCU) here; the UFS, geni and tsens
+  parts (`1001`, `1006`–`1008`, `1010`, `1015`, `1019`) and the thorch s2idle stack's generic
+  half (`1045` gated to SM8550, `1046`–`1048`) in `kernel/common/patches/`; `1049`/`1051`
+  (SM8550 dtsi OPPs) here. From
   `jaewun/ROCKNIX` `thor-suspend-fixes` / thorch; we merge/maintain it. Retired at 7.2:
   `0201` (its premise, a threaded IRQF_ONESHOT UFS handler, is gone upstream) and
   `1040`–`1044` (the "PCI: qcom: Add D3cold support" v5 series landed in 7.2).
@@ -70,8 +72,11 @@ patch stack, never the pin.
 
 The numeric subdir prefixes encode ROCKNIX's `mainline -> <version> -> ${DEVICE}` patch-dir
 order (scripts/unpack; version dir named in kernel.conf); the build script applies them in
-sorted order, then `kernel/common/patches/`. A patch whose code runs on any SoC and that is
-ours (not synced) belongs in `kernel/common/patches/`, numbered 1000+ like the per-SoC ones.
+sorted order, then `kernel/common/patches/`. Our generic patches go in `kernel/common/patches/`,
+numbered 1000+: behaviour meant for one SoC is gated inside the patch (DT compatible, quirk,
+Kconfig), so it is safe to apply everywhere. A patch that needs a SoC-dir patch first stays in
+that SoC dir. `common-skip` is the fallback for a common patch that doesn't apply or isn't
+validated on a SoC.
 
 ## What is NOT here (fetched at build, Phase 1)
 

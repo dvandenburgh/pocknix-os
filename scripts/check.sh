@@ -158,6 +158,17 @@ for _k in "${POCKNIX_ROOT}"/kernel/*/kernel.conf; do
   if [ -z "${_bad}" ]; then note "family: ${_soc}" "ok"; else note "family: ${_soc}" "${_bad}"; fail=1; fi
 done
 
+# A common-skip line that names no kernel/common patch (after a rename) would silently
+# let that patch apply again.
+_stale=""
+for _s in "${POCKNIX_ROOT}"/kernel/*/common-skip; do
+  [ -f "${_s}" ] || continue
+  while IFS= read -r _p; do
+    [ -f "${POCKNIX_ROOT}/kernel/common/patches/${_p}" ] || _stale="${_stale} ${_s#"${POCKNIX_ROOT}"/}:${_p}"
+  done < <(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' "${_s}")
+done
+if [ -z "${_stale}" ]; then note "kernel common-skip" "ok"; else note "kernel common-skip" "not in kernel/common/patches:${_stale}"; fail=1; fi
+
 # Every key a board sets is part of the runtime contract, so it must be in the README table.
 _undoc=""
 for _key in $(cat "${POCKNIX_ROOT}"/devices/*/packages/pocknix-bsp-*/boards/*.conf \

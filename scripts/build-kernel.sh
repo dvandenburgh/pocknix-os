@@ -84,18 +84,25 @@ fetch_source() {
 }
 
 # kernel/common goes last: its patches sit on top of SoC-dir prerequisites
-# (1062 needs the SoC dir's 0504).
+# (1062 needs the SoC dir's 0504). kernel/<soc>/common-skip lists common patches a
+# SoC leaves out because they don't apply or aren't validated there; SoC-specific
+# behaviour belongs gated inside the patch, the skip list is the fallback.
 apply_patches() {
-  local d p n stray
+  local d p n stray skip=""
   # Every file under patches/ is applied, so files git does not track there (an old
   # POCKNIX_SYNC_SCOPE=all sync, a half-done edit) are the usual reason a patch stops applying.
   stray="$(git -c safe.directory='*' -C "${POCKNIX_ROOT}" status --porcelain -- \
              "${KERNEL_DIR#"${POCKNIX_ROOT}/"}/patches" kernel/common/patches 2>/dev/null || true)"
+  [ -f "${KERNEL_DIR}/common-skip" ] && \
+    skip="$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' "${KERNEL_DIR}/common-skip")"
   for d in "${KERNEL_DIR}"/patches/*/ "${POCKNIX_ROOT}/kernel/common/patches/"; do
     [ -d "${d}" ] || continue
     n=0
     for p in "${d}"*.patch; do
       [ -f "${p}" ] || continue
+      if [ "${d}" = "${POCKNIX_ROOT}/kernel/common/patches/" ] && grep -qxF "${p##*/}" <<<"${skip}"; then
+        log "  skipped ${p##*/} (${SOC} common-skip)"; continue
+      fi
       patch -p1 -d "${KSRC}" < "${p}" >/dev/null || die "patch failed to apply: ${p}${stray:+
   kernel/${SOC}/patches or kernel/common/patches differs from what git has committed:
 ${stray}

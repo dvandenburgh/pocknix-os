@@ -5,7 +5,6 @@
 -patches/20-version/9999-fix-rust-build-error.patch
 -patches/20-version/0011-thermal-adc-tm5-drop-iio-val-int-check.patch
 +dts/qcom/qcs8550-ayn-odin2-sd.dtsi
-+patches/30-sm8550/0203-thermal-qcom-tsens-skip-sm8550-uplow-wake-irq.patch
 +patches/30-sm8550/0210-mmc-add-qcom-downstream-sdhci-msm-driver.patch
 +patches/30-sm8550/0211-mmc-sdhci-msm-downstream-drop-sdhci_pltfm_free.patch
 +patches/30-sm8550/0212-Revert-clk-qcom-gcc-sm8550-Use-floor-ops-for-SDCC-RCGs.patch
