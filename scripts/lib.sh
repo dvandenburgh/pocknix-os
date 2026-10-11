@@ -84,6 +84,28 @@ need_linux() { [ "$(uname -s)" = "Linux" ] || die "the image build must run on a
 have()     { command -v "$1" >/dev/null 2>&1; }
 need_tool(){ have "$1" || die "missing required tool: $1"; }
 
+# --- on/off knobs ------------------------------------------------------------
+# The switches take 1/on/yes/true and 0/off/no/false in any case. Anything else dies: a typo like
+# SD_SSH=1 used to read as "off" and only showed up as a refused login on the device.
+onoff() {  # <name> <value> -> "on" or "off"
+  case "${2,,}" in
+    1|on|yes|y|true) printf on ;;
+    0|off|no|n|false|"") printf off ;;
+    *) die "$1='$2': expected on or off (1/0, yes/no and true/false work too)" ;;
+  esac
+}
+# SSH=1 is the short spelling of SD_SSH=on (make image SSH=1, ./build.sh --ssh) and wins when both
+# are set. A non-boolean SSH (some shells export it as a command name) is not ours: it is ignored.
+case "${SSH:-}" in
+  "") SD_SSH="$(onoff SD_SSH "${SD_SSH}")" ;;
+  *)
+    case "${SSH,,}" in
+      1|0|on|off|y|n|yes|no|true|false) SD_SSH="$(onoff SSH "${SSH}")" ;;
+      *) warn "ignoring SSH='${SSH}' (not on/off); SD_SSH=${SD_SSH} decides"
+         SD_SSH="$(onoff SD_SSH "${SD_SSH}")" ;;
+    esac ;;
+esac
+
 # --- package lists ---------------------------------------------------------
 # awk $1, not sed 's/#.*//': sed keeps the whitespace before an inline comment and
 # pacman then can't match the name.
@@ -254,4 +276,100 @@ artifact_file() {  # <repo-dir> <name-version-arch>
     [ -f "${f}" ] && { printf '%s\n' "${f}"; return 0; }
   done
   return 1
+}
+
+# Every artifact of every package dir `make build` would compile, as local_artifacts lines. Its
+# skip rule, read from the PKGBUILDs alone: a dir is up to date only when every artifact it names
+# is in build/localrepo, newer than every file in the dir (and, for the kernel package, than
+# `make kernel`'s Image). POCKNIX_FORCE_REBUILD=1 compiles everything, as it does there.
+pending_artifacts() {
+  local -A stale=()
+  local -a want=()
+  local line repo d p v a f
+  mapfile -t want < <(local_artifacts)
+  for line in "${want[@]}"; do
+    IFS='|' read -r repo d p v a <<< "${line}"
+    [ -z "${stale[${d}]:-}" ] || continue
+    [ "${POCKNIX_FORCE_REBUILD:-0}" != 1 ] \
+      && f="$(artifact_file "${repo}" "${p}-${v}-${a}")" \
+      && [ -z "$(find "${d}" -newer "${f}" -print -quit)" ] \
+      && ! { [ "${p}" = "${KERNEL_PKG}" ] && [ "${KERNEL_BUILD_DIR}/out/Image" -nt "${f}" ]; } \
+      || stale[${d}]=1
+  done
+  for line in "${want[@]}"; do
+    IFS='|' read -r repo d p v a <<< "${line}"
+    [ -z "${stale[${d}]:-}" ] || printf '%s\n' "${line}"
+  done
+}
+
+# --- build progress ------------------------------------------------------------
+# make image keeps a status file (POCKNIX_PROGRESS_FILE, exported to every step) that its status
+# bar and `make status` read, and a per-host history of how long each step and each package took,
+# which is where its time-left estimate comes from. Best effort throughout: no write here can fail
+# a build, and outside make image the status writes do nothing.
+: "${PROGRESS_DIR:=${BUILD_DIR}/progress}"
+PROGRESS_HISTORY="${PROGRESS_DIR}/history-${SOC}"   # "<key> <seconds>": the last time each took
+
+now_s() { printf '%(%s)T' -1; }
+fmt_dur() {  # <seconds> -> 45s | 12m05s | 2h03m
+  local s="${1:-0}"
+  [[ "${s}" =~ ^[0-9]+$ ]] || s=0
+  if [ "${s}" -lt 60 ]; then printf '%ds' "${s}"
+  elif [ "${s}" -lt 3600 ]; then printf '%dm%02ds' $((s / 60)) $((s % 60))
+  else printf '%dh%02dm' $((s / 3600)) $((s % 3600 / 60)); fi
+}
+
+# Files a root step writes here go back to whoever ran sudo: the next run's first steps run as them.
+_progress_own() {
+  [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_UID:-}" ] || return 0
+  chown "${SUDO_UID}:${SUDO_GID:-${SUDO_UID}}" "$@" 2>/dev/null || true
+}
+
+# <file> <awk filter> <new lines>: rewrite a small state file in one rename, so a reader never
+# sees half of it.
+_progress_rewrite() {
+  local f="$1" keep="$2" add="$3" tmp
+  mkdir -p "${f%/*}" 2>/dev/null || return 0
+  _progress_own "${f%/*}"
+  tmp="$(mktemp "${f}.XXXXXX" 2>/dev/null)" || return 0
+  if { [ ! -f "${f}" ] || awk "${keep}" "${f}"; printf '%s' "${add}"; } > "${tmp}" 2>/dev/null \
+     && chmod 644 "${tmp}" && mv -f "${tmp}" "${f}"; then
+    _progress_own "${f}"
+  else
+    rm -f "${tmp}"
+  fi
+  return 0
+}
+
+progress_set() {  # <KEY> <value> [<KEY> <value> ...]: update the running build's status file
+  local f="${POCKNIX_PROGRESS_FILE:-}" keys="" add="" k v
+  [ -n "${f}" ] || return 0
+  while [ "$#" -ge 2 ]; do
+    k="$1"; v="${2//$'\n'/ }"; shift 2
+    keys+="${keys:+|}${k}"; add+="${k}=${v}"$'\n'
+  done
+  _progress_rewrite "${f}" "!/^(${keys})=/" "${add}"
+}
+progress_detail() { progress_set P_DETAIL "$*"; }
+
+hist_get() {  # <key> -> seconds it took last time; nothing when it never ran here
+  [ -f "${PROGRESS_HISTORY}" ] || return 0
+  awk -v k="$1" '$1 == k && $2 ~ /^[0-9]+$/ { v = $2 } END { if (v != "") print v }' \
+    "${PROGRESS_HISTORY}" 2>/dev/null || true
+}
+hist_set() {  # <key> <seconds>
+  [[ "$2" =~ ^[0-9]+$ ]] || return 0
+  _progress_rewrite "${PROGRESS_HISTORY}" "\$1 != \"$1\"" "$1 $2"$'\n'
+}
+
+# How long one package should take to build: its own last build here, else a guess - an arch=any
+# package only lays out files, anything else compiles (several times slower under qemu).
+pkg_estimate() {  # <package dir name> <any|native> -> "<seconds> <1 when guessed>"
+  local h; h="$(hist_get "pkg.$1")"
+  if [ -n "${h}" ]; then printf '%s 0\n' "${h}"; return 0; fi
+  case "$2:$(uname -m)" in
+    any:*) printf '60 1\n' ;;
+    *:aarch64) printf '300 1\n' ;;
+    *) printf '1200 1\n' ;;
+  esac
 }

@@ -408,19 +408,27 @@ assemble_bootimg() {
   log "cmdline: ${KERNEL_CMDLINE}"
 }
 
+# Built from exactly these inputs already, with the boot image in place: nothing to do.
+kernel_is_current() {  # <inputs hash>
+  [ "${POCKNIX_FORCE_REBUILD:-0}" != 1 ] && [ -f "${KBUILD}/out/Image" ] && [ -f "${IMAGE_DIR}/KERNEL" ] \
+    && [ "$(cat "${KBUILD}/out/inputs" 2>/dev/null)" = "$1" ]
+}
+
 main() {
   local inputs; inputs="$(inputs_hash)"
-  if [ "$#" -eq 0 ] && [ "${POCKNIX_FORCE_REBUILD:-0}" != 1 ] && [ -f "${KBUILD}/out/Image" ] \
-     && [ -f "${IMAGE_DIR}/KERNEL" ] && [ "$(cat "${KBUILD}/out/inputs" 2>/dev/null)" = "${inputs}" ]; then
+  if [ "$#" -eq 0 ] && kernel_is_current "${inputs}"; then
     ok "${KERNEL_PKG}: nothing changed since the last build (POCKNIX_FORCE_REBUILD=1 rebuilds anyway)"
     return 0
   fi
+  progress_detail "preparing linux ${KERNEL_VERSION} (source, patches, config)"
   fetch_source
   apply_patches
   install_dts
   fixup_trace_events
   configure
+  progress_detail "compiling linux ${KERNEL_VERSION}"
   build_kernel
+  progress_detail "staging the boot image"
   stage
   case "${BOOTLOADER}" in
     arm-efi)
@@ -451,4 +459,9 @@ main() {
   printf '%s\n' "${inputs}" > "${KBUILD}/out/inputs"
   ok "${KERNEL_PKG} build complete"
 }
+
+# --is-current: exit 0 when a build would do nothing (make image's time estimate asks).
+if [ "${1:-}" = --is-current ]; then
+  if kernel_is_current "$(inputs_hash)"; then exit 0; else exit 1; fi
+fi
 main "$@"

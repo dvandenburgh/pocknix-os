@@ -83,10 +83,14 @@ Current WSL kernels include btrfs and loop devices. If `make check` reports btrf
 Exactly as on any Linux host - see the [Quick start](README.md#quick-start):
 
 ```bash
-make image                                   # -> build/image/sm8550/pocknix-sm8550-sd.img
+./build.sh                                   # -> build/image/sm8550/pocknix-sm8550-sd.img
+./build.sh --ssh                             # the same with SSH on, to reach it over the network
 ```
 
-A `wsl --shutdown` or a Windows Update reboot stops a running build. Run `make image` again: the
+The bottom row of the terminal shows the step and the time left; `make watch` in a second Ubuntu
+tab shows every step's progress.
+
+A `wsl --shutdown` or a Windows Update reboot stops a running build. Run `./build.sh` again: the
 firmware is not fetched again, `make build` keeps every package it already finished, and `make kernel` starts
 its compile over (with ccache installed, the objects it already built come straight from the
 cache).

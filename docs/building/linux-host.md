@@ -84,10 +84,10 @@ would add a second `C`.
 Follow the [Quick start](README.md#quick-start). In short:
 
 ```bash
-make image                                   # -> build/image/<soc>/pocknix-<soc>-sd.img
+./build.sh                                   # -> build/image/<soc>/pocknix-<soc>-sd.img
 ```
 
-or step by step:
+(`make image` is the same; `./build.sh --help` lists the options), or step by step:
 
 ```bash
 make sync                                    # firmware -> vendor/

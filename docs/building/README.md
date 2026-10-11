@@ -52,13 +52,24 @@ The device family defaults to `sm8550` (Retroid Pocket 6, AYN Odin 2 family); ad
 
 ```bash
 git clone https://github.com/dvandenburgh/pocknix-os && cd pocknix-os
-make host-setup                              # host packages + qemu's binfmt C flag
-make image                                   # -> build/image/sm8550/pocknix-sm8550-sd.img
+./build.sh                                   # -> build/image/sm8550/pocknix-sm8550-sd.img
 ```
 
-Run `make image` as yourself: it asks `sudo` once, for the steps that need root. The firmware, the
-kernel and every package skip themselves when already current, so after an interruption (or a
-change) the same command redoes only what it must; the rootfs and the image are always rebuilt.
+`./build.sh` is the whole build in one command (`make image` is the same thing). Run it as
+yourself: it asks `sudo` once, for the steps that need root. On a fresh host it first runs
+`make host-setup` to install the build packages (`--no-host-setup` stops and lists them instead).
+The firmware, the kernel and every package skip themselves when already current, so after an
+interruption (or a change) the same command redoes only what it must; the rootfs and the image are
+always rebuilt.
+
+```bash
+./build.sh --ssh                             # SSH on in the image (make image SSH=1)
+./build.sh --ssh --wifi MyNet --wifi-psk secret --wifi-country US
+./build.sh --no-sd-image                     # stop at the finished rootfs (make rootfs)
+./build.sh --device sm8250                   # Retroid Pocket 5 / Flip 2
+./build.sh --help                            # every option
+```
+
 These are the steps it runs, and each is a target of its own:
 
 ```bash
@@ -96,16 +107,40 @@ publish. Compiling it under qemu takes hours; updating your checkout (`git pull`
 
 ### Useful build options
 
-Set these on the `make` command line (for example `make image SD_SSH=on`, or
-`sudo SD_SSH=on make sd-image` for a single step):
+Give them to `./build.sh` as flags, or set the variable on the `make` command line or in your
+environment (for example `make image SSH=1`, `export SSH=1` to make it the default, or
+`sudo SSH=1 make sd-image` for a single step). The on/off switches take `on`/`off`, `1`/`0`,
+`yes`/`no` or `true`/`false`.
 
-| Option | Effect |
-|---|---|
-| `SD_SSH=on` | enable SSH in the image (the root and `deck` password is `pocknix` - test images only) |
-| `SD_WIFI_SSID=... SD_WIFI_PSK=... SD_WIFI_COUNTRY=US` | pre-configure Wi-Fi in the image |
-| `POCKNIX_EMULATION=1` | bake the emulation layer (ES-DE and emulators) into the image |
-| `DEVICE=sm8250` | build for the SM8250 family instead of SM8550 |
-| `JOBS=N` | parallel jobs for the kernel build (default: all cores) |
+| `./build.sh` flag | Variable | Effect |
+|---|---|---|
+| `--ssh` / `--no-ssh` | `SSH=1` (or `SD_SSH=on`) | SSH in the image (the root and `deck` password is `pocknix` unless you set one - test images only) |
+| `--password PW` | `SD_ROOT_PASSWORD=PW` | the root and `deck` password baked into the image |
+| `--wifi SSID --wifi-psk PSK --wifi-country US` | `SD_WIFI_SSID= SD_WIFI_PSK= SD_WIFI_COUNTRY=` | pre-configure Wi-Fi in the image |
+| `--emulation` | `POCKNIX_EMULATION=1` | bake the emulation layer (ES-DE and emulators) into the image |
+| `--device sm8250` | `DEVICE=sm8250` | build for the SM8250 family instead of SM8550 |
+| `--jobs N` | `JOBS=N` | parallel jobs for the kernel build (default: all cores) |
+| `--no-sd-image` | `SD_IMAGE=off` | stop at the finished rootfs (`make rootfs`) |
+| `--no-seed` | `POCKNIX_SEED=off` | compile every package instead of downloading the published ones |
+| `--no-host-setup` | `POCKNIX_HOST_SETUP=off` | stop when host packages are missing instead of installing them |
+| `--no-status-bar` | `POCKNIX_STATUS_BAR=off` | plain output, without the status line at the bottom |
+
+### Watching a build
+
+While `./build.sh` runs, the bottom row of the terminal is a status bar: the step it is on, what
+that step is doing (which package is compiling, for example), the time so far, and an estimate of
+the time left with the clock time it should finish. The terminal's title shows the same in short,
+so you can see it from another tab. From any other shell in the checkout:
+
+```bash
+make status                                  # every step: its time, or its estimate
+make watch                                   # the same, redrawn every 2 s until the build ends
+```
+
+The estimate comes from how long each step, and each package, took on this machine the last time
+(kept in `build/progress/`), and from the same checks the steps use to skip work: a current kernel
+or package counts as seconds, not hours. The first build on a machine has nothing to go on, so its
+estimate is a rough guess and says so; from the second build on it is close.
 
 ## Building just a package
 

@@ -9,15 +9,24 @@ SCRIPTS := scripts
 
 .DEFAULT_GOAL := help
 
-.PHONY: help image host-setup sync bootstrap build kernel packages seed pending sd-image snapshot base-diff extend-base stage stage-check publish stage-shared stage-check-shared publish-shared publish-image install check du trim clean distclean
+.PHONY: help image rootfs status watch host-setup sync bootstrap build kernel packages seed pending sd-image snapshot base-diff extend-base stage stage-check publish stage-shared stage-check-shared publish-shared publish-image install check du trim clean distclean
 
 help: ## Show this help
 	@echo "pocknix-os build targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-image: ## Host check to flashable SD image; firmware, kernel and packages skip when current (run as yourself: sudo once)
+image: ## Everything from host check to flashable SD image, skipping what is current (as yourself; sudo once). SSH=1: SSH on. Same as ./build.sh
 	@$(SCRIPTS)/build-all.sh
+
+rootfs: ## make image without the SD image: stops at the finished rootfs in build/rootfs
+	@$(SCRIPTS)/build-all.sh --no-sd-image
+
+status: ## Where the running (or last) make image is, and its time left
+	@$(SCRIPTS)/build-status.sh
+
+watch: ## make status, redrawn every 2 s until the build ends (Ctrl-C stops watching, not the build)
+	@$(SCRIPTS)/build-status.sh --watch
 
 host-setup: ## Install this host's build tools and give qemu's binfmt the C flag (Debian/Ubuntu, Fedora, Arch; uses sudo)
 	@$(SCRIPTS)/host-setup.sh

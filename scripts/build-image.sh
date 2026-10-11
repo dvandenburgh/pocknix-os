@@ -82,6 +82,7 @@ install_local_packages() {
     return 0
   fi
   log "installing local pocknix packages (layer metapackages + ${DEVICE} device set)"
+  progress_detail "installing the pocknix packages"
   append_local_repo "${root}/etc/pacman.conf"
   mkdir -p "${root}/localrepo" "${root}/localrepo-shared"
   mount --bind "${LOCAL_REPO_DIR}" "${root}/localrepo"
@@ -226,6 +227,7 @@ install_packages() {
     mapfile -t -O "${#pkgs[@]}" pkgs < <(read_pkglist "${l}")
   done
   log "installing ${#pkgs[@]} packages from: ${lists[*]##*/}"
+  progress_detail "installing ${#pkgs[@]} base packages"
   # -Syy (force DB refresh): a reused rootfs keeps a stale sync DB, and plain -Sy won't
   # re-download a DB pacman thinks is current -> valid extra pkgs (vulkan-tools, alsa-utils,
   # alsa-ucm-conf) show up as "target not found". Safe here: this is a fresh-image -Su anyway.
@@ -281,6 +283,7 @@ bootstrap_steam_seed() {
 
   if [ ! -f "${seed}" ] || [ -n "${POCKNIX_REBOOTSTRAP_STEAM:-}" ]; then
     log "baking native ARM Steam client (downloads + Xvfb self-update; can take several minutes)..."
+    progress_detail "baking the Steam client (first build only)"
     # steam/bwrap need a real writable /dev/shm. chroot_mount binds host /dev (non-recursive), so the
     # chroot has none. Make the chroot's /dev private FIRST so this tmpfs can't propagate up and
     # shadow the HOST's /dev/shm (the bind aliases the same path), then mount a private tmpfs.
@@ -323,6 +326,7 @@ bootstrap_steam_seed() {
   # `chown -R deck:deck /home/deck` fixes ownership. The relative .steam symlinks are HOME-agnostic
   # so they resolve correctly once this tree is deck's HOME.
   log "pre-extracting Steam client into rootfs /home/deck (sized into the partition; no tar shipped)"
+  progress_detail "unpacking the Steam client"
   install -d "${root}/home/deck"
   cp "${seed}" "${root}/steam-seed.tar.zst"
   chroot "${root}" bash -c "set -e; tar -C /home/deck -xf /steam-seed.tar.zst; rm -f /steam-seed.tar.zst"
@@ -330,10 +334,16 @@ bootstrap_steam_seed() {
 
 main() {
   # 1. base rootfs
+  progress_detail "unpacking the Arch Linux ARM base"
   "${POCKNIX_ROOT}/scripts/bootstrap.sh"
 
-  # 1b. build the local pocknix-* packages (own build chroot) -> build/localrepo
-  "${POCKNIX_ROOT}/scripts/build-packages.sh"
+  # 1b. build the local pocknix-* packages (own build chroot) -> build/localrepo. make image runs
+  #     this as a step of its own just before (POCKNIX_PACKAGES_DONE=1), to time it separately.
+  if [ "${POCKNIX_PACKAGES_DONE:-0}" = 1 ]; then
+    log "packages: built by the step before (POCKNIX_PACKAGES_DONE=1)"
+  else
+    "${POCKNIX_ROOT}/scripts/build-packages.sh"
+  fi
 
   # 2. pacman config + repos inside the rootfs
   mkdir -p "${LOCAL_REPO_DIR}"
@@ -372,6 +382,7 @@ main() {
   bootstrap_steam_seed "${ROOTFS_DIR}"
 
   chroot_umount "${ROOTFS_DIR}"; trap - EXIT
+  progress_detail "linking the package cache"
   link_installed_into_cache "${ROOTFS_DIR}"
 
   # The rootfs is complete. Assembling it into a flashable image (partitions, boot KERNEL,

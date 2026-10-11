@@ -72,6 +72,7 @@ populate_qcom_abl_boot() { copy_abl_kit "$1"; }
 firstboot_config() {
   local root="$1"
   log "configuring first boot (root login, fstab, sshd_config, network, hostname)"
+  progress_detail "configuring first boot"
   echo "root:${SD_ROOT_PASSWORD}" | chroot "${root}" chpasswd
   cat > "${root}/etc/fstab" <<EOF
 # pocknix-os
@@ -193,8 +194,8 @@ EOF
         pocknix-lavd.service \
         >/dev/null 2>&1 || true
   # A well-known password is baked in, so sshd ships off. ALARM enables it: disable, not skip.
-  if [ "${SD_SSH:-off}" = on ]; then
-    warn "SD_SSH=on — this image accepts SSH logins with the baked-in password"
+  if [ "${SD_SSH}" = on ]; then
+    warn "SSH is on — this image accepts SSH logins with the baked-in password"
     chroot "${root}" systemctl enable sshd >/dev/null 2>&1 || true
   else
     for u in sshd.service sshd.socket; do
@@ -214,6 +215,7 @@ main() {
   img_mib=$(( 1 + SD_BOOT_MIB + root_mib + 1 ))
   boot_end=$(( 1 + SD_BOOT_MIB ))
   log "creating ${OUT} (~${img_mib} MiB = ${SD_BOOT_MIB} boot + ${root_mib} root)"
+  progress_detail "partitioning a ${img_mib} MiB image"
   mkdir -p "${IMAGE_DIR}"
   rm -f "${OUT}"
   truncate -s "${img_mib}M" "${OUT}"
@@ -263,6 +265,7 @@ main() {
   done
 
   log "copying rootfs -> root partition (takes a bit)"
+  progress_detail "copying the rootfs into the image"
   rsync -aHAX --numeric-ids "${ROOTFS_DIR}/" "${MNT}/"
   # No sync dbs in the image: the build's unsigned localrepo db is "not newer" than the live
   # one on first -Sy, so pacman keeps it and pairs it with the live .sig = "signature is invalid".
@@ -291,7 +294,7 @@ main() {
   log "Flash it (DOUBLE-CHECK the device with lsblk first!):"
   echo "    sudo dd if=${OUT} of=/dev/sdX bs=4M conv=fsync status=progress"
   log "Then insert into the device (${DEVICE_PRETTY:-${DEVICE}}) and boot. root password: ${SD_ROOT_PASSWORD}"
-  [ "${SD_SSH:-off}" = on ] || log "SSH is OFF in this image (build with SD_SSH=on, or turn it on in Pocknix Tools)."
+  [ "${SD_SSH}" = on ] || log "SSH is OFF in this image (build with --ssh or SSH=1, or turn it on in Pocknix Tools)."
   log "Internal ROCKNIX is untouched; remove the SD to boot it again."
 }
 main "$@"

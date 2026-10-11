@@ -45,6 +45,47 @@ pkg_repo_dir()   { case "$1" in */packages/shared/*) printf '%s' "${LOCALREPO_SH
 pkg_repo_db()    { case "$1" in */packages/shared/*) printf '%s' "${SHARED_REPO_DB}" ;; *) printf '%s' "${REPO_DB}" ;; esac; }
 pkg_repo_mount() { case "$1" in */packages/shared/*) printf '/localrepo-shared' ;; *) printf '/localrepo' ;; esac; }
 
+# make image's status bar: the compiles still to come (pending_artifacts, before any skip check)
+# with how long each should take, so the step's end can be re-estimated as packages finish.
+declare -A PKG_LEFT=()
+PKG_TOTAL=0 PKG_STARTED=0 PKG_SECS=0
+progress_pkgs_init() {
+  [ -n "${POCKNIX_PROGRESS_FILE:-}" ] || return 0
+  local -A kind=()
+  local d a n
+  while IFS='|' read -r _ d _ _ a; do
+    n="${d##*/}"
+    [ "${a}" = any ] && [ "${kind[${n}]:-}" != native ] && kind[${n}]=any || kind[${n}]=native
+  done < <(pending_artifacts)
+  for n in "${!kind[@]}"; do
+    read -r "PKG_LEFT[${n}]" _ < <(pkg_estimate "${n}" "${kind[${n}]}")
+  done
+  PKG_TOTAL="${#PKG_LEFT[@]}"
+}
+# <name> started | <name> finished <seconds>
+progress_pkg() {
+  local name="$1" what="$2" rest=0 n mine=0
+  if [ "${what}" = finished ]; then
+    hist_set "pkg.${name}" "$3"
+    PKG_SECS=$((PKG_SECS + $3))
+  fi
+  [ -n "${POCKNIX_PROGRESS_FILE:-}" ] || return 0
+  if [ "${what}" = started ]; then
+    PKG_STARTED=$((PKG_STARTED + 1))
+    [ "${PKG_STARTED}" -le "${PKG_TOTAL}" ] || PKG_TOTAL="${PKG_STARTED}"
+    read -r mine _ < <(pkg_estimate "${name}" native)
+    [ -z "${PKG_LEFT[${name}]:-}" ] || { mine="${PKG_LEFT[${name}]}"; unset "PKG_LEFT[${name}]"; }
+  fi
+  for n in "${!PKG_LEFT[@]}"; do rest=$((rest + PKG_LEFT[${n}])); done
+  if [ "${what}" = started ]; then
+    progress_set P_DETAIL "compiling ${name} (${PKG_STARTED} of ${PKG_TOTAL})" \
+      P_STEP_END "$(( $(now_s) + mine + rest ))" P_PKG_SECS "${PKG_SECS}"
+  else
+    progress_set P_DETAIL "built ${name} in $(fmt_dur "$3")" \
+      P_STEP_END "$(( $(now_s) + rest ))" P_PKG_SECS "${PKG_SECS}"
+  fi
+}
+
 setup_chroot() {
   # Base fingerprint: the chroot is built FROM a base (pinned snapshot id, or
   # "live" ALARM) and must be recreated when the pin changes — an old-base chroot
@@ -179,6 +220,8 @@ build_one() {
     fi
   fi
   log "makepkg: ${name}"
+  local t0; t0="$(now_s)"
+  progress_pkg "${name}" started
   # Refresh the chroot's sync DBs (incl. [pocknix], so makepkg -s sees siblings built
   # earlier this run) — only here, when actually building; skipped packages must not
   # each pay a network DB refresh.
@@ -322,7 +365,8 @@ Update one to match the other."
   # has no generated locales, and bsdtar warns on every tar op otherwise.
   local addlist=""
   for p in "${built_pkgs[@]}"; do addlist+=" $(basename "${p}")"; done
-  chroot "${BROOT}" bash -lc "cd ${repo_mount} && LC_ALL=C repo-add -q ${repo_db}${addlist}"
+  chroot "${BROOT}" bash -lc "cd ${repo_mount} && LC_ALL=C repo-add -q ${repo_db}${addlist}" || return 1
+  progress_pkg "${name}" finished "$(( $(now_s) - t0 ))"
 }
 
 main() {
@@ -331,7 +375,10 @@ main() {
   # e.g. `make packages PKG="inputplumber pocknix-bsp-sm8550"` to force just those two.
   local want=("$@")
   mkdir -p "${LOCALREPO}" "${LOCALREPO_SHARED}"
+  [ "${#want[@]}" -gt 0 ] || progress_pkgs_init
+  progress_detail "preparing the build chroot"
   setup_chroot
+  progress_detail "checking which packages are current"
 
   chroot_mount "${BROOT}"
   # Keep both local repos bind-mounted throughout so makepkg -s can resolve

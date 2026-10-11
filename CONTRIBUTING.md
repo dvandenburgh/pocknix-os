@@ -105,7 +105,7 @@ sudo make packages PKG="pocknix-decky"    # -> build/localrepo/<pkg>-*.pkg.tar.z
 **A full image** (same Linux host with root; the kernel build is 1-2 hours the first time):
 
 ```bash
-make image              # every step, asking sudo once -> build/image/<soc>/
+./build.sh              # every step, asking sudo once -> build/image/<soc>/ (--ssh: SSH on)
 ```
 
 Packages compress as `.pkg.tar.zst` (seeded and older ones as `.pkg.tar.xz`), so glob

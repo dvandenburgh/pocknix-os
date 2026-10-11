@@ -42,6 +42,7 @@ while IFS='|' read -r repo d p v a; do
   fi
   mkdir -p "${repo}"
   log "  ${src}"
+  progress_detail "downloading ${src##*/}"
   # Dot-named so neither the clean-up below nor build-packages.sh's `ls *.pkg.tar.*` sees it.
   part="${repo}/.${src##*/}.part"
   curl -fsSL --retry 3 -o "${part}" "${POCKNIX_REPO_URL}/${src}" || die "download failed: ${POCKNIX_REPO_URL}/${src}"

@@ -87,7 +87,7 @@ done
 note "device" "${DEVICE} (${DEVICE_PRETTY:-?}) on ${SOC}"
 
 # --- scripts executable ----------------------------------------------------
-for s in sync.sh bootstrap.sh build-image.sh build-kernel.sh build-packages.sh \
+for s in build-all.sh build-status.sh sync.sh bootstrap.sh build-image.sh build-kernel.sh build-packages.sh \
          build-sd-image.sh stage-repo.sh stage-check.sh publish-repo.sh install.sh check.sh; do
   [ -x "${POCKNIX_ROOT}/scripts/${s}" ] && note "exec: scripts/${s}" "ok" || { note "exec: scripts/${s}" "not +x"; fail=1; }
 done
