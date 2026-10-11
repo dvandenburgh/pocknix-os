@@ -274,7 +274,7 @@ local_artifacts() {
     ;; esac
     case "${d}" in */packages/soc/*)
       socs=""; read -r socs 2>/dev/null < "${d}socs" || true
-      case " ${socs} " in *" ${SOC} "*) ;; *) continue ;; esac
+      case " ${socs} " in " all "|*" ${SOC} "*) ;; *) continue ;; esac
     ;; esac
     repo="${LOCALREPO_DIR}"
     case "${d}" in */packages/shared/*) repo="${LOCALREPO_SHARED_DIR}" ;; esac
