@@ -114,13 +114,23 @@ read_pkglist() {
 }
 
 # --- chroot mount/teardown (idempotent) ------------------------------------
+# Every mount only once, and the /dev binds private. On a systemd host (WSL with systemd=true
+# included) every mount is shared, so a bind of /dev is a PEER of the host's /dev and whatever is
+# mounted on or under it lands on the host too: a second bind over an interrupted build's leftovers
+# covers the host's /dev/pts, and from then on nothing opens a terminal (sudo: "unable to allocate
+# pty: No such device") until the mounts go or the machine restarts.
+chroot_bind() {  # <source> <target>
+  mountpoint -q "$2" && return 0
+  mount --bind "$1" "$2"
+  mount --make-private "$2"
+}
 chroot_mount() {
   local root="$1"
-  mount --bind /dev      "${root}/dev"
-  mount --bind /dev/pts  "${root}/dev/pts"
-  mount -t proc  proc    "${root}/proc"
-  mount -t sysfs sys     "${root}/sys"
-  mount -t tmpfs tmpfs   "${root}/run"
+  chroot_bind /dev     "${root}/dev"
+  chroot_bind /dev/pts "${root}/dev/pts"
+  mountpoint -q "${root}/proc" || mount -t proc  proc  "${root}/proc"
+  mountpoint -q "${root}/sys"  || mount -t sysfs sys   "${root}/sys"
+  mountpoint -q "${root}/run"  || mount -t tmpfs tmpfs "${root}/run"
   chroot_resolv "${root}"
   # One package cache for the rootfs and every build chroot, so pacman fetches each file once
   # rather than once per chroot and per build. Files a chroot cached itself move into it.

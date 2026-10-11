@@ -118,6 +118,14 @@ host_problems() {
 }
 step_host() {
   local problems
+  # sudo opens a fresh pty for the root steps (use_pty), so a host whose /dev/pts is covered (an
+  # interrupted build's chroot mounts, before lib.sh made them private) fails there, two steps in.
+  if [ "$(id -u)" -ne 0 ] && [ "$(stat -f -c %T /dev/pts 2>/dev/null)" != devpts ]; then
+    die "/dev/pts is not mounted here, so sudo cannot open the terminal it needs for the root steps
+  (\"sudo: unable to allocate pty: No such device\"). An interrupted build's chroot mounts covered it.
+  On WSL: run 'wsl --shutdown' in PowerShell, reopen Ubuntu and run this again.
+  Elsewhere: reboot, or as root unmount what 'findmnt -R ${BUILD_DIR}' lists and remount /dev/pts."
+  fi
   problems="$(host_problems)"
   # host-setup installs packages and fixes qemu's binfmt; the filesystem and the kernel it can't.
   if [ -n "${problems}" ] && [ "${POCKNIX_HOST_SETUP}" = on ] \
