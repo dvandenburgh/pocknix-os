@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # progress.sh — read and show make image's progress: the status bar at the bottom of the terminal
 # that runs it, and `make status` / `make watch` from any other shell. Sourced after lib.sh by
 # build-all.sh and build-status.sh; the writing side (progress_set, hist_*) lives in lib.sh.

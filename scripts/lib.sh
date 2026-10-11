@@ -197,8 +197,8 @@ chroot_resolv() {
 # /dev twice. Deepest first, each made private before it goes so the unmount cannot propagate to
 # the host's /dev, and repeated until nothing is left (a stacked mount needs one pass per layer).
 unmount_under() {  # <root>; fails if anything is still mounted below it
-  local root="$1" t i
-  for i in 1 2 3 4 5 6 7 8; do
+  local root="$1" t _
+  for _ in 1 2 3 4 5 6 7 8; do
     mounted_under "${root}" || return 0
     while IFS= read -r t; do
       mount --make-private "${t}" 2>/dev/null || true
