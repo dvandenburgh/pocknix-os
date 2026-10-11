@@ -1,0 +1,53 @@
+From: David J. Vandenburgh <david@vandenburgh.co>
+Date: Sun, 11 Oct 2026 15:00:00 -0400
+Subject: [PATCH] drm: count the msm DPU output LUTs as plane colour management
+
+0011 keeps SDR content in the native gamut wherever planes cannot be
+colour managed, so a frame looks the same whether it composites or scans
+out. Its DRM answer was drm_supports_color_mgmt(), the AMD plane LUTs,
+which msm never has. With 0020 a directly scanned-out SDR frame on the
+SM8550 DPU gets the composite's gamma 2.2 shaper and 3D LUT post-blend,
+and 0022 gives scanned-out HDR layers their own, so both paths carry the
+same transform there and Steam's colour vibrancy (the SDR gamut wideness)
+can apply to both. Count SupportsOutputLUTs() as plane colour management;
+SM8250 and any CRTC without the DSPP LUT blocks keep the native gamut.
+
+The LUT rebuild skip compared only the convar. The effective choice now
+also follows the backend: the output LUTs are a property of the CRTC, so
+an output without them must rebuild in the native gamut.
+---
+diff --git a/src/Backends/DRMBackend.cpp b/src/Backends/DRMBackend.cpp
+index f62b5570..76ff3b93 100644
+--- a/src/Backends/DRMBackend.cpp
++++ b/src/Backends/DRMBackend.cpp
+@@ -4755,7 +4755,9 @@ namespace gamescope
+ 
+ 		virtual bool SupportsPlaneColorManagement() const override
+ 		{
+-			return SupportsColorManagement();
++			// The msm DPU output LUTs carry the composite's gamma 2.2 shaper + 3D LUT for a
++			// frame that scans out directly, so the SDR remap reaches both paths there too.
++			return SupportsColorManagement() || SupportsOutputLUTs();
+ 		}
+ 
+ 		// A pair built for the previous color state is still applied for the one
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index db0c0ffa..0b4bf82b 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -667,10 +667,11 @@ update_color_mgmt()
+ 	struct timespec t0, t1;
+ #else
+ 	// check if any part of our color mgmt stack is dirty
+-	// The native-gamut convar feeds the LUT build, not the compared state, so a flip must
+-	// get past the dirty check on its own.
+-	static bool s_bLastNativeGamut = cv_color_mgmt_native_gamut_without_plane_cm;
+-	const bool bNativeGamut = cv_color_mgmt_native_gamut_without_plane_cm;
++	// The native-gamut choice feeds the LUT build, not the compared state, so a change must
++	// get past the dirty check on its own: the convar, or the plane colour management it
++	// keys on (the DPU output LUTs follow the CRTC, so another output can lose them).
++	const bool bNativeGamut = cv_color_mgmt_native_gamut_without_plane_cm && !GetBackend()->SupportsPlaneColorManagement();
++	static bool s_bLastNativeGamut = bNativeGamut;
+ 	if ( gamescope::ColorMgmtLutsAreCurrent(
+ 		g_ColorMgmt.pending == g_ColorMgmt.current,
+ 		g_ColorMgmt.serial != 0,

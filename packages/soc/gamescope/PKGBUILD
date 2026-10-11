@@ -6,7 +6,7 @@
 pkgname=gamescope
 epoch=1
 pkgver=3.16.31.rocknix.20260927.f6916aa
-pkgrel=3
+pkgrel=3.1
 _commit=f6916aacdecb4476f05746fef4dc49a650c28f05
 install=gamescope.install
 pkgdesc="SteamOS session compositing WM — patched (for msm handhelds)"
@@ -31,8 +31,22 @@ source=("gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=${
         '0006-steamcompmgr-fix-gamepad-cursor-sprite-frozen-via-XTest.patch'
         '0009-steamcompmgr-run-SGSR-when-FSR-is-requested-on-SDR-content.patch'
         '0010-steamcompmgr-elapsed-time-fps-limiter.patch'
-        '0011-steamcompmgr-skip-identity-colour-LUTs-in-the-composite.patch')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        '0011-steamcompmgr-skip-identity-colour-LUTs-in-the-composite.patch'
+        # HDR on the EDID-less OLEDs (armada-os/armada; 0023 ours), see PATCHES.md
+        '0012-drm-synthesize-edid-for-edidless-internal-panels.patch'
+        '0013-drm-support-known-display-profiles-for-edidless-panels.patch'
+        '0014-drm-compose-gamma22-hdr-without-hardware-color-management.patch'
+        '0015-wsi-filter-hdr-formats-by-underlying-support.patch'
+        '0016-color-scale-sdr-white-on-gamma22-hdr-output.patch'
+        '0017-expose-client-sampleable-formats.patch'
+        '0018-color-fall-back-to-app-hdr-metadata-for-tonemapping.patch'
+        '0019-color-p3-red-is-wide-gamut.patch'
+        '0020-drm-sdr-color-management-through-dpu-output-luts.patch'
+        '0021-libliftoff-fix-multiple-primary-plane-stacking.patch'
+        '0022-drm-per-plane-color-management-through-msm-plane-color-pipelines.patch'
+        '0023-drm-count-the-msm-DPU-output-LUTs-as-plane-colour-management.patch')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd gamescope
@@ -44,6 +58,18 @@ prepare() {
   patch -p1 < "${srcdir}/0009-steamcompmgr-run-SGSR-when-FSR-is-requested-on-SDR-content.patch"
   patch -p1 < "${srcdir}/0010-steamcompmgr-elapsed-time-fps-limiter.patch"
   patch -p1 < "${srcdir}/0011-steamcompmgr-skip-identity-colour-LUTs-in-the-composite.patch"
+  patch -p1 < "${srcdir}/0012-drm-synthesize-edid-for-edidless-internal-panels.patch"
+  patch -p1 < "${srcdir}/0013-drm-support-known-display-profiles-for-edidless-panels.patch"
+  patch -p1 < "${srcdir}/0014-drm-compose-gamma22-hdr-without-hardware-color-management.patch"
+  patch -p1 < "${srcdir}/0015-wsi-filter-hdr-formats-by-underlying-support.patch"
+  patch -p1 < "${srcdir}/0016-color-scale-sdr-white-on-gamma22-hdr-output.patch"
+  patch -p1 < "${srcdir}/0017-expose-client-sampleable-formats.patch"
+  patch -p1 < "${srcdir}/0018-color-fall-back-to-app-hdr-metadata-for-tonemapping.patch"
+  patch -p1 < "${srcdir}/0019-color-p3-red-is-wide-gamut.patch"
+  patch -p1 < "${srcdir}/0020-drm-sdr-color-management-through-dpu-output-luts.patch"
+  patch -p1 < "${srcdir}/0021-libliftoff-fix-multiple-primary-plane-stacking.patch"
+  patch -p1 < "${srcdir}/0022-drm-per-plane-color-management-through-msm-plane-color-pipelines.patch"
+  patch -p1 < "${srcdir}/0023-drm-count-the-msm-DPU-output-LUTs-as-plane-colour-management.patch"
 }
 
 build() {
