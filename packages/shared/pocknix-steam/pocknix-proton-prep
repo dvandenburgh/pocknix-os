@@ -5,40 +5,7 @@
 set -u
 
 STEAM="${HOME}/.local/share/Steam"
-RES=/usr/share/pocknix-steam
-
-# Subshell: device.conf sets many board vars; none may leak into this set -u script.
-GPU_DXVK3="$(
-  set +u
-  for dc in /usr/lib/pocknix/device.conf /etc/pocknix/device.conf; do
-    [ -r "${dc}" ] && . "${dc}"
-  done
-  printf '%s' "${POCKNIX_GPU_DXVK3:-yes}"
-)"
-DXVK2_DONOR="${RES}/dxvk2-donor"
-DXVK2_PROBE=""   # the donor dll compared each pass: found once, found again if that file goes away
-
-ARM_PROTONS=(
-  "Proton 11.0 (ARM64)"
-  "Proton Experimental (ARM64)"
-)
 HOOKS=/usr/lib/pocknix/proton-prep.d
-
-# --watch re-runs apply every 20 s for the whole session, so its steady-state checks are builtins.
-# Every file they read is text (vdf, shell), which read -d '' takes whole.
-has() { # <file> <string>: grep -qF without a fork
-  local s=""
-  [ -f "$1" ] || return 1
-  IFS= read -r -d '' s 2>/dev/null < "$1"
-  [[ "${s}" == *"$2"* ]]
-}
-same() { # <file> <file>: cmp -s without a fork
-  local a="" b=""
-  [ -f "$1" ] && [ -f "$2" ] || return 1
-  IFS= read -r -d '' a 2>/dev/null < "$1"
-  IFS= read -r -d '' b 2>/dev/null < "$2"
-  [ "${a}" = "${b}" ]
-}
 
 # Dirs our old registration (<= 0.1.0-49) left behind; they duplicate Steam's own entries.
 LEGACY_TOOLDIRS=(proton-11-arm64 proton-experimental-arm64)
@@ -65,83 +32,6 @@ library_commons() {
     "${STEAM}/steamapps/libraryfolders.vdf" 2>/dev/null
 }
 
-  # Match the QUOTED key: ours names require_tool_appid in a comment, so an unquoted one self-matches.
-  if has "${proton_dir}/toolmanifest.vdf" '"require_tool_appid"'; then
-    install -Dm644 "${RES}/proton-toolmanifest.vdf" "${proton_dir}/toolmanifest.vdf"
-  fi
-
-  # The toolmanifest's commandline is relative to the tool dir, so the shim must sit next to `proton`.
-  same "${RES}/pocknix-proton" "${proton_dir}/pocknix-proton" \
-    || install -Dm755 "${RES}/pocknix-proton" "${proton_dir}/pocknix-proton"
-
-  # DXVK 3 rejects a6xx and account-listed Valve tools can't be hidden, so swap in the
-  # 2.7 donor (Valve's own dlls, same wine lineage). One-dll cmp = write-free loop
-  # (a DXVK bump changes every dll); tmp+mv so a mid-swap launch never sees a half dir.
-  # cp -a keeps the donor's mtime, so a probe with exactly that mtime skips even the cmp; a match
-  # by content (a donor rebuilt unchanged) takes the donor's mtime so the next pass skips it too.
-  local dxvk="${proton_dir}/files/lib/wine/dxvk" src dst
-  if [ "${GPU_DXVK3}" = no ] && [ -d "${DXVK2_DONOR}" ] && [ -d "${dxvk}" ]; then
-    [ -f "${DXVK2_DONOR}/${DXVK2_PROBE}" ] \
-      || DXVK2_PROBE="$(cd "${DXVK2_DONOR}" && find . -type f -name '*.dll' | sort | head -1)"
-    src="${DXVK2_DONOR}/${DXVK2_PROBE}" dst="${dxvk}/${DXVK2_PROBE}"
-    if [ -n "${DXVK2_PROBE}" ] && { [ "${dst}" -nt "${src}" ] || [ "${dst}" -ot "${src}" ]; } \
-       && ! { cmp -s "${src}" "${dst}" && touch -r "${src}" "${dst}"; }; then
-      rm -rf "${dxvk}.pocknix-tmp"
-      cp -a "${DXVK2_DONOR}" "${dxvk}.pocknix-tmp" \
-        && rm -rf "${dxvk}" \
-        && mv "${dxvk}.pocknix-tmp" "${dxvk}"
-    fi
-  fi
-}
-
-# Protons that declare a runtime dependency launch inside an SLR container (Valve's x86 builds, and
-# Proton 11 ARM). Wrap the runtime's entry point so the tweak wrapper runs BEFORE pressure-vessel,
-# where its env still reaches the graphics capture.
-apply_slr() {
-  local slr_dir manifest entry real
-  for slr_dir in "${STEAM}/steamapps/common/SteamLinuxRuntime"*/; do
-    [ -d "${slr_dir}" ] || continue
-    manifest="${slr_dir}toolmanifest.vdf"
-    [ -f "${manifest}" ] || continue
-    same "${RES}/pocknix-proton" "${slr_dir}pocknix-proton" \
-      || install -Dm755 "${RES}/pocknix-proton" "${slr_dir}pocknix-proton"
-    # Steam caches this manifest per client session, so after a tool update it launches Valve's
-    # "/_v2-entry-point" until restart: claim that NAME too. The marker check decides whose bytes
-    # a file holds — never copy any version of our shim over .real.
-    entry="${slr_dir}_v2-entry-point"
-    real="${slr_dir}_v2-entry-point.real"
-    if [ -f "${entry}" ] && ! has "${entry}" pocknix-proton-wrapper; then
-      cp -p "${entry}" "${real}"
-    fi
-    if [ -f "${real}" ] && ! has "${real}" pocknix-proton-wrapper; then
-      # tmp+mv: Steam may exec this exact path mid-write, and mv keeps it always runnable.
-      same "${RES}/pocknix-proton" "${entry}" || {
-        install -m755 "${RES}/pocknix-proton" "${entry}.pocknix-tmp" \
-          && mv -f "${entry}.pocknix-tmp" "${entry}"
-      }
-    fi
-    if has "${manifest}" '"/_v2-entry-point '; then
-      sed -i 's|"/_v2-entry-point |"/pocknix-proton |' "${manifest}"
-    fi
-  done
-}
-
-# DXVK 3 needs storageBuffer8BitAccess, which turnip lacks on a6xx, and Valve's proton copies its
-# own dxvk dir into the prefix on every launch, so the 2.7 donor has to replace that dir. One-dll
-# cmp = write-free loop (a DXVK bump changes every dll); tmp+mv so a mid-swap launch never sees a
-# half dir.
-swap_dxvk() { # <proton dir>
-  local dxvk="$1/files/lib/wine/dxvk" probe
-  [ -d "${dxvk}" ] || return 0
-  probe="$(cd "${DXVK2_DONOR}" && find . -type f -name '*.dll' | sort | head -1)"
-  if [ -n "${probe}" ] && ! cmp -s "${DXVK2_DONOR}/${probe}" "${dxvk}/${probe}"; then
-    rm -rf "${dxvk}.pocknix-tmp"
-    cp -a "${DXVK2_DONOR}" "${dxvk}.pocknix-tmp" \
-      && rm -rf "${dxvk}" \
-      && mv "${dxvk}.pocknix-tmp" "${dxvk}"
-  fi
-}
-
 # Undo the old entry-point claim (steam <= 0.1.0-66) so the runtime runs as Valve ships it. The
 # shim file stays: Steam caches the manifest per client session and may still exec it until restart.
 restore_slr() { # <runtime dir>
@@ -153,7 +43,6 @@ restore_slr() { # <runtime dir>
   if grep -q '"/pocknix-proton ' "${slr_dir}/toolmanifest.vdf" 2>/dev/null; then
     sed -i 's|"/pocknix-proton |"/_v2-entry-point |' "${slr_dir}/toolmanifest.vdf"
   fi
-}
 }
 
 apply() {
