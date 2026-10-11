@@ -1,0 +1,269 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: shuuri-labs <61762328+shuuri-labs@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 14:36:50 +0200
+Subject: [PATCH] steamcompmgr: skip identity colour LUTs in the composite
+ shader
+
+With SDR content on an SDR panel and no night mode, gain or gamut remap,
+the shaper and 3D LUTs gamescope builds are an identity transform, yet the
+composite shader still samples both per pixel. On a GPU that composites
+every frame that is the larger half of the pass. Detect the identity grids
+on the CPU when the LUTs are rebuilt and leave them unbound for the shader;
+the DRM plane path keeps its blobs.
+
+Two Steam defaults kept the LUT from ever being identity. It drives the
+SDR gamut wideness to 0.5; where planes cannot be colour managed that
+remap only reaches composited frames, so a game looks different the moment
+an upscaler or overlay forces a composite. Keep SDR content in the native
+gamut on such backends. It also sets a virtual white that is D65 quantised
+differently from the 709 constant; a virtual white within 0.001 xy of the
+display's is treated as no override. Night mode and the gains still
+rebuild a real LUT when set.
+
+The color_mgmt_skip_identity_luts and color_mgmt_native_gamut_without_plane_cm
+convars (default on) restore the old paths for A/B.
+---
+ src/Backends/DRMBackend.cpp    |  5 ++++
+ src/Backends/DeferredBackend.h |  5 ++++
+ src/backend.h                  |  3 +++
+ src/color_helpers.cpp          | 44 +++++++++++++++++++++++++++++++---
+ src/color_helpers.h            |  5 ++++
+ src/rendervulkan.hpp           |  5 ++++
+ src/steamcompmgr.cpp           | 33 ++++++++++++++++++++++---
+ 7 files changed, 94 insertions(+), 6 deletions(-)
+
+diff --git a/src/Backends/DRMBackend.cpp b/src/Backends/DRMBackend.cpp
+index 1eaea8c..a7f1c8b 100644
+--- a/src/Backends/DRMBackend.cpp
++++ b/src/Backends/DRMBackend.cpp
+@@ -4384,6 +4384,11 @@ namespace gamescope
+ 			return drm_supports_color_mgmt( &g_DRM );
+ 		}
+ 
++		virtual bool SupportsPlaneColorManagement() const override
++		{
++			return SupportsColorManagement();
++		}
++
+ 		int Commit( const FrameInfo_t *pFrameInfo )
+ 		{
+ 			drm_t *drm = &g_DRM;
+diff --git a/src/Backends/DeferredBackend.h b/src/Backends/DeferredBackend.h
+index 7f76122..89c6a4a 100644
+--- a/src/Backends/DeferredBackend.h
++++ b/src/Backends/DeferredBackend.h
+@@ -210,6 +210,11 @@ namespace gamescope
+             return m_pChild->SupportsPlaneHardwareCursor();
+ 		}
+ 
++		virtual bool SupportsPlaneColorManagement() const override
++		{
++			return m_pChild->SupportsPlaneColorManagement();
++		}
++
+ 		virtual bool SupportsTearing() const override
+ 		{
+             {
+diff --git a/src/backend.h b/src/backend.h
+index bd57c42..5b4bf92 100644
+--- a/src/backend.h
++++ b/src/backend.h
+@@ -360,6 +360,9 @@ namespace gamescope
+         virtual IBackendConnector *GetConnector( GamescopeScreenType eScreenType ) = 0;
+ 
+         virtual bool SupportsPlaneHardwareCursor() const = 0;
++        // Whether scanned-out planes get the same colour pipeline the composite shader
++        // applies; backends that cannot say keep the remap (nested, headless).
++        virtual bool SupportsPlaneColorManagement() const { return true; }
+         virtual bool SupportsTearing() const = 0;
+ 
+         virtual bool UsesVulkanSwapchain() const = 0;
+diff --git a/src/color_helpers.cpp b/src/color_helpers.cpp
+index 64430a5..752efaa 100644
+--- a/src/color_helpers.cpp
++++ b/src/color_helpers.cpp
+@@ -736,10 +736,13 @@ void calcColorTransform( lut1d_t * pShaper, int nLutSize1d,
+ 
+         // Calculate the virtual white point adaptation
+         glm::mat3x3 whitePointDestAdaptation = glm::mat3x3( 1.f ); // identity
+-        if ( destVirtualWhite.x > 0.01f && destVirtualWhite.y > 0.01f )
++        // A virtual white within 0.001 xy of the display's is the same white quantised twice
++        // (Steam's D65 vs the 709 constant), far below a visible step: adapting would only
++        // keep the LUT from ever being identity.
++        if ( destVirtualWhite.x > 0.01f && destVirtualWhite.y > 0.01f &&
++             ( std::abs( destVirtualWhite.x - dest.white.x ) > 0.001f ||
++               std::abs( destVirtualWhite.y - dest.white.y ) > 0.001f ) )
+         {
+-            // if source white is within tiny tolerance of sourceWhitePointOverride
+-            // don't do the override? (aka two quantizations of d65)
+             glm::mat3x3 virtualWhiteXYZFromPhysicalWhiteXYZ = chromatic_adaptation_matrix(
+                  xy_to_xyz( dest.white ), xy_to_xyz( destVirtualWhite ), eMethod );
+             whitePointDestAdaptation = dest_from_xyz * virtualWhiteXYZFromPhysicalWhiteXYZ * xyz_from_dest;
+@@ -828,6 +831,41 @@ void calcColorTransform( lut1d_t * pShaper, int nLutSize1d,
+     }
+ }
+ 
++bool BIsIdentityLut( const lut1d_t & lut1d, const lut3d_t & lut3d, float flTolerance )
++{
++    if ( lut1d.lutSize < 2 || lut3d.lutEdgeSize < 2 )
++        return false;
++
++    const float flScale1d = 1.f / ( (float) lut1d.lutSize - 1.f );
++    for ( int i = 0; i < lut1d.lutSize; ++i )
++    {
++        const float flExpected = i * flScale1d;
++        if ( std::abs( lut1d.dataR[i] - flExpected ) > flTolerance ||
++             std::abs( lut1d.dataG[i] - flExpected ) > flTolerance ||
++             std::abs( lut1d.dataB[i] - flExpected ) > flTolerance )
++            return false;
++    }
++
++    const int nEdge = lut3d.lutEdgeSize;
++    const float flScale3d = 1.f / ( (float) nEdge - 1.f );
++    for ( int nBlue = 0; nBlue < nEdge; ++nBlue )
++    {
++        for ( int nGreen = 0; nGreen < nEdge; ++nGreen )
++        {
++            for ( int nRed = 0; nRed < nEdge; ++nRed )
++            {
++                const glm::vec3 & value = lut3d.data[GetLut3DIndexRedFastRGB( nRed, nGreen, nBlue, nEdge )];
++                if ( std::abs( value.r - nRed * flScale3d ) > flTolerance ||
++                     std::abs( value.g - nGreen * flScale3d ) > flTolerance ||
++                     std::abs( value.b - nBlue * flScale3d ) > flTolerance )
++                    return false;
++            }
++        }
++    }
++
++    return true;
++}
++
+ bool BIsWideGamut( const displaycolorimetry_t & nativeDisplayOutput )
+ {
+     // Use red as a sentinal for a wide-gamut display
+diff --git a/src/color_helpers.h b/src/color_helpers.h
+index cefa74e..5e7e558 100644
+--- a/src/color_helpers.h
++++ b/src/color_helpers.h
+@@ -382,6 +382,11 @@ void calcColorTransform( lut1d_t * pShaper, int nLutSize1d,
+ 	const colormapping_t & mapping, const nightmode_t & nightmode, const tonemapping_t & tonemapping,                   \
+ 	const lut3d_t * pLook, float flGain )
+ 
++// True when the shaper and 3D LUT leave every grid value within flTolerance of its
++// input, so applying them cannot move a pixel. Linear and tetrahedral interpolation of
++// identity grids are exact, so grid entries alone decide.
++bool BIsIdentityLut( const lut1d_t & lut1d, const lut3d_t & lut3d, float flTolerance );
++
+ // Build colorimetry and a gamut mapping for the given SDR configuration
+ // Note: the output colorimetry will use the native display's white point
+ // Only the color gamut will change
+diff --git a/src/rendervulkan.hpp b/src/rendervulkan.hpp
+index fa519db..673abbc 100644
+--- a/src/rendervulkan.hpp
++++ b/src/rendervulkan.hpp
+@@ -540,6 +540,9 @@ struct gamescope_color_mgmt_luts
+ {
+ 	bool bHasLut3D = false;
+ 	bool bHasLut1D = false;
++	// The DRM plane path needs the blobs even when they are identity, so this only
++	// steers the composite shader.
++	bool bIdentity = false;
+ 	uint16_t lut3d[s_nLutEdgeSize3d*s_nLutEdgeSize3d*s_nLutEdgeSize3d*4];
+ 	uint16_t lut1d[s_nLutSize1d*4];
+ 
+@@ -555,6 +558,7 @@ struct gamescope_color_mgmt_luts
+ 	{
+ 		bHasLut1D = false;
+ 		bHasLut3D = false;
++		bIdentity = false;
+ 		vk_lut1d = nullptr;
+ 		vk_lut3d = nullptr;
+ 	}
+@@ -563,6 +567,7 @@ struct gamescope_color_mgmt_luts
+ 	{
+ 		bHasLut1D = false;
+ 		bHasLut3D = false;
++		bIdentity = false;
+ 	}
+ };
+ 
+diff --git a/src/steamcompmgr.cpp b/src/steamcompmgr.cpp
+index 5179700..61672b5 100644
+--- a/src/steamcompmgr.cpp
++++ b/src/steamcompmgr.cpp
+@@ -327,6 +327,14 @@ static const gamescope_color_mgmt_t k_ScreenshotColorMgmtHDR =
+ //#define COLOR_MGMT_MICROBENCH
+ // sudo cpupower frequency-set --governor performance
+ 
++// An identity transform still costs the per-pixel shaper + 3D LUT taps in the composite
++// shader, the bulk of a composited frame on a GPU that cannot scan the layers out.
++gamescope::ConVar<bool> cv_color_mgmt_skip_identity_luts{ "color_mgmt_skip_identity_luts", true, "Leave the shaper + 3D LUTs out of the composite shader when they are an identity transform." };
++// Without plane colour management a frame that scans out directly never sees the SDR
++// gamut remap, so a composited one must not either or the look shifts whenever the
++// scanout/composite decision flips (upscaler on, overlay up).
++gamescope::ConVar<bool> cv_color_mgmt_native_gamut_without_plane_cm{ "color_mgmt_native_gamut_without_plane_cm", true, "Keep SDR content in the native gamut when planes cannot be colour managed, so composited and scanned-out frames match." };
++
+ static void
+ create_color_mgmt_luts(const gamescope_color_mgmt_t& newColorMgmt, gamescope_color_mgmt_luts outColorMgmtLuts[ EOTF_Count ])
+ {
+@@ -346,6 +354,7 @@ create_color_mgmt_luts(const gamescope_color_mgmt_t& newColorMgmt, gamescope_col
+ 		{
+ 			memcpy(g_ColorMgmtLuts[nInputEOTF].lut1d, g_ColorMgmtLutsOverride[nInputEOTF].lut1d, sizeof(g_ColorMgmtLutsOverride[nInputEOTF].lut1d));
+ 			memcpy(g_ColorMgmtLuts[nInputEOTF].lut3d, g_ColorMgmtLutsOverride[nInputEOTF].lut3d, sizeof(g_ColorMgmtLutsOverride[nInputEOTF].lut3d));
++			outColorMgmtLuts[nInputEOTF].bIdentity = false;
+ 		}
+ 		else
+ 		{
+@@ -379,7 +388,11 @@ create_color_mgmt_luts(const gamescope_color_mgmt_t& newColorMgmt, gamescope_col
+ 				// The final display colorimetry is used to build the output mapping, as we want a gamut-aware handling
+ 				// for sdrGamutWideness indepdendent of the output encoding (for SDR data), and when mapping SDR -> PQ output
+ 				// we only want to utilize a portion of the gamut the actual display can reproduce
+-				buildSDRColorimetry( &inputColorimetry, &colorMapping, newColorMgmt.sdrGamutWideness, displayColorimetry );
++				// -1 is "native" in both the wide-gamut and the 709 branch below; 0 is not.
++				float flSDRGamutWideness = newColorMgmt.sdrGamutWideness;
++				if ( cv_color_mgmt_native_gamut_without_plane_cm && !GetBackend()->SupportsPlaneColorManagement() )
++					flSDRGamutWideness = -1.f;
++				buildSDRColorimetry( &inputColorimetry, &colorMapping, flSDRGamutWideness, displayColorimetry );
+ 			}
+ 			else if ( inputEOTF == EOTF_PQ )
+ 			{
+@@ -435,6 +448,13 @@ create_color_mgmt_luts(const gamescope_color_mgmt_t& newColorMgmt, gamescope_col
+ 				newColorMgmt.outputVirtualWhite, newColorMgmt.chromaticAdaptationMode,
+ 				colorMapping, newColorMgmt.nightmode, tonemapping, pLook, flGain );
+ 
++			// Half a 10-bit code, the widest output scanned out: below a visible step, far above
++			// the ~1e-6 a float identity leaves behind.
++			const bool bIdentity = BIsIdentityLut( g_tmpLut1d, g_tmpLut3d, 0.5f / 1023.f );
++			if ( bIdentity != outColorMgmtLuts[nInputEOTF].bIdentity && outColorMgmtLuts == g_ColorMgmtLuts )
++				xwm_log.infof( "color mgmt: %s transform for EOTF %u", bIdentity ? "identity" : "non-identity", nInputEOTF );
++			outColorMgmtLuts[nInputEOTF].bIdentity = bIdentity;
++
+ 			// Create quantized output luts
+ 			for ( size_t i=0, end = g_tmpLut1d.dataR.size(); i<end; ++i )
+ 			{
+@@ -612,8 +632,13 @@ update_color_mgmt()
+ 	struct timespec t0, t1;
+ #else
+ 	// check if any part of our color mgmt stack is dirty
+-	if ( g_ColorMgmt.pending == g_ColorMgmt.current && g_ColorMgmt.serial != 0 )
++	// The native-gamut convar feeds the LUT build, not the compared state, so a flip must
++	// get past the dirty check on its own.
++	static bool s_bLastNativeGamut = cv_color_mgmt_native_gamut_without_plane_cm;
++	const bool bNativeGamut = cv_color_mgmt_native_gamut_without_plane_cm;
++	if ( g_ColorMgmt.pending == g_ColorMgmt.current && g_ColorMgmt.serial != 0 && bNativeGamut == s_bLastNativeGamut )
+ 		return;
++	s_bLastNativeGamut = bNativeGamut;
+ #endif
+ 
+ #ifdef COLOR_MGMT_MICROBENCH
+@@ -3503,7 +3528,9 @@ paint_all( global_focus_t *pFocus, bool async )
+ 
+ 	for (uint32_t i = 0; i < EOTF_Count; i++)
+ 	{
+-		if ( g_ColorMgmtLuts[i].HasLuts() )
++		// With output colour mgmt off the shader skips the final encode too, so only an
++		// identity LUT pair that still ends in the output transfer function can go unbound.
++		if ( g_ColorMgmtLuts[i].HasLuts() && !( cv_color_mgmt_skip_identity_luts && frameInfo.applyOutputColorMgmt && g_ColorMgmtLuts[i].bIdentity ) )
+ 		{
+ 			frameInfo.shaperLut[i] = g_ColorMgmtLuts[i].vk_lut1d;
+ 			frameInfo.lut3D[i] = g_ColorMgmtLuts[i].vk_lut3d;
