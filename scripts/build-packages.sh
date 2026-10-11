@@ -48,11 +48,14 @@ pkg_repo_mount() { case "$1" in */packages/shared/*) printf '/localrepo-shared' 
 # make image's status bar: the compiles still to come (pending_artifacts, before any skip check)
 # with how long each should take, so the step's end can be re-estimated as packages finish.
 declare -A PKG_LEFT=()
-PKG_TOTAL=0 PKG_STARTED=0 PKG_SECS=0
+PKG_TOTAL=0 PKG_STARTED=0 PKG_SECS=0 PKG_DIRS=0 PKG_CHECKED=0
 progress_pkgs_init() {
   [ -n "${POCKNIX_PROGRESS_FILE:-}" ] || return 0
   local -A kind=()
   local d a n
+  # Every package dir gets a skip check (makepkg --packagelist in the chroot: seconds each under
+  # qemu, minutes for the lot), so the bar counts them too.
+  PKG_DIRS="$(local_artifacts | cut -d'|' -f2 | sort -u | wc -l)"
   while IFS='|' read -r _ d _ _ a; do
     n="${d##*/}"
     [ "${a}" = any ] && [ "${kind[${n}]:-}" != native ] && kind[${n}]=any || kind[${n}]=native
@@ -78,7 +81,7 @@ progress_pkg() {
   fi
   for n in "${!PKG_LEFT[@]}"; do rest=$((rest + PKG_LEFT[${n}])); done
   if [ "${what}" = started ]; then
-    progress_set P_DETAIL "compiling ${name} (${PKG_STARTED} of ${PKG_TOTAL})" \
+    progress_set P_DETAIL "compiling ${name} (${PKG_STARTED} of ${PKG_TOTAL} to compile)" \
       P_STEP_END "$(( $(now_s) + mine + rest ))" P_PKG_SECS "${PKG_SECS}"
   else
     progress_set P_DETAIL "built ${name} in $(fmt_dur "$3")" \
@@ -437,6 +440,8 @@ main() {
     if [ "${#want[@]}" -gt 0 ]; then
       case " ${want[*]} " in *" ${name} "*) force=1 ;; *) continue ;; esac
     fi
+    PKG_CHECKED=$((PKG_CHECKED + 1))
+    [ "${PKG_DIRS}" -lt "${PKG_CHECKED}" ] || progress_detail "checking ${name} (package ${PKG_CHECKED} of ${PKG_DIRS})"
     try_build "${pkgdir}" "${force}" || failed+=("${pkgdir}")
   done
 
