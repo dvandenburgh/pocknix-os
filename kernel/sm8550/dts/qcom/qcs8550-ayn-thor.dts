@@ -167,6 +167,9 @@
 &display_panel {
 	compatible = "chipone,icna3520";
 
+	/* 8bpc DSI link; dither the DPU 10-bit downconvert to hide banding */
+	armada,dpu-8bpc-dither;
+
 	pinctrl-0 = <&dsi_s_rst_active>, <&dsi_s_te_active>;
 	pinctrl-1 = <&dsi_s_rst_suspend>, <&dsi_s_te_suspend>;
 	pinctrl-names = "default", "sleep";

@@ -10,9 +10,11 @@
 +patches/20-sm8550/0210-mmc-add-qcom-downstream-sdhci-msm-driver.patch
 +patches/20-sm8550/0211-mmc-sdhci-msm-downstream-drop-sdhci_pltfm_free.patch
 +patches/20-sm8550/0212-Revert-clk-qcom-gcc-sm8550-Use-floor-ops-for-SDCC-RCGs.patch
++patches/30-version/1089-drm-msm-dpu-panel-opt-in-8bpc-dither.patch
 dts/qcom/qcs8550-ayn-common.dtsi
 dts/qcom/qcs8550-ayn-odin2.dts
 dts/qcom/qcs8550-ayn-odin2mini.dts
 dts/qcom/qcs8550-ayn-odin2portal.dts
+dts/qcom/qcs8550-ayn-thor.dts
 dts/qcom/qcs8550-retroidpocket-rp6.dts
 patches/30-version/0010-msm-resource-cleanup.patch
