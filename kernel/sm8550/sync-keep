@@ -1,20 +1,17 @@
 # Local kernel delta that make sync (scripts/sync.sh) restores from git after its rsync --delete,
 # paths under kernel/sm8550/. path = our edit of an upstream file, +path = our own file,
-# -path = deleted locally. Our 1000+ patches the sync deletes come back without a line here.
--patches/30-version/9999-fix-rust-build-error.patch
+# -path = deleted locally. Our 1000+ patches the sync deletes come back without a line here;
+# ROCKNIX's SM8550 set ships 1000, 1002, 1003, 1005 and 1020 itself, so watch those in the sync output.
+-patches/20-version/9999-fix-rust-build-error.patch
+-patches/20-version/0011-thermal-adc-tm5-drop-iio-val-int-check.patch
 +dts/qcom/qcs8550-ayn-odin2-sd.dtsi
-+patches/20-sm8550/0066-drm-msm-dpu-enable-sm8550-inline-rotation.patch
-+patches/20-sm8550/0067-drm-msm-dpu-enable-qseed-detail-enhancer.patch
-+patches/20-sm8550/0203-thermal-qcom-tsens-skip-sm8550-uplow-wake-irq.patch
-+patches/20-sm8550/0207-scsi-ufs-qcom-balance-irq-on-host-reset-error.patch
-+patches/20-sm8550/0210-mmc-add-qcom-downstream-sdhci-msm-driver.patch
-+patches/20-sm8550/0211-mmc-sdhci-msm-downstream-drop-sdhci_pltfm_free.patch
-+patches/20-sm8550/0212-Revert-clk-qcom-gcc-sm8550-Use-floor-ops-for-SDCC-RCGs.patch
-+patches/30-version/1089-drm-msm-dpu-panel-opt-in-8bpc-dither.patch
++patches/30-sm8550/0203-thermal-qcom-tsens-skip-sm8550-uplow-wake-irq.patch
++patches/30-sm8550/0210-mmc-add-qcom-downstream-sdhci-msm-driver.patch
++patches/30-sm8550/0211-mmc-sdhci-msm-downstream-drop-sdhci_pltfm_free.patch
++patches/30-sm8550/0212-Revert-clk-qcom-gcc-sm8550-Use-floor-ops-for-SDCC-RCGs.patch
 dts/qcom/qcs8550-ayn-common.dtsi
 dts/qcom/qcs8550-ayn-odin2.dts
 dts/qcom/qcs8550-ayn-odin2mini.dts
 dts/qcom/qcs8550-ayn-odin2portal.dts
 dts/qcom/qcs8550-ayn-thor.dts
 dts/qcom/qcs8550-retroidpocket-rp6.dts
-patches/30-version/0010-msm-resource-cleanup.patch

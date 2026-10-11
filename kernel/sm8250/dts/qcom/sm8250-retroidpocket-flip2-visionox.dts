@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
-/* Retroid Pocket Flip 2 with the Visionox VTDR6130 panel; see the rp5-visionox dts. */
+/*
+ * Copyright (c) 2026, Armada <https://armadaos.dev>.
+ */
 
 /dts-v1/;
 
@@ -22,7 +24,6 @@
 	};
 };
 
-/* Cold-boot power-on, see the rp5-visionox dts. */
 &vdda_panel {
 	/delete-property/ regulator-boot-on;
 };

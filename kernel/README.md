@@ -27,14 +27,14 @@ ROCKNIX work**, not ours:
 
 - **Public ROCKNIX RP6/SM8550 support** — the RP6 panel (`0104`), touchscreen, backlight,
   audio, thermal, etc. From ROCKNIX's **`next` (nightly)** branch.
-- **jaewun's suspend/resume set** — `0203`, `0207`, `1004`, `1006`–`1010`, `1015` (UFS
-  hibern8/clk-gating, geni irq masking, rsinput MCU suspend) plus the thorch s2idle stack
+- **jaewun's suspend/resume set** — `0203`, `1004`, `1009` here, and the UFS hibern8/clk-gating
+  + geni irq masking part in `kernel/common/patches/` (`1001`, `1006`–`1008`, `1010`, `1015`) plus the thorch s2idle stack
   `1045`–`1051` (PCIe suspend OPP floor, rpmh suspend-state votes, lowest GPU OPP). From
   `jaewun/ROCKNIX` `thor-suspend-fixes` / thorch; we merge/maintain it. Retired at 7.2:
   `0201` (its premise, a threaded IRQF_ONESHOT UFS handler, is gone upstream) and
   `1040`–`1044` (the "PCI: qcom: Add D3cold support" v5 series landed in 7.2).
 - **Our delta** (small) — SD UHS-I SDR104 (`0210`–`0212` + the RP6/Odin 2 sdhc_2 nodes),
-  `1021` (RP6 120Hz-only mode), the `0010` cstate-init fix, and DTS edits that `make sync`
+  `1021` (RP6 120Hz-only mode), and DTS edits that `make sync`
   does not carry (see PATCHES.md): the RP6 touchscreen at 400kHz I2C without
   `no-regmap-bulk-read` (armada-packages PR #32: the AYN workaround the RP6 inherited
   forced 63 single-byte reads per frame, capping touch at ~28Hz instead of 120Hz).
@@ -59,16 +59,19 @@ patch stack, never the pin.
 
 | Path | What | Apply order |
 |---|---|---|
-| `patches/10-mainline/` | ROCKNIX generic backports (input-polldev, pwm, adc-keys, BT RTL8733BU) — 4 | 1st (before device) |
-| `patches/20-sm8550/` | SM8550 / RP6 device patches — 73: suspend/resume set, RP6 panel, RSInput gamepad, TSENS uplow-wake fix, audio, thermal, SD UHS, etc. | 2nd |
-| `patches/30-version/` | Generic version-specific patches (msm resource cleanup, initramfs warn, rust build fix) — 3 | 3rd (after device) |
+| `patches/10-mainline/` | ROCKNIX generic backports (pwm, adc-keys, BT RTL8733BU) | 1st |
+| `patches/20-version/` | ROCKNIX patches for the kernel version, every SoC (msm resource cleanup, initramfs warn) | 2nd |
+| `patches/30-sm8550/` | SM8550 device patches: ROCKNIX's plus our 1000+ (s2idle stack, RP6 panel, RSInput gamepad, SD UHS) | 3rd |
+| `../common/patches/` | Our SoC-neutral patches, applied to every SoC; `make sync` never writes there | last |
 | `dts/qcom/` | RP6 device tree (`qcs8550-retroidpocket-rp6.dts` + shared `.dtsi`s) | — |
 | `config/linux.aarch64.conf` | Kernel config | — |
 | `config/kernel-firmware.dat` | List of firmware files to pull from `linux-firmware` (blobs NOT vendored) | — |
 | `bootloader/` | qcom-abl boot-image packaging reference | — |
 
-The numeric subdir prefixes encode ROCKNIX's `mainline -> ${DEVICE} -> <version>` patch-dir
-order (version dir named in kernel.conf); the build script applies them in sorted order.
+The numeric subdir prefixes encode ROCKNIX's `mainline -> <version> -> ${DEVICE}` patch-dir
+order (scripts/unpack; version dir named in kernel.conf); the build script applies them in
+sorted order, then `kernel/common/patches/`. A patch whose code runs on any SoC and that is
+ours (not synced) belongs in `kernel/common/patches/`, numbered 1000+ like the per-SoC ones.
 
 ## What is NOT here (fetched at build, Phase 1)
 

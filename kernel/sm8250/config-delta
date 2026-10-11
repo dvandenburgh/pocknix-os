@@ -7,5 +7,3 @@
 --module SND_SOC_LPASS_VA_MACRO
 --module SND_SOC_LPASS_RX_MACRO
 --module SND_SOC_LPASS_TX_MACRO
-# Exists only once patches 0104 + 0105 apply, so the synced config cannot carry it.
---enable DRM_PANEL_VISIONOX_VTDR6130_COG

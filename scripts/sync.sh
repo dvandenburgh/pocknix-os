@@ -65,26 +65,26 @@ log "syncing ROCKNIX ${ROCKNIX_SOC} from ${ROCKNIX_PROJECT_DIR}"
 # Only with POCKNIX_SYNC_SCOPE=all: a build host needs vendor/ alone, and this moves the committed
 # pin to whatever the distribution/ checkout holds.
 if [ "${SCOPE}" = all ]; then
-  # The full patch stack ROCKNIX applies for this SoC, in order (PKG_PATCH_DIRS=
-  # "mainline ${DEVICE} ... 7.0"). Stored as numbered subdirs so the build applies
-  # them in the same order: 10-mainline -> 20-<soc> -> 30-version.
+  # The full patch stack ROCKNIX applies for this SoC, in its scripts/unpack order
+  # (PKG_PATCH_DIRS "mainline", then patches/<version>, then the device dir), as
+  # numbered subdirs the build applies in sort order. kernel/common/ is ours and
+  # outside every rsync below.
+  # -c: rsync's size+mtime check skips a same-size upstream edit when both trees
+  # were checked out within the same second.
   log "  kernel enablement -> kernel/${SOC}/ (committed)"
   mkdir -p "${KERNEL_DIR}/patches/10-mainline" \
-           "${KERNEL_DIR}/patches/20-${SOC}" \
-           "${KERNEL_DIR}/patches/30-version" \
+           "${KERNEL_DIR}/patches/20-version" \
+           "${KERNEL_DIR}/patches/30-${SOC}" \
            "${KERNEL_DIR}/dts" "${KERNEL_DIR}/config" "${KERNEL_DIR}/bootloader"
-  # generic ROCKNIX backports applied BEFORE device patches
-  rsync -a --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/mainline/" "${KERNEL_DIR}/patches/10-mainline/"
-  # the SoC device patches
-  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/patches/linux/"                     "${KERNEL_DIR}/patches/20-${SOC}/"
-  # generic version-specific patches applied AFTER device patches (dir name set in
-  # kernel.conf - ROCKNIX keeps using "7.0" for the 7.1.x series)
-  rsync -a --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/${ROCKNIX_VERSION_PATCH_DIR:-${KERNEL_VERSION%.*}}/" "${KERNEL_DIR}/patches/30-version/"
+  rsync -ac --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/mainline/" "${KERNEL_DIR}/patches/10-mainline/"
+  # version dir name set in kernel.conf: it has lagged KERNEL_VERSION before
+  rsync -ac --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/${ROCKNIX_VERSION_PATCH_DIR:-${KERNEL_VERSION%.*}}/" "${KERNEL_DIR}/patches/20-version/"
+  rsync -ac --delete "${ROCKNIX_DEVICE_DIR}/patches/linux/"                     "${KERNEL_DIR}/patches/30-${SOC}/"
   # dts / config / bootloader packaging
-  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/linux/dts/"                 "${KERNEL_DIR}/dts/"
-  rsync -a          "${ROCKNIX_DEVICE_DIR}/linux/linux.aarch64.conf"   "${KERNEL_DIR}/config/"
-  rsync -a          "${ROCKNIX_DEVICE_DIR}/config/kernel-firmware.dat" "${KERNEL_DIR}/config/"
-  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/bootloader/"               "${KERNEL_DIR}/bootloader/"
+  rsync -ac --delete "${ROCKNIX_DEVICE_DIR}/linux/dts/"                 "${KERNEL_DIR}/dts/"
+  rsync -ac          "${ROCKNIX_DEVICE_DIR}/linux/linux.aarch64.conf"   "${KERNEL_DIR}/config/"
+  rsync -ac          "${ROCKNIX_DEVICE_DIR}/config/kernel-firmware.dat" "${KERNEL_DIR}/config/"
+  rsync -ac --delete "${ROCKNIX_DEVICE_DIR}/bootloader/"               "${KERNEL_DIR}/bootloader/"
 else
   log "  kernel/${SOC}/ left as committed (POCKNIX_SYNC_SCOPE=all moves it)"
 fi
@@ -119,10 +119,10 @@ if [ -f "${KERNEL_DIR}/sync-keep" ]; then
 fi
 while IFS= read -r f; do
   p="${f#"${kernel_rel}"/}"
-  if [ ! -e "${KERNEL_DIR}/${p}" ]; then restore "${p}"
+  if [ ! -e "${KERNEL_DIR}/${p}" ]; then restore "${p}"; log "  restored ${p} (ours: 1000+)"
   elif differs "${p}"; then warn "  upstream ships ${p} with different content; kept upstream's"
   fi
-done < <(git -C "${POCKNIX_ROOT}" ls-files "${kernel_rel}/patches/20-${SOC}/1[0-9][0-9][0-9]-*")
+done < <(git -C "${POCKNIX_ROOT}" ls-files "${kernel_rel}/patches/30-${SOC}/1[0-9][0-9][0-9]-*")
 [ "${nrestored}" -eq 0 ] || log "  restored ${nrestored} local-delta files from git"
 
 # --- gitignored build-time material -> vendor/ -----------------------------
@@ -134,7 +134,7 @@ mkdir -p "${dst}/filesystem"
 # that commit's ${ROCKNIX_SOC}/ (git checks it by id); sm8250 has no overlay either way.
 fw="${FW_SRC_REL#"rocknix-${SOC}/filesystem/"}"
 if [ -d "${ROCKNIX_DEVICE_DIR}/filesystem/${fw}" ] || [ "${SOC}" = sm8250 ]; then
-  rsync -a --delete "${ROCKNIX_DEVICE_DIR}/filesystem/" "${dst}/filesystem/"
+  rsync -ac --delete "${ROCKNIX_DEVICE_DIR}/filesystem/" "${dst}/filesystem/"
 else
   need_tool git
   mk="${ROCKNIX_PROJECT_DIR}/packages/linux-firmware/extra-firmware/package.mk"
@@ -153,9 +153,9 @@ else
       && git -C "${xfw}" -c advice.detachedHead=false checkout -q --force --detach FETCH_HEAD \
       || die "could not fetch ${site} at ${rev}"
   fi
-  rsync -a --delete --exclude="/${fw}" "${ROCKNIX_DEVICE_DIR}/filesystem/" "${dst}/filesystem/"
+  rsync -ac --delete --exclude="/${fw}" "${ROCKNIX_DEVICE_DIR}/filesystem/" "${dst}/filesystem/"
   mkdir -p "${dst}/filesystem/${fw}"
-  rsync -a --delete "${xfw}/${ROCKNIX_SOC}/" "${dst}/filesystem/${fw}/"
+  rsync -ac --delete "${xfw}/${ROCKNIX_SOC}/" "${dst}/filesystem/${fw}/"
 fi
 for p in "${REFS[@]}"; do
   src="${ROCKNIX_PROJECT_DIR}/packages/${p}"
@@ -165,7 +165,7 @@ for p in "${REFS[@]}"; do
   fi
   # pre-create nested parents: macOS rsync (2.6.9) won't make implied dirs
   mkdir -p "${dst}/reference/${p}"
-  rsync -a --delete "${src}/" "${dst}/reference/${p}/"
+  rsync -ac --delete "${src}/" "${dst}/reference/${p}/"
 done
 
 # Which ROCKNIX commit vendor/ came from, so make image can tell when the pin has moved.

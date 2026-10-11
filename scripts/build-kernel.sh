@@ -7,6 +7,7 @@
 #
 #   stock kernel.org linux-${KERNEL_VERSION}   (pinned in kernel/${SOC}/kernel.conf)
 #     + patch stack in numeric subdir order: kernel/${SOC}/patches/*/
+#     + the SoC-neutral patches every SoC carries: kernel/common/patches/
 #     + the SoC tree's device trees (kernel/${SOC}/dts) with ensured Makefile entries
 #     + the SoC config (kernel/${SOC}/config/linux.aarch64.conf)
 #   -> make Image modules + the shipped boards' dtbs
@@ -57,7 +58,7 @@ inputs_hash() {
   {
     printf '%s\n' "${KERNEL_VERSION}" "${KERNEL_SOURCE_SHA256}" "${KERNEL_CMDLINE}" \
       "${DEVICE_HOSTNAME}" "${BOOTLOADER}" "${MKBOOTIMG_COMMIT}" "$("${CROSS}gcc" --version | head -n 1)"
-    cd "${POCKNIX_ROOT}" && find "kernel/${SOC}" scripts/build-kernel.sh -type f -print0 \
+    cd "${POCKNIX_ROOT}" && find "kernel/${SOC}" kernel/common scripts/build-kernel.sh -type f -print0 \
       | sort -z | xargs -0 sha256sum
   } | sha256sum | cut -d' ' -f1
 }
@@ -82,23 +83,27 @@ fetch_source() {
   tar -C "${KBUILD}" -xf "${tb}"
 }
 
+# kernel/common goes last: its patches sit on top of SoC-dir prerequisites
+# (1062 needs the SoC dir's 0504).
 apply_patches() {
   local d p n stray
   # Every file under patches/ is applied, so files git does not track there (an old
   # POCKNIX_SYNC_SCOPE=all sync, a half-done edit) are the usual reason a patch stops applying.
-  stray="$(git -c safe.directory='*' -C "${POCKNIX_ROOT}" status --porcelain -- "${KERNEL_DIR#"${POCKNIX_ROOT}/"}/patches" 2>/dev/null || true)"
-  for d in "${KERNEL_DIR}"/patches/*/; do
+  stray="$(git -c safe.directory='*' -C "${POCKNIX_ROOT}" status --porcelain -- \
+             "${KERNEL_DIR#"${POCKNIX_ROOT}/"}/patches" kernel/common/patches 2>/dev/null || true)"
+  for d in "${KERNEL_DIR}"/patches/*/ "${POCKNIX_ROOT}/kernel/common/patches/"; do
     [ -d "${d}" ] || continue
     n=0
     for p in "${d}"*.patch; do
       [ -f "${p}" ] || continue
       patch -p1 -d "${KSRC}" < "${p}" >/dev/null || die "patch failed to apply: ${p}${stray:+
-  kernel/${SOC}/patches differs from what git has committed:
+  kernel/${SOC}/patches or kernel/common/patches differs from what git has committed:
 ${stray}
-  if those changes are not yours: git checkout -- kernel/${SOC} && git clean -fd kernel/${SOC}}"
+  if those changes are not yours: git checkout -- kernel/${SOC} kernel/common && git clean -fd kernel/${SOC} kernel/common}"
       n=$((n+1))
     done
-    log "applied $(basename "${d}"): ${n} patches"
+    d="${d%/}"
+    log "applied ${d#"${POCKNIX_ROOT}"/kernel/}: ${n} patches"
   done
 }
 

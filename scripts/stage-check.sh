@@ -25,7 +25,8 @@ FAIL() { printf '  %sFAIL%s %s\n' "$_c_red" "$_c_rst" "$*"; fail=1; }
 WARN() { printf '  %swarn%s %s\n' "$_c_yel" "$_c_rst" "$*"; warned=1; }
 note() { printf '  %-10s %s\n' "$1" "$2"; }
 
-mapfile -t ALL_SOCS < <(for d in "${POCKNIX_ROOT}"/kernel/*/; do basename "${d}"; done)
+# kernel.conf marks a SoC dir; kernel/common holds shared patches, not a SoC.
+mapfile -t ALL_SOCS < <(for d in "${POCKNIX_ROOT}"/kernel/*/kernel.conf; do basename "${d%/kernel.conf}"; done)
 
 # --- metadata -> flat facts --------------------------------------------------
 # P repo name ver | D depspec | V provides | R replaces | C conflicts | O optdep;
