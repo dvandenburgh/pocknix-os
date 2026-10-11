@@ -98,6 +98,12 @@ done
 if out="$(python3 "${POCKNIX_ROOT}/scripts/check-power-profiles.py" 2>&1)"; then note "power profiles" "ok"
 else note "power profiles" "BROKEN"; printf '%s\n' "${out}" | sed 's/^/    /'; fail=1; fi
 
+# --- versions between our own packages -------------------------------------
+# Renumbering a package (a pkgrel bump, a fork's .1) can strand a sibling's versioned depends= or
+# pull it into a conflicts= range; pacman only says so at the rootfs step.
+if out="$(python3 "${POCKNIX_ROOT}/scripts/check-pkg-versions.py" 2>&1)"; then note "package versions" "ok"
+else note "package versions" "BROKEN"; printf '%s\n' "${out}" | sed 's/^/    /'; fail=1; fi
+
 # --- SoC families: what a new SoC or board must carry (all SoCs, not just DEVICE) ----
 # Each of these has shipped broken once or was only written down: a missing profile dies at
 # build time, a board key a consumer reads falls back to RP6 values, an unreferenced board
