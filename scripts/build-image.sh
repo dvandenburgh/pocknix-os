@@ -74,7 +74,7 @@ prune_fontconfig_compat_links() {
 # Install the local pocknix packages into the rootfs: the layer metapackages
 # (pocknix-core + the three optional layers — their depends= ARE the manifest,
 # see packages/shared/pocknix-*/PKGBUILD), the SoC kernel (${KERNEL_PKG}), then
-# the device metapackage (devices/${DEVICE}/packages.list) with the per-SoC set.
+# the device metapackage (${DEVICE_META_PKG}) with the per-SoC set.
 install_local_packages() {
   local root="$1"
   if [ ! -f "${LOCAL_REPO_DIR}/pocknix.db" ] || [ ! -f "${LOCAL_REPO_SHARED_DIR}/pocknix-shared.db" ]; then
@@ -150,15 +150,11 @@ install_local_packages() {
   else
     die "${KERNEL_PKG} not in [pocknix] — run 'make kernel' first (build-packages.sh stages build/kernel/out into the package), then re-run. Without it the rootfs has no matching modules for the booted kernel."
   fi
-  # Device selection LAST: the per-device metapackage (devices/${DEVICE}/packages.list)
-  # pins the device identity and pulls the BSP + the kernel package (already present).
-  local -a _pkgs=()
-  local _p
-  while read -r _p; do _pkgs+=("pocknix/${_p}"); done \
-    < <(read_pkglist "${DEVICE_DIR}/packages.list")
-  chroot "${root}" pacman -S --noconfirm --needed "${_pkgs[@]}"
+  # Device selection LAST: the device metapackage pins the device identity and pulls the BSP +
+  # the kernel package (already present).
+  chroot "${root}" pacman -S --noconfirm --needed "pocknix/${DEVICE_META_PKG}"
   chroot "${root}" pacman -Q "${DEVICE_BSP_PKG}" >/dev/null 2>&1 || {
-    die "${DEVICE_BSP_PKG} not installed — the device metapackage should have pulled it. Check devices/${DEVICE}/packages.list and 'make packages'."
+    die "${DEVICE_BSP_PKG} not installed — ${DEVICE_META_PKG} should have pulled it. Check its depends= and 'make packages'."
   }
   log "device OK: $(chroot "${root}" pacman -Q "${DEVICE_META_PKG}" 2>/dev/null || echo "${DEVICE}")"
   umount "${root}/localrepo"

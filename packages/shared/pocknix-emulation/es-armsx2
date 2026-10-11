@@ -5,6 +5,4 @@
 # is ES-DE's only route to them.
 . /usr/lib/pocknix/emu-resolve.sh
 exe="$(emu_path armsx2)" || emu_missing armsx2
-[ -r /usr/lib/pocknix/device.conf ] && . /usr/lib/pocknix/device.conf
-[ -r /etc/pocknix/device.conf ] && . /etc/pocknix/device.conf
-exec taskset -c "${POCKNIX_BIG_CORES:-3-7}" "${exe}" "$@"
+exec taskset -c "$(big_cores)" "${exe}" "$@"

@@ -1,5 +1,5 @@
 # pocknix-bootloader-sm8550 — the ROCKNIX ABL install kit for SM8550 boards.
-# Boot contract (qcom-abl): XBL -> ABL -> /KERNEL (Android boot image) off the FAT labeled ROCKNIX.
+# Boot contract (qcom-abl): XBL -> ABL -> /KERNEL (Android boot image) off any FAT partition.
 # The factory ABL boots only Android, so the ROCKNIX ABL must be flashed to abl_a/abl_b ONCE before
 # any SD boots — unlike sm8250, whose factory ABL chainloads UEFI GRUB. One elf covers the whole
 # SM8550 family: ROCKNIX keys it by SoC, not board.

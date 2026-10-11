@@ -49,7 +49,7 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 # --- project layout --------------------------------------------------------
-for d in config config/packages scripts packages/shared packages/soc vendor "devices/${DEVICE}"; do
+for d in config config/packages scripts packages/shared packages/soc "devices/${DEVICE}"; do
   [ -d "${POCKNIX_ROOT}/${d}" ] && note "dir: ${d}/" "ok" || { note "dir: ${d}/" "MISSING"; fail=1; }
 done
 
@@ -71,6 +71,8 @@ for p in "${POCKNIX_ROOT}"/packages/soc/*/; do
   fi
   read -r _socs < "${p}/socs"
   bad=0
+  # "all" = every kernel/<soc>, so a new SoC needs no socs edits; it never mixes with names.
+  if [ "${_socs}" = all ]; then note "soc pkg: ${n}" "socs: all"; continue; fi
   for s in ${_socs}; do
     [ -d "${POCKNIX_ROOT}/kernel/${s}" ] || { note "soc pkg: ${n}" "unknown SoC '${s}' in socs"; fail=1; bad=1; }
   done
@@ -95,6 +97,76 @@ done
 # --- pocknix-perfd factory profiles ---------------------------------------
 if out="$(python3 "${POCKNIX_ROOT}/scripts/check-power-profiles.py" 2>&1)"; then note "power profiles" "ok"
 else note "power profiles" "BROKEN"; printf '%s\n' "${out}" | sed 's/^/    /'; fail=1; fi
+
+# --- SoC families: what a new SoC or board must carry (all SoCs, not just DEVICE) ----
+# Each of these has shipped broken once or was only written down: a missing profile dies at
+# build time, a board key a consumer reads falls back to RP6 values, an unreferenced board
+# never loads, and a cmdline drift ships a boot image that disagrees with the on-device one.
+# Keys every board must set: the session, desktop, pinning and install-to-internal consumers
+# fall back to RP6 values without them (devices/README.md runtime contract).
+REQUIRED_BOARD_KEYS="POCKNIX_DEVICE POCKNIX_SOC POCKNIX_PANEL_W POCKNIX_PANEL_H
+  POCKNIX_PANEL_REFRESH POCKNIX_PANEL_ORIENT POCKNIX_PANEL_MM POCKNIX_DESKTOP_ROTATE
+  POCKNIX_DESKTOP_SCALE POCKNIX_BIG_CORES POCKNIX_INTERNAL_DISK POCKNIX_BOOT_GPT_NAME
+  POCKNIX_BOOT_FAT_LABEL POCKNIX_ROOT_LABEL"
+
+# Prints one problem per line for a board file; nothing means it is fine.
+check_board() {  # $1 = BSP dir, $2 = board file, $3 = SoC
+  local n r m
+  n="$(basename "$2")"
+  # Reachable = sourced by the dispatcher or by another board (variants source their base).
+  grep -qsE "^[[:space:]]*\. /usr/lib/pocknix/boards/${n//./\\.}([[:space:]]|\$)" \
+    "$1/device.conf" $(ls "$1"/boards/*.conf | grep -v "/${n}\$") || echo "${n} is never sourced"
+  # Evaluated, not grepped: a variant board sources its base board.
+  r="$(sed "s|/usr/lib/pocknix/boards/|$1/boards/|g" "$2" | env -i bash -c '
+    . /dev/stdin || exit 1; for k in '"${REQUIRED_BOARD_KEYS//$'\n'/ }"'; do eval "[ -n \"\${${k}:-}\" ]" || printf "%s " "${k}"; done
+    printf "|%s" "${POCKNIX_SOC:-}"')" || { echo "${n} fails to source"; return; }
+  m="${r%%|*}"; [ -z "${m}" ] || echo "${n} lacks ${m% }"
+  [ "${r#*|}" = "$3" ] || echo "${n} says POCKNIX_SOC=${r#*|}"
+}
+
+# Prints one problem per line for a SoC family; nothing means it is fine.
+check_family() {  # $1 = SoC
+  local soc="$1" dev="${POCKNIX_ROOT}/devices/$1" bsp="${POCKNIX_ROOT}/devices/$1/packages/pocknix-bsp-$1"
+  local f p cmd grub line
+  for f in "devices/${soc}/profile.conf" "config/tuning/${soc}.conf" "kernel/${soc}/kernel.conf"; do
+    [ -f "${POCKNIX_ROOT}/${f}" ] || echo "missing ${f}"
+  done
+  [ -f "${dev}/profile.conf" ] || return
+  grep -q "^| kernel (${soc}" "${POCKNIX_ROOT}/PATCHES.md" || echo "no PATCHES.md kernel row"
+  for p in DEVICE_BSP_PKG DEVICE_META_PKG; do
+    [ -f "${dev}/packages/$(profile_get "${dev}" "${p}")/PKGBUILD" ] || echo "${p} has no package under devices/${soc}/packages/"
+  done
+  [ -f "${bsp}/device.conf" ] || echo "missing pocknix-bsp-${soc}/device.conf"
+  for f in "${bsp}"/boards/*.conf; do
+    [ -f "${f}" ] && check_board "${bsp}" "${f}" "${soc}"
+  done
+  cmd="$(profile_get "${dev}" KERNEL_CMDLINE)"
+  if [ -f "${bsp}/kernel-cmdline" ] && [ "$(cat "${bsp}/kernel-cmdline")" != "${cmd}" ]; then
+    echo "BSP kernel-cmdline drifted from the profile"
+  fi
+  grub="${POCKNIX_ROOT}/packages/soc/pocknix-bootloader-${soc}/grub.cfg"
+  if [ -f "${grub}" ]; then
+    while IFS= read -r line; do
+      [ "${line}" = "${cmd}" ] || { echo "a grub.cfg menuentry cmdline drifted from the profile"; break; }
+    done < <(sed -n 's|^[[:space:]]*linux /KERNEL ||p' "${grub}")
+  fi
+}
+
+for _k in "${POCKNIX_ROOT}"/kernel/*/; do
+  _soc="$(basename "${_k}")"
+  _bad="$(check_family "${_soc}" | paste -sd ';' -)"
+  if [ -z "${_bad}" ]; then note "family: ${_soc}" "ok"; else note "family: ${_soc}" "${_bad}"; fail=1; fi
+done
+
+# Every key a board sets is part of the runtime contract, so it must be in the README table.
+_undoc=""
+for _key in $(cat "${POCKNIX_ROOT}"/devices/*/packages/pocknix-bsp-*/boards/*.conf \
+                  "${POCKNIX_ROOT}"/devices/*/packages/pocknix-bsp-*/device.conf 2>/dev/null |
+              grep -oE '^[[:space:]]*POCKNIX_[A-Z0-9_]+=' | tr -d ' =' | sort -u); do
+  grep -q "\`${_key}\`" "${POCKNIX_ROOT}/devices/README.md" || _undoc="${_undoc} ${_key}"
+done
+if [ -z "${_undoc}" ]; then note "board keys documented" "ok"
+else note "board keys documented" "not in devices/README.md:${_undoc}"; fail=1; fi
 
 # --- kernel enablement present? (committed; refreshable via sync) -----------
 _npatch=$(find "${KERNEL_DIR}/patches" -name '*.patch' 2>/dev/null | wc -l | tr -d ' ')

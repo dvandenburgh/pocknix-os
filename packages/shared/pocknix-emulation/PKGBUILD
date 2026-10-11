@@ -2,14 +2,14 @@
 # configs, shipped as an arch=any data/scripts package.
 pkgname=pocknix-emulation
 pkgver=0.1.0
-pkgrel=21
+pkgrel=22
 pkgdesc="ES-DE + preconfigured emulators: drop ROMs into ~/Emulation and play; star -> Steam"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
 # Build with ./nodeps: the meta dep would drag ES-DE/RetroArch/Qt into the chroot. The meta dep
 # is the pre-meta catch-up cycle, see pocknix-steam.
-depends=('bash' 'pocknix-emulation-full')
+depends=('bash' 'pocknix-emulation-full' 'pocknix-bsp-common>=0.1.0-24')
 install=pocknix-emulation.install
 source=('pocknix-roms-init' 'pocknix-roms-init.service' 'pocknix-seed-merge' 'pocknix-play'
         'emu-resolve.sh' 'es-eden' 'es-ryujinx' 'es-armsx2' 'es-dolphin' 'es-psp' 'es-xemu' 'es-retroarch'

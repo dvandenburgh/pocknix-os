@@ -1,0 +1,4 @@
+# Symbols (without CONFIG_) that must resolve to =y, one or more per line: olddefconfig drops a panel driver silently when its patch
+# is missing, and the only symptom is a black screen on device.
+DRM_PANEL_DDIC_CH13726A
+DRM_PANEL_VISIONOX_VTDR6130_COG

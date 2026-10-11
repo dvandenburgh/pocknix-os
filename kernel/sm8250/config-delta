@@ -1,0 +1,11 @@
+# scripts/config arguments applied after the shared deltas in scripts/build-kernel.sh:
+# whitespace-separated, any number per line, no quoting; "#" starts a comment.
+# LPASS macro codecs as modules: their q6 audio clocks settle after the ADSP reports up, a
+# probe inside that window fails for good, and only a module can be reloaded
+# (pocknix-sm8250-audio-heal does).
+--module SND_SOC_LPASS_WSA_MACRO
+--module SND_SOC_LPASS_VA_MACRO
+--module SND_SOC_LPASS_RX_MACRO
+--module SND_SOC_LPASS_TX_MACRO
+# Exists only once patches 0104 + 0105 apply, so the synced config cannot carry it.
+--enable DRM_PANEL_VISIONOX_VTDR6130_COG

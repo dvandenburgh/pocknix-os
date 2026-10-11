@@ -12,7 +12,7 @@ official ROCKNIX ABL release, pinned by tag + sha512:
 
 It is ROCKNIX's patched, test-key-signed build of the Qualcomm ABL (edk2
 LinuxLoader, BSD-3-Clause) for the SM8550 family — the bootloader that scans
-for the FAT labeled ROCKNIX and boots /KERNEL (an Android boot image, board
+FAT partitions for /KERNEL and boots it (an Android boot image, board
 dtb selected by board id). One elf serves every SM8550 board (RP6, AYN
 Odin 2 / Mini / Portal); ROCKNIX keys the artifact by SoC.
 

@@ -22,8 +22,9 @@ Current families:
 
 Adding a **board to an existing family**: a `boards/<board>.conf` + a dispatcher case
 arm + (if its controller differs) an inputplumber yaml/map with the board's dt-model
-`matches:` — plus, on arm-efi SoCs, a menuentry in the SoC grub.cfg. Bump the BSP
-(and bootloader) pkgrels. No new packages, no new image.
+`matches:` — plus, on arm-efi SoCs, a menuentry in the SoC grub.cfg and the board in the
+BSP's board-select script (pocknix-sm8250-board-select). Bump the BSP (and bootloader)
+pkgrels. No new packages, no new image.
 
 ## What a family target must provide
 
@@ -35,8 +36,6 @@ devices/<soc>/
                                   #   SD_FAT_LABEL / SD_BOOT_PARTNAME / ROOT_LABEL (bootloader contract),
                                   #   KERNEL_CMDLINE_* (ONE cmdline for the family), FW_SRC_REL,
                                   #   DEVICE_HOSTNAME, DEVICE_BSP_PKG / DEVICE_META_PKG / KERNEL_PKG
-  packages.list                   # [pocknix] packages installed for this family (usually
-                                  #   just the metapackage; may add ALARM names too)
   packages/
     pocknix-bsp-<soc>/            # the family BSP: device.conf dispatcher + boards/,
                                   #   input maps (dt-model gated), udev quirks, audio UCM,
@@ -60,7 +59,11 @@ mapping), and a `packages/soc/pocknix-bootloader-<soc>/` — on arm-efi SoCs the
 kit copied to the SD boot FAT (see pocknix-bootloader-sm8550). Each SoC gets its own pacman repo tree
 (`build/localrepo/<soc>`, published at `POCKNIX_REPO_URL/<soc>`): the tuned packages
 (mesa, gamescope, mangohud, fex-emu) share pkgnames across SoCs with different
-binaries, so the repos must not mix.
+binaries, so the repos must not mix. They build for every SoC already (`socs` = `all`);
+a SoC-specific kernel config or a local patch delta goes in `kernel/<soc>/` (see
+kernel/README.md). `make check` validates every family: required files, board keys,
+dispatcher reachability and cmdline drift. A new tree is never published until its first
+`make stage`/`make publish`; stage-check skips it for the other SoCs until then.
 
 ## Boot styles (`BOOTLOADER` in profile.conf)
 
@@ -85,18 +88,19 @@ Sourced by shared session scripts (`pocknix-steam`, `pocknix-desktop-rotate`,
 | Key | Used by | Meaning |
 |---|---|---|
 | `POCKNIX_DEVICE` / `POCKNIX_SOC` | anything | identity |
-| `POCKNIX_PANEL_W/H/REFRESH` | pocknix-steam | gamescope -W/-H/-r |
+| `POCKNIX_PANEL_W` / `POCKNIX_PANEL_H` / `POCKNIX_PANEL_REFRESH` | pocknix-steam | gamescope -W/-H/-r |
 | `POCKNIX_PANEL_ORIENT` | pocknix-steam | gamescope --force-orientation |
 | `POCKNIX_PANEL_MM` | pocknix-steam | GAMESCOPE_FAKE_OUTPUT_MM (gamepadui DPI; deliberately faked on small panels) |
-| `POCKNIX_DESKTOP_ROTATE/_SCALE` | pocknix-desktop-rotate | kscreen-doctor rotation/scale (seeded once per user; env re-forces) |
+| `POCKNIX_DESKTOP_ROTATE` / `POCKNIX_DESKTOP_SCALE` | pocknix-desktop-rotate | kscreen-doctor rotation/scale (seeded once per user; env re-forces) |
 | `POCKNIX_BOARD_UNKNOWN` | pocknix-desktop-rotate | set by the device.conf fallback branch: board not in the list, do not force guessed values |
 | `POCKNIX_PANEL_OUTPUT` | pocknix-steam, pocknix-desktop-rotate | DRM connector of the main panel (`DSI-2`); gamescope `--prefer-output`, the desktop seed's output. Absent = single panel, first DSI |
-| `POCKNIX_PANEL2_OUTPUT`, `POCKNIX_PANEL2_W/H`, `POCKNIX_DESKTOP2_SCALE` | pocknix-desktop-rotate | second panel (dual-screen boards): enabled, rotated like the main one, scaled, placed below it |
+| `POCKNIX_PANEL_ROTATE_SHADER` | pocknix-steam | `1` = gamescope `--force-composition-rotation`: required for a panel past the DPU rotator's 1088-line cap, which otherwise scans out black. Absent = rotation autodetected |
+| `POCKNIX_PANEL2_OUTPUT`, `POCKNIX_PANEL2_W` / `POCKNIX_PANEL2_H`, `POCKNIX_DESKTOP2_SCALE` | pocknix-desktop-rotate | second panel (dual-screen boards): enabled, rotated like the main one, scaled, placed below it |
 | `POCKNIX_TOUCH_NAME` / `POCKNIX_TOUCH2_NAME` | pocknix-desktop, pocknix-second-screen | evdev names of the main/second touchscreen: kwin maps each to its output (kcminputrc); the second is libinput-ignored outside the desktop session (udev rule in the board BSP + pocknix-second-screen) |
-| `POCKNIX_BIG_CORES` | pocknix-play | taskset big-core mask for emulator pinning |
+| `POCKNIX_BIG_CORES` | pocknix-play, pocknix-steam-env, pocknix-rt-ladder | cores games and emulators are pinned to; the cores left out are the small cores irq work goes to (on a SoC with no little cluster, leave two mids out) |
 | `POCKNIX_BOOT_STYLE` | pocknix-install/uninstall-internal | qcom-abl (default) or arm-efi: selects the internal-install boot-file handling (arm-efi pins grub.cfg + fstab to internal PARTUUIDs) |
 | `POCKNIX_INTERNAL_DISK` | pocknix-install/uninstall-internal, installer-gui | internal disk (default /dev/sda) |
-| `POCKNIX_BOOT_GPT_NAME/_FAT_LABEL`, `POCKNIX_ROOT_LABEL` | pocknix-install/uninstall-internal | internal-install boot contract |
+| `POCKNIX_BOOT_GPT_NAME` / `POCKNIX_BOOT_FAT_LABEL`, `POCKNIX_ROOT_LABEL` | pocknix-install/uninstall-internal | internal-install boot contract |
 
 Picking the display values for a new board:
 
@@ -124,10 +128,11 @@ on an arm-efi board's internal storage.)
 3. InputPlumber: extend the family yaml's `matches:` if the board shares the family
    controller, or add a new model-gated yaml + capability map if it differs.
 4. UCM if the sound card name differs; udev quirks as needed. arm-efi: add the board's
-   grub.cfg menuentry.
+   grub.cfg menuentry and its arm in the BSP's board-select script.
    Dual-screen board: the `POCKNIX_PANEL2_*`/`POCKNIX_TOUCH*` keys plus a udev rule
    ignoring the second touchscreen unless `/run/pocknix/second-screen` exists (see
    the sm8550 BSP's Thor rule); gamescope blanks the second panel by itself.
-5. Bump pkgrels; `make build DEVICE=<soc>` — no shared file should need editing; if one
-   does, the boundary has a hole: fix the boundary, not the device.
+5. `make check` (board keys, dispatcher, cmdline); bump pkgrels; `make build DEVICE=<soc>`.
+   No shared file should need editing; if one does, the boundary has a hole: fix the
+   boundary, not the device.
 6. On-device checklist: pocknix-notes dev/device-smoke-checklist.md.

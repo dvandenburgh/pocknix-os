@@ -109,6 +109,18 @@ esac
 # --- package lists ---------------------------------------------------------
 # awk $1, not sed 's/#.*//': sed keeps the whitespace before an inline comment and
 # pacman then can't match the name.
+# A variable as one family's profile alone sets it: the profile assigns with ":=" defaults, so
+# the selected DEVICE's values (already loaded) are cleared first, by the names it assigns.
+profile_get() {  # $1 = devices/<soc> dir, $2 = variable name
+  (
+    for _v in $(sed -nE 's/^: "\$\{([A-Z0-9_]+):=.*/\1/p; s/^([A-Z0-9_]+)=.*/\1/p' "$1/profile.conf"); do
+      unset "${_v}"
+    done
+    . "$1/profile.conf"
+    eval "printf '%s' \"\${$2:-}\""
+  )
+}
+
 read_pkglist() {
   awk '{ sub(/#.*/, ""); if ($1 != "") print $1 }' "$1"
 }

@@ -3,7 +3,7 @@
 # live in devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
-pkgrel=23.1
+pkgrel=24.1
 pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, second-screen touch policy, power profiles daemon, realtime priority ladder, deck session limits"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -13,7 +13,9 @@ license=('GPL2')
 depends=('bash' 'sudo' 'pocknix-core' 'python' 'python-gobject')
 # HandlePowerKey=suspend is only safe once the kernel drops the wake press (patch 1080): an older
 # kernel would put the device back to sleep on every wake.
-conflicts=('linux-pocknix-sm8550<7.2.6-6' 'linux-pocknix-sm8250<7.2.6-3')
+conflicts=('linux-pocknix-sm8550<7.2.6-6' 'linux-pocknix-sm8250<7.2.6-3'
+           # took over the cmdline-sync hook, so both must move in one transaction
+           'pocknix-bsp-sm8550<0.2.0-14')
 optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target'
             'scx-scheds: scx_lavd for pocknix-lavd.service (unit self-skips without it)')
 install=pocknix-bsp-common.install
@@ -36,12 +38,13 @@ source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         'org.pocknix.Perf.service' 'org.pocknix.Perf.conf' 'power-profiles.conf'
         '60-pocknix-sdl-xb360.conf' 'pocknix-sdl-xb360.sh'
         'pocknix-rt-ladder' 'pocknix-rt-ladder.service' 'rtkit-limits.conf'
-        '60-pocknix-deck.conf')
+        '60-pocknix-deck.conf'
+        'pocknix-cmdline-sync' '91-pocknix-cmdline.hook' 'cores.sh')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-sleep" \
@@ -123,10 +126,16 @@ package() {
   install -Dm644 "${srcdir}/org.pocknix.Perf.service" "${pkgdir}/usr/share/dbus-1/system-services/org.pocknix.Perf.service"
   install -Dm644 "${srcdir}/org.pocknix.Perf.conf" "${pkgdir}/usr/share/dbus-1/system.d/org.pocknix.Perf.conf"
 
+  install -Dm644 "${srcdir}/cores.sh" "${pkgdir}/usr/lib/pocknix/cores.sh"
   install -Dm755 "${srcdir}/pocknix-rt-ladder" "${pkgdir}/usr/lib/pocknix/pocknix-rt-ladder"
   install -Dm644 "${srcdir}/pocknix-rt-ladder.service" "${pkgdir}/usr/lib/systemd/system/pocknix-rt-ladder.service"
   ln -sf "../pocknix-rt-ladder.service" "${pkgdir}/usr/lib/systemd/system/multi-user.target.wants/pocknix-rt-ladder.service"
   install -Dm644 "${srcdir}/rtkit-limits.conf" \
     "${pkgdir}/usr/lib/systemd/system/rtkit-daemon.service.d/10-pocknix-limits.conf"
   install -Dm644 "${srcdir}/60-pocknix-deck.conf" "${pkgdir}/etc/security/limits.d/60-pocknix-deck.conf"
+
+  # qcom-abl boot images bake the cmdline in; inert where there is no pocknix-build-bootimg.
+  install -Dm755 "${srcdir}/pocknix-cmdline-sync" "${pkgdir}/usr/lib/pocknix/pocknix-cmdline-sync"
+  install -Dm644 "${srcdir}/91-pocknix-cmdline.hook" \
+    "${pkgdir}/usr/share/libalpm/hooks/91-pocknix-cmdline.hook"
 }

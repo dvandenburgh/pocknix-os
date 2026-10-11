@@ -89,6 +89,42 @@ else
   log "  kernel/${SOC}/ left as committed (POCKNIX_SYNC_SCOPE=all moves it)"
 fi
 
+# --- local delta: restore what the rsync --delete above removed or overwrote ---------
+# kernel/<soc>/sync-keep says what is ours (git holds the content): "path" = our edit of an
+# upstream file, "+path" = our own file, "-path" = deleted locally. Our 1000+ patches the sync
+# deleted are ours by convention. Every warning below is a case to merge by hand.
+kernel_rel="${KERNEL_DIR#"${POCKNIX_ROOT}"/}"
+in_git() { git -C "${POCKNIX_ROOT}" ls-files --error-unmatch -- "${kernel_rel}/$1" >/dev/null 2>&1; }
+differs() { ! git -C "${POCKNIX_ROOT}" diff --quiet HEAD -- "${kernel_rel}/$1"; }
+restore() { git -C "${POCKNIX_ROOT}" checkout HEAD -- "${kernel_rel}/$1"; nrestored=$((nrestored + 1)); }
+nrestored=0
+if [ -f "${KERNEL_DIR}/sync-keep" ]; then
+  while IFS= read -r line; do
+    case "${line}" in
+      ''|'#'*) continue ;;
+      -*) rm -f "${KERNEL_DIR}/${line#-}"; continue ;;
+      +*) p="${line#+}" ;;
+      *) p="${line}" ;;
+    esac
+    in_git "${p}" || { warn "  sync-keep lists ${p}, which is not in git (stale line?)"; continue; }
+    if [ ! -e "${KERNEL_DIR}/${p}" ]; then
+      [ "${line}" = "${p}" ] && warn "  upstream no longer ships ${p}; restored our edit"
+    elif [ "${line}" != "${p}" ]; then
+      differs "${p}" && warn "  upstream now ships ${p} too; kept ours"
+    else
+      differs "${p}" && warn "  kept our edit of ${p}; merge any upstream change to it by hand"
+    fi
+    restore "${p}"
+  done < "${KERNEL_DIR}/sync-keep"
+fi
+while IFS= read -r f; do
+  p="${f#"${kernel_rel}"/}"
+  if [ ! -e "${KERNEL_DIR}/${p}" ]; then restore "${p}"
+  elif differs "${p}"; then warn "  upstream ships ${p} with different content; kept upstream's"
+  fi
+done < <(git -C "${POCKNIX_ROOT}" ls-files "${kernel_rel}/patches/20-${SOC}/1[0-9][0-9][0-9]-*")
+[ "${nrestored}" -eq 0 ] || log "  restored ${nrestored} local-delta files from git"
+
 # --- gitignored build-time material -> vendor/ -----------------------------
 dst="${VENDOR_DIR}/rocknix-${SOC}"
 log "  reference scripts + firmware overlay -> vendor/ (gitignored)"

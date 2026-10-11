@@ -66,14 +66,17 @@ db_facts() {  # $1 repo tag, $2 db file (tar of <name>-<ver>/desc)
     sec=="%OPTDEPENDS%"{o[++no]=$0}'
 }
 
-fetch_db() {  # $1 repo tag, $2 rclone source path
+fetch_db() {  # $1 repo tag, $2 rclone source path; returns 1 when that tree has no db
   local dst="${DBCACHE}/$1.db"
   if [ "${POCKNIX_STAGE_CHECK_OFFLINE:-0}" = "1" ] && [ -f "${dst}" ]; then
     note "db: $1" "cached (offline)"; return
   fi
   # rclone, not https: the CDN can still serve the db from before a publish
   # made seconds ago (shared publish -> per-SoC stage is one flow).
-  rclone copyto "$2" "${dst}" 2>/dev/null || die "cannot fetch $1 db from $2 (first publish of that tree? seed it, or POCKNIX_STAGE_CHECK_OFFLINE=1 with a cached copy)"
+  rm -f "${dst}"
+  rclone copyto "$2" "${dst}" 2>/dev/null || die "cannot fetch $1 db from $2 (rclone failed: remote or credentials)"
+  # rclone exits 0 for a missing source and writes nothing: that is the "never published" case.
+  [ -f "${dst}" ] || return 1
   note "db: $1" "fetched"
 }
 
@@ -90,14 +93,25 @@ note "staged" "${nstaged} packages"
 
 # Every live repo whatever the scope: reach is judged fleet-wide (an sm8250-only
 # member dual-published into the sm8550 tree is reached by pocknix-device-sm8250).
-fetch_db base "${POCKNIX_BASE_RCLONE_REMOTE}/pocknix-base.db"
+fetch_db base "${POCKNIX_BASE_RCLONE_REMOTE}/pocknix-base.db" || die "no base db at ${POCKNIX_BASE_RCLONE_REMOTE}"
 db_facts base "${DBCACHE}/base.db" >> "${facts}"
-fetch_db shared "${POCKNIX_REPO_RCLONE_REMOTE}/shared/pocknix-shared.db"
+fetch_db shared "${POCKNIX_REPO_RCLONE_REMOTE}/shared/pocknix-shared.db" || die "no [pocknix-shared] db (first publish? POCKNIX_STAGE_CHECK_OFFLINE=1 with a cached copy)"
 db_facts shared "${DBCACHE}/shared.db" >> "${facts}"
+# A SoC added in kernel/ before its tree is first published has no db yet: skip it so it does
+# not block every other SoC's release. The tree being staged must exist.
+LIVE_SOCS=()
 for s in "${ALL_SOCS[@]}"; do
-  fetch_db "${s}" "${POCKNIX_REPO_RCLONE_REMOTE}/${s}/pocknix.db"
+  if ! fetch_db "${s}" "${POCKNIX_REPO_RCLONE_REMOTE}/${s}/pocknix.db"; then
+    if [ "${POCKNIX_REPO_SCOPE}" != "shared" ] && [ "$s" = "${SOC}" ]; then
+      die "no ${s} db at ${POCKNIX_REPO_RCLONE_REMOTE}/${s} (first publish of that tree? seed it first)"
+    fi
+    WARN "${s}: no live tree yet (never published), left out of resolve/reach"
+    continue
+  fi
   db_facts "${s}" "${DBCACHE}/${s}.db" >> "${facts}"
+  LIVE_SOCS+=("${s}")
 done
+[ "${#LIVE_SOCS[@]}" -gt 0 ] || die "no per-SoC tree is published: nothing to check reach against"
 
 # --- load facts --------------------------------------------------------------
 declare -A ver deps prov repl confl optd     # keyed "name@repo"
@@ -249,7 +263,7 @@ check_shadow() {  # $1 soc: an older per-SoC copy hides the newer shared one
   done
 }
 
-for s in "${ALL_SOCS[@]}"; do
+for s in "${LIVE_SOCS[@]}"; do
   if [ "${POCKNIX_REPO_SCOPE}" = "shared" ] || [ "$s" = "${SOC}" ]; then
     check_resolve "$s"; check_shadow "$s"
   fi

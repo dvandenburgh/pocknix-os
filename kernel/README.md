@@ -9,10 +9,16 @@ the SoC; devices on the same SoC (RP6 + AYN Odin 2, both `sm8550/`) share the tr
 every board's dtb ships and the bootloader picks it (qcom-abl: by board id from the
 boot image's appended dtbs; arm-efi: by the grub.cfg menuentry's `devicetree` line).
 
-Currently: `sm8550/` (synced for the Retroid Pocket 6; the notes below describe it)
-and `sm8250/` (synced for the Retroid Pocket 5 — same recipe, 28 SoC patches from
-ROCKNIX `devices/SM8250/patches/linux`, arm-efi boot so its `bootloader/` holds
-ROCKNIX's update.sh reference rather than qcom-abl packaging).
+One directory per SoC family (devices/README.md lists them; the notes below describe
+`sm8550/`). Beside the synced `patches/ dts/ config/ bootloader/`, each carries files
+`make sync` never touches:
+
+| File | What |
+|---|---|
+| `kernel.conf` | stock source pins and the ROCKNIX dirs to sync from |
+| `config-delta` | `scripts/config` arguments applied after the shared deltas in build-kernel.sh (optional) |
+| `config-assert` | symbols that must end up `=y`, checked after olddefconfig (optional) |
+| `sync-keep` | our local delta, restored from git after `make sync`: `path` = our edit of an upstream file, `+path` = our own file, `-path` = deleted locally. 1000+ patches the sync deleted come back without a line; each warning sync prints is a merge to do by hand |
 
 ## Provenance — what's whose
 
@@ -81,5 +87,7 @@ export DISTRIBUTION_DIR=$HOME/Documents/Coding/distribution
 POCKNIX_SYNC_SCOPE=all make sync     # refreshes kernel/ — review `git diff`, then commit
 ```
 
-`make sync` overwrites this directory from your distribution checkout, so treat changes here
-as "synced snapshots": refresh via sync, review the diff, commit. (See `scripts/sync.sh`.)
+`make sync` overwrites the synced directories from your distribution checkout, then restores
+the `sync-keep` delta from git and warns for each of our edits whose upstream copy differs:
+merge an intended upstream change into ours by hand, review the diff, commit.
+(See `scripts/sync.sh`.)

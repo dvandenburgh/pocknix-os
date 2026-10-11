@@ -10,14 +10,8 @@ if [ -z "${system}" ] || [ -z "${rom}" ]; then
 fi
 [ -e "${rom}" ] || { echo "pocknix-play: ROM not found: ${rom}" >&2; exit 1; }
 
-# POCKNIX_BIG_CORES comes from the device BSP: sm8550 = 3-7, sm8250 = 4-7 (0-3 are A55
-# littles); fallback is the sm8550 mask. Heavy emulators must taskset onto it — scx_lavd
-# otherwise parks the critical thread on a little core (chop + audio crackle).
-[ -r /usr/lib/pocknix/device.conf ] && . /usr/lib/pocknix/device.conf
-[ -r /etc/pocknix/device.conf ] && . /etc/pocknix/device.conf
-_big_cores="${POCKNIX_BIG_CORES:-3-7}"
-
 . /usr/lib/pocknix/emu-resolve.sh
+_big_cores="$(big_cores)"
 CORES=/usr/lib/libretro
 
 run_core() {

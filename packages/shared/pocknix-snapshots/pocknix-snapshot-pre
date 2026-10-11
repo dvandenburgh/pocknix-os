@@ -17,7 +17,7 @@ targets="$(cat || true)"
 kernel_in=false
 grep -q '^linux-pocknix-' <<<"${targets}" && kernel_in=true
 # pre-transaction, so this is the kernel the snapshot will contain
-kernel_pkg="$(pacman -Q linux-pocknix-sm8550 linux-pocknix-sm8250 2>/dev/null | head -n1 || true)"
+kernel_pkg="$(pacman -Q 2>/dev/null | grep '^linux-pocknix-' | head -n1 || true)"
 
 write_last_transaction() {
   jq -n --arg id "${1}" --argjson low "${2}" --argjson kin "${kernel_in}" \

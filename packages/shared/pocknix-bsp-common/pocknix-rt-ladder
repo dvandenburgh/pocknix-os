@@ -7,14 +7,9 @@
 KTHREADS='^(gpu-worker|crtc_event:|card0-crtc|atomic-worker-)'
 IRQS='^irq/[0-9]+-(soundwire|swr|iris)'
 
-# Lowest-capacity CPUs keep irq work off the cores games are pinned to (0-2 on sm8550).
-littles() {
-  for c in /sys/devices/system/cpu/cpu[0-9]*; do
-    echo "${c##*cpu} $(cat "${c}/cpu_capacity" 2>/dev/null)"
-  done | sort -k2n | awk 'NR == 1 { min = $2 } $2 == min { l = l s $1; s = "," } END { print l }'
-}
-
-cpus="$(littles)"
+# irq work goes to the small cores, the ones games are not pinned to.
+. /usr/lib/pocknix/cores.sh
+cpus="$(pocknix_small_cores)"
 # One awk over /proc/*/stat per pass (field 40 = rt priority, 41 = policy, 2 = SCHED_RR), so
 # chrt only runs for threads that are not there yet. cat skips pids that exit mid-glob.
 for _ in $(seq 90); do

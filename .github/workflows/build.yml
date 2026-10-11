@@ -31,29 +31,8 @@ jobs:
         run: |
           sudo apt-get install -y -qq shellcheck >/dev/null
           shellcheck -S warning scripts/*.sh || true
-      - name: pocknix-perfd factory profiles
-        run: python3 scripts/check-power-profiles.py
-      - name: Device profile chain resolves
-        run: |
-          set -e
-          for dev in devices/*/; do
-            dev="$(basename "$dev")"
-            DEVICE="$dev" bash -c 'source scripts/lib.sh
-              echo "$DEVICE: SOC=$SOC KERNEL_PKG=$KERNEL_PKG BSP=$DEVICE_BSP_PKG"
-              [ -f "$KERNEL_DIR/kernel.conf" ]
-              [ -f "$DEVICE_DIR/packages.list" ]'
-          done
-      - name: kernel-cmdline matches profile (drift guard, same check as build-packages.sh)
-        run: |
-          set -e
-          for f in devices/*/packages/*/kernel-cmdline; do
-            devdir="$(dirname "$(dirname "$(dirname "$f")")")"
-            want="$(bash -c "unset SOC ROOT_LABEL KERNEL_CMDLINE KERNEL_CMDLINE_ROOT KERNEL_CMDLINE_EXTRA
-                             source '$devdir/profile.conf'; printf '%s' \"\$KERNEL_CMDLINE\"")"
-            got="$(cat "$f")"
-            [ "$want" = "$got" ] || { echo "DRIFT in $f"; exit 1; }
-            echo "$f matches $devdir/profile.conf"
-          done
+      - name: make check (every SoC family, perfd profiles, package placement)
+        run: bash scripts/check.sh
 
   full-build:
     # aarch64 hosted runner: native chroot + makepkg + kernel build, no qemu.

@@ -137,6 +137,7 @@ fixup_trace_events() {
 configure() {
   log "configuring kernel (.config from linux.aarch64.conf; no embedded initramfs)"
   sed -e "s|@DEVICENAME@|${DEVICE_HOSTNAME}|g" \
+      -e "s|^CONFIG_DEFAULT_HOSTNAME=.*|CONFIG_DEFAULT_HOSTNAME=\"${DEVICE_HOSTNAME}\"|" \
       -e 's|@INITRAMFS_SOURCE@||g' \
       "${KERNEL_DIR}/config/linux.aarch64.conf" > "${KSRC}/.config"
 
@@ -274,25 +275,16 @@ configure() {
     --disable CPU_FREQ_DEFAULT_GOV_PERFORMANCE \
     --enable CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
 
-  # sm8250-only: the LPASS macro codecs as MODULES (=y in the synced config; the
-  # symbols are unset on sm8550, so this must not run there — --module would turn
-  # them ON). Same disease as Q6V5_PAS one layer down: the q6 audio clocks these
-  # drivers enable come from ADSP services that settle asynchronously AFTER the
-  # remoteproc reports "up", so any macro probing inside the window hard-fails
-  # -ETIMEDOUT and the kernel never retries a failed probe (va_macro at 9.7s with
-  # the adsp up at 6.7s, RP5 2026-07-13; a different driver loses the race each
-  # boot). Built-in they are unhealable (no bind attrs); as modules the BSP's
-  # pocknix-sm8250-audio-heal service reloads whichever ones lost the race until
-  # the sound card assembles.
-  # sm8250-only: the Visionox panel of the newer RP5 / Flip 2 (patches 0104 + 0105); the
-  # symbol only exists once those patches apply, so the synced config cannot carry it.
-  if [ "${SOC}" = "sm8250" ]; then
-    "${KSRC}/scripts/config" --file "${KSRC}/.config" \
-      --module SND_SOC_LPASS_WSA_MACRO \
-      --module SND_SOC_LPASS_VA_MACRO \
-      --module SND_SOC_LPASS_RX_MACRO \
-      --module SND_SOC_LPASS_TX_MACRO \
-      --enable DRM_PANEL_VISIONOX_VTDR6130_COG
+  # Per-SoC deltas and assertions live beside kernel.conf, where make sync leaves them alone.
+  local delta="${KERNEL_DIR}/config-delta" assert="${KERNEL_DIR}/config-assert"
+  if [ -f "${delta}" ]; then
+    local -a dargs=() words
+    local line
+    while IFS= read -r line; do
+      read -r -a words <<< "${line%%#*}"
+      [ "${#words[@]}" -eq 0 ] || dargs+=("${words[@]}")
+    done < "${delta}"
+    [ "${#dargs[@]}" -eq 0 ] || "${KSRC}/scripts/config" --file "${KSRC}/.config" "${dargs[@]}"
   fi
 
   # olddefconfig auto-accepts defaults for any new symbols (no prompts, no stdin).
@@ -317,12 +309,10 @@ configure() {
   grep -q "^CONFIG_BTRFS_FS=y" "${KSRC}/.config" \
     || die "kernel config: CONFIG_BTRFS_FS did not resolve to =y (btrfs root would be unmountable — no initramfs)"
 
-  # olddefconfig drops a panel symbol silently when its patch is missing; the only symptom
-  # would be a black screen on device.
-  if [ "${SOC}" = "sm8250" ]; then
-    for sym in DRM_PANEL_DDIC_CH13726A DRM_PANEL_VISIONOX_VTDR6130_COG; do
+  if [ -f "${assert}" ]; then
+    for sym in $(sed 's/#.*//' "${assert}"); do
       grep -q "^CONFIG_${sym}=y" "${KSRC}/.config" \
-        || die "kernel config: CONFIG_${sym} did not resolve to =y (panel patch missing from the sm8250 stack?)"
+        || die "kernel config: CONFIG_${sym} did not resolve to =y (listed in kernel/${SOC}/config-assert)"
     done
   fi
 }

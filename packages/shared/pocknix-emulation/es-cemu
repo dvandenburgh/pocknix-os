@@ -2,7 +2,5 @@
 # ES-DE launch wrapper; es-armsx2 explains why the pin lives here.
 . /usr/lib/pocknix/emu-resolve.sh
 exe="$(emu_path cemu)" || emu_missing cemu
-[ -r /usr/lib/pocknix/device.conf ] && . /usr/lib/pocknix/device.conf
-[ -r /etc/pocknix/device.conf ] && . /etc/pocknix/device.conf
 /usr/lib/pocknix/pocknix-cemu-profile 2>/dev/null || true
-exec taskset -c "${POCKNIX_BIG_CORES:-3-7}" "${exe}" "$@"
+exec taskset -c "$(big_cores)" "${exe}" "$@"

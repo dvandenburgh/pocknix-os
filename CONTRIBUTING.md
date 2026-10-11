@@ -50,7 +50,7 @@ Especially welcome:
 | Path | What lives there |
 |---|---|
 | `packages/<pkg>/` | Package sources, `PKGBUILD`s, patch series. Most contributions land here. |
-| `devices/<soc>/` | Per-SoC-family and per-board facts: `profile.conf`, `packages.list`, BSP package, InputPlumber configs. See `devices/README.md`. |
+| `devices/<soc>/` | Per-SoC-family and per-board facts: `profile.conf`, the device metapackage, BSP package, InputPlumber configs. See `devices/README.md`. |
 | `kernel/<soc>/` | Committed kernel inputs: pinned version, patch series, config, dts. See `kernel/README.md`. |
 | `scripts/` | The build harness (`build-*.sh`, `lib.sh`, `stage-repo.sh`, ...). |
 | `overlay/` | Files baked into the image rootfs at build time. |
