@@ -8,7 +8,6 @@ STEAM="${HOME}/.local/share/Steam"
 RES=/usr/share/pocknix-steam
 
 # Subshell: device.conf sets many board vars; none may leak into this set -u script.
-DXVK2_DONOR="${RES}/dxvk2-donor"
 GPU_DXVK3="$(
   set +u
   for dc in /usr/lib/pocknix/device.conf /etc/pocknix/device.conf; do
@@ -16,6 +15,7 @@ GPU_DXVK3="$(
   done
   printf '%s' "${POCKNIX_GPU_DXVK3:-yes}"
 )"
+DXVK2_DONOR="${RES}/dxvk2-donor"
 DXVK2_PROBE=""   # the donor dll compared each pass: found once, found again if that file goes away
 
 ARM_PROTONS=(
@@ -141,7 +141,6 @@ swap_dxvk() { # <proton dir>
       && mv "${dxvk}.pocknix-tmp" "${dxvk}"
   fi
 }
-
 
 # Undo the old entry-point claim (steam <= 0.1.0-66) so the runtime runs as Valve ships it. The
 # shim file stays: Steam caches the manifest per client session and may still exec it until restart.

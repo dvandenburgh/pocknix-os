@@ -164,7 +164,7 @@ pocknix-os builds a full image (kernel included) from this repo. The build needs
 
 ## Contributing
 
-Contributions are welcome - emulator configs, testing on devices I do not own, and docs fixes are especially useful. [CONTRIBUTING.md](CONTRIBUTING.md) covers where changes go, how to build and test just the part you touched, what your testing should cover, and what a PR needs to include (notably: steps I can follow to re-test it on my own devices).
+Contributions are welcome - emulator configs, testing on devices I do not own, and docs fixes are especially useful. [CONTRIBUTING.md](CONTRIBUTING.md) covers where changes go, how to build and test just the part you touched, what your testing should cover, what a PR needs to include (notably: steps I can follow to re-test it on my own devices), and what it takes for a package to be hosted in the repos.
 
 ## Thanks and references
 

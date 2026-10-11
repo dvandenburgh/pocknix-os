@@ -26,6 +26,7 @@ Especially welcome:
 - [What your testing should cover](#what-your-testing-should-cover)
 - [What the PR must contain](#what-the-pr-must-contain)
 - [Package rules](#package-rules)
+- [Requesting a package](#requesting-a-package)
 - [Commits and PR hygiene](#commits-and-pr-hygiene)
 - [AI assistance](#ai-assistance)
 - [Review and merge](#review-and-merge)
@@ -251,6 +252,23 @@ check it, which is the single biggest reason a PR stalls.
   name. The maintainer's publish gate (`scripts/stage-check.sh`) rejects both omissions, so
   fixing them up front saves a round trip.
 - **Do not touch `vendor/`.** `make sync` regenerates it.
+
+## Requesting a package
+
+The locked base is a curated snapshot, not a mirror of Arch. Hosting a package means keeping
+it resolvable at every base cut and answering bug reports about it, so requests are judged on
+what the package does for the device as a handheld, not on size or on whether Arch carries it.
+Open one with the **Package request** issue form; it asks for exactly this.
+
+| The package is... | Answer | Examples |
+|---|---|---|
+| in Arch Linux ARM, its dependencies already in the base, and it serves the handheld | hosted as an opt-in extra at the next base cut; `pacman -S <name>` then works on a locked device | `tailscale`, `samba` |
+| not in Arch Linux ARM, or needs patches | only if it is part of what pocknix does: games, emulation, the two sessions, the device itself | `mesa`, `fex-emu` |
+| anything else | install it yourself, unsupported: Flatpak via Discover, `pacman -U` straight from the Arch Linux ARM mirror, `makepkg` from the AUR (`base-devel` and `git` are in the base), or `sudo pocknix-base rolling` for live Arch Linux ARM | editors, toolchains, AUR helpers |
+
+AUR helpers (`yay`, `paru`) are not hosted: AUR recipes mostly target x86_64, self-built
+packages break silently when the base rotates, and a tool whose job is updating everything
+works against the locked base.
 
 ## Commits and PR hygiene
 
