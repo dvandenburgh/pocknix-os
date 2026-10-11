@@ -1,6 +1,6 @@
 pkgname=pocknix-bsp-sm8550
 pkgver=0.2.0
-pkgrel=14
+pkgrel=14.1
 pkgdesc="pocknix board support: SM8550 family (RP6, Nova, Odin 2 family, Thor) — runtime board dispatch, input maps, suspend quirks, audio UCM, dual-screen touch policy"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -21,9 +21,10 @@ source=('device.conf'
         '10-pocknix-s2idle.conf' '30-pocknix-cpuidle.conf'
         '99-pocknix-sm8550-usb-autosuspend.rules'
         'cpuidle-state1-sleep-pre' 'cpuidle-state1-sleep-post'
+        'retroid.rp6.oled.lua' 'ayn.odin2portal.oled.lua' 'ayn.thor.oled.lua'
         'kernel-cmdline')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   # makepkg sources are flat, so boards/ comes from startdir (build-packages.sh fills it).
@@ -69,6 +70,13 @@ package() {
   install -Dm644 "${srcdir}/AYN-Thor.conf" "${ucm}/AYN/Thor/AYN-Thor.conf"
   install -Dm644 "${srcdir}/HiFi-Thor.conf" "${ucm}/AYN/Thor/HiFi.conf"
   ln -sf "../../AYN/Thor/AYN-Thor.conf" "${ucm}/conf.d/sm8550/AYN-Thor.conf"
+
+  # gamescope panel profiles for the EDID-less HDR OLEDs (colorimetry + HDR range), matched on
+  # GAMESCOPE_INTERNAL_DEVICE_ID = POCKNIX_DEVICE; each such board sets POCKNIX_PANEL_HDR_NITS.
+  local gsd="${pkgdir}/usr/share/gamescope/scripts/10-pocknix/displays"
+  install -Dm644 "${srcdir}/retroid.rp6.oled.lua"     "${gsd}/retroid.rp6.oled.lua"
+  install -Dm644 "${srcdir}/ayn.odin2portal.oled.lua" "${gsd}/ayn.odin2portal.oled.lua"
+  install -Dm644 "${srcdir}/ayn.thor.oled.lua"        "${gsd}/ayn.thor.oled.lua"
 
   # build-packages.sh asserts it matches devices/sm8550/profile.conf.
   install -Dm644 "${srcdir}/kernel-cmdline" "${pkgdir}/usr/lib/pocknix/kernel-cmdline"

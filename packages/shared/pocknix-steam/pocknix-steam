@@ -99,6 +99,21 @@ if [ "${POCKNIX_PANEL_ROTATE_SHADER:-0}" = "1" ]; then
   GS_ROTATE=(--force-composition-rotation)
 fi
 
+# HDR: these OLEDs expose no EDID, so gamescope synthesizes an SDR one unless a panel profile
+# matches the board (the BSP's /usr/share/gamescope/scripts/10-pocknix/displays, keyed on
+# GAMESCOPE_INTERNAL_DEVICE_ID = POCKNIX_DEVICE). A board with a profile also sets
+# POCKNIX_PANEL_HDR_NITS, the panel's peak: inverse tone mapping of SDR content targets it,
+# clients are offered the formats gamescope can sample as well as those a plane scans out,
+# which HDR swapchains rely on, and the Steam client (which inherits gamescope's environment)
+# is told the session supports HDR, so its display settings offer the HDR switch.
+GS_ENV=(GAMESCOPE_INTERNAL_DEVICE_ID="${POCKNIX_DEVICE:-}")
+GS_HDR=()
+case "${POCKNIX_PANEL_HDR_NITS:-0}" in
+  ''|0|*[!0-9]*) ;;
+  *) GS_HDR=(--hdr-itm-target-nits "${POCKNIX_PANEL_HDR_NITS}")
+     GS_ENV+=(GAMESCOPE_EXPOSE_CLIENT_SAMPLEABLE_FORMATS=1 STEAM_GAMESCOPE_HDR_SUPPORTED=1) ;;
+esac
+
 # Do NOT pin the client itself: scx_lavd places the bursty threads itself and needs the littles free
 # for batch work. Game launches get the big cores through steam-launch-wrapper instead.
 . /usr/lib/pocknix/pocknix-steam-env
@@ -113,9 +128,9 @@ mark "starting gamescope"
 # --rt: gamescope's own threads at SCHED_RR 1 (cap_sys_nice), below audio and GPU/display kthreads;
 # it resets children before exec, so Steam and games stay SCHED_OTHER.
 env -u WAYLAND_DISPLAY \
-  GAMESCOPE_FAKE_OUTPUT_MM="${PANEL_MM}" \
+  GAMESCOPE_FAKE_OUTPUT_MM="${PANEL_MM}" "${GS_ENV[@]}" \
   gamescope "${GS_OUTPUT[@]}" -W "${GS_W}" -H "${GS_H}" -r "${REFRESH}" --rt --xwayland-count 2 --mangoapp --backend drm \
-    --force-orientation "${ORIENT}" "${GS_ROTATE[@]}" -e -- \
+    --force-orientation "${ORIENT}" "${GS_ROTATE[@]}" "${GS_HDR[@]}" -e -- \
     /usr/lib/pocknix/pocknix-steam-splash "${GS_W}x${GS_H}" -- \
     env LD_LIBRARY_PATH="${LDLP}" "${CLIENT}" -gamepadui -steamos3 -steampal -steamdeck -noverifyfiles -noshaders \
   >"${GS_LOG}" 2>&1

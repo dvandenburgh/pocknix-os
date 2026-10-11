@@ -16,7 +16,7 @@
 #     (pocknix-bootloader-sm8250), not in a boot-image rebuild file.
 pkgname=pocknix-bsp-sm8250
 pkgver=0.1.0
-pkgrel=20
+pkgrel=20.1
 pkgdesc="pocknix board support: SM8250 family (RP5, RP Flip 2) — runtime board dispatch, input maps, audio UCM, wake quirks"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -38,10 +38,11 @@ source=('device.conf'
         'pocknix-sm8250-audio-heal' 'pocknix-sm8250-audio-heal.service'
         'pocknix-sm8250-board-select' 'pocknix-sm8250-board-select.service'
         '51-pocknix-softmixer.conf' '60-pocknix-speaker-loudness.conf'
-        '52-retroid-pocket-5-hdmi.conf')
+        '52-retroid-pocket-5-hdmi.conf'
+        'retroid.rp5-flip2.oled.lua')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP')
 
 package() {
   # Runtime device facts: the model dispatcher + per-board files. boards/ is
@@ -118,6 +119,11 @@ package() {
     "${pkgdir}/usr/share/pipewire/pipewire.conf.d/60-pocknix-speaker-loudness.conf"
   install -Dm644 "${srcdir}/52-retroid-pocket-5-hdmi.conf" \
     "${pkgdir}/usr/share/wireplumber/wireplumber.conf.d/52-retroid-pocket-5-hdmi.conf"
+
+  # gamescope panel profiles for the EDID-less HDR OLEDs (colorimetry + HDR range), matched on
+  # GAMESCOPE_INTERNAL_DEVICE_ID = POCKNIX_DEVICE; rp5 and rpflip2 set POCKNIX_PANEL_HDR_NITS.
+  local gsd="${pkgdir}/usr/share/gamescope/scripts/10-pocknix/displays"
+  install -Dm644 "${srcdir}/retroid.rp5-flip2.oled.lua" "${gsd}/retroid.rp5-flip2.oled.lua"
 
   # GRUB board-select correction (see the script header): the static grub.cfg
   # defaults to the rp5 dtb; on a Flip 2 this service detects the real board
