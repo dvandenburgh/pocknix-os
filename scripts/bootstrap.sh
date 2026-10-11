@@ -13,8 +13,8 @@ fetch_alarm_tarball
 log "extracting rootfs -> ${ROOTFS_DIR}"
 # rm -rf follows bind mounts, and a chroot binds the host's /dev and the shared package cache.
 if [ -d "${ROOTFS_DIR}" ]; then
-  chroot_umount "${ROOTFS_DIR}" || true
-  ! mounted_under "${ROOTFS_DIR}" || die "still mounted under ${ROOTFS_DIR}, not wiping it"
+  unmount_under "${ROOTFS_DIR}" || die "still mounted under ${ROOTFS_DIR}, not wiping it: $(findmnt -rno TARGET | grep "^${ROOTFS_DIR}/" | tr '\n' ' ')
+  'sudo umount -R -l ${ROOTFS_DIR}/*', or restart (on WSL: wsl --shutdown), then run the build again"
   rm -rf "${ROOTFS_DIR}"
 fi
 mkdir -p "${ROOTFS_DIR}"

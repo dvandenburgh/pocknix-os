@@ -191,11 +191,27 @@ chroot_resolv() {
     printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > "${root}/etc/resolv.conf"
   fi
 }
+
+# Every mount below <root>, not just the ones chroot_mount makes: an interrupted build also leaves
+# /localrepo{,-shared} and the Steam bake's /dev/shm, and builds before the private binds stacked
+# /dev twice. Deepest first, each made private before it goes so the unmount cannot propagate to
+# the host's /dev, and repeated until nothing is left (a stacked mount needs one pass per layer).
+unmount_under() {  # <root>; fails if anything is still mounted below it
+  local root="$1" t i
+  for i in 1 2 3 4 5 6 7 8; do
+    mounted_under "${root}" || return 0
+    while IFS= read -r t; do
+      mount --make-private "${t}" 2>/dev/null || true
+      umount -l "${t}" 2>/dev/null || true
+    done < <(findmnt -rno TARGET | awk -v r="${root}/" 'index($0, r) == 1 { print length($0) "\t" $0 }' \
+               | sort -rn | cut -f2-)
+  done
+  ! mounted_under "${root}"
+}
+
 chroot_umount() {
   local root="$1"
-  for m in var/cache/pacman/pkg run sys proc dev/pts dev; do
-    mountpoint -q "${root}/${m}" && umount -lf "${root}/${m}" || true
-  done
+  unmount_under "${root}" || warn "still mounted under ${root} after unmounting: $(findmnt -rno TARGET | grep "^${root}/" | tr '\n' ' ')"
   prune_localrepo_copies
 }
 
