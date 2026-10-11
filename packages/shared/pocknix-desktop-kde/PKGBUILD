@@ -16,7 +16,7 @@ depends=('bash'
          'bluedevil')
 # These files lived in pocknix-desktop up to -26, and kwinrc in pocknix-desktop-plasma -1; a lone
 # install against either would collide.
-conflicts=('pocknix-desktop<0.1.0-27' 'pocknix-desktop-plasma<0.1.0-2')
+conflicts=('pocknix-desktop<0.1.0-27' 'pocknix-desktop-plasma<0.1.0-1.1')
 source=('pocknix-desktop-rotate' 'pocknix-desktop-rotate.desktop'
         'ksplashrc' 'powerdevilrc' 'kscreenlockerrc' '50-kde-power-key.sh'
         'kwinrc' 'plasmakeyboardrc')
