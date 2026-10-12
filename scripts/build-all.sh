@@ -159,11 +159,12 @@ step_image()    { "${S}/build-sd-image.sh"; }
 EST_ROUGH=0
 slow() { if [ "$(uname -m)" = aarch64 ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }  # <qemu> <native>
 
-seed_has_work() {
-  local repo p v a
-  while IFS='|' read -r repo _ p v a; do
+seed_has_work() {  # a package missing from build/localrepo, or older than its dir (as seed sees it)
+  local repo d p v a f
+  while IFS='|' read -r repo d p v a; do
     [ "${p}" != "${KERNEL_PKG}" ] || continue
-    artifact_file "${repo}" "${p}-${v}-${a}" >/dev/null || return 0
+    f="$(artifact_file "${repo}" "${p}-${v}-${a}")" || return 0
+    [ -z "$(find "${d}" -newer "${f}" -print -quit)" ] || return 0
   done < <(local_artifacts)
   return 1
 }
