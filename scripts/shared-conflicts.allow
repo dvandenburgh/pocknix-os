@@ -1,0 +1,16 @@
+# Every replaces= and conflicts= entry in a packages/shared/ PKGBUILD, one per line:
+# "<package dir> :: <field>=<entry> :: <reason>". [pocknix-shared] is in every SoC's repo order,
+# so the entry acts on every fleet at once, and replaces= uninstalls on -Syu. check.sh fails on
+# an entry without a row and on a row whose entry is gone.
+pocknix-desktop-kde :: conflicts=pocknix-desktop<0.1.0-27 :: files that pocknix-desktop shipped before the split
+pocknix-desktop-kde :: conflicts=pocknix-desktop-plasma<0.1.0-1.1 :: /etc/xdg/kwinrc, which pocknix-desktop-plasma shipped before it moved here
+pocknix-desktop-plasma-mobile :: conflicts=pocknix-desktop<0.1.0-27 :: files that pocknix-desktop shipped before the split
+pocknix-session :: conflicts=pocknix-desktop<0.1.0-27 :: steamos-session-select lived in pocknix-desktop before the split
+pocknix-base-lock :: replaces=mbedtls :: the base renamed mbedtls to mbedtls3 with no conflicts=, so the old copy must go
+pocknix-base-lock :: conflicts=mbedtls :: pairs the replaces= so the swap survives file collisions
+pocknix-gamepad-calibration :: replaces=python-pyxel :: retires the GPcal app's runtime
+pocknix-gamepad-calibration :: conflicts=python-pyxel :: pairs the replaces=
+es-de :: conflicts=emulationstation-de :: provides the old name, one ES-DE install at a time
+inputplumber :: conflicts=inputplumber :: our build takes the name over ALARM's
+wxwidgets-pocknix :: conflicts=wxwidgets-common :: provides ALARM's wxwidgets split in one package
+wxwidgets-pocknix :: conflicts=wxwidgets-gtk3 :: provides ALARM's wxwidgets split in one package

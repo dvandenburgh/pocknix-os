@@ -1,14 +1,14 @@
 # pocknix-turnip-x86 — archived x86_64 Turnip builds the "Mesa Version" tweak points
 # VK_DRIVER_FILES at. FEX resolves rootfs-first, so these .so bytes are inert; what this
-# package actually provides is the host-side catalog the wrapper and Decky dropdown enumerate.
-# Series start at 25.2: older ones predate Arch's per-driver x86_64 split.
+# package actually provides is the host-side catalog pocknix-game-launch and the Decky
+# dropdown enumerate. Series start at 25.2: older ones predate Arch's per-driver x86_64 split.
 pkgname=pocknix-turnip-x86
 pkgver=20261009
 pkgrel=1
 pkgdesc="Archived x86_64 Turnip builds for per-game Mesa selection under FEX"
 arch=('aarch64')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('MIT')
+license=("MIT AND BSD-3-Clause AND SGI-B-2.0")   # Mesa's Turnip builds, repackaged
 depends=('fex-rootfs')
 _versions=('25.2.7-1' '25.3.5-1' '26.0.6-1' '26.1.6-1' '26.2.4-1')
 source=("vulkan-freedreno-25.2.7-1-x86_64.pkg.tar.zst::https://archive.archlinux.org/packages/v/vulkan-freedreno/vulkan-freedreno-1%3A25.2.7-1-x86_64.pkg.tar.zst"

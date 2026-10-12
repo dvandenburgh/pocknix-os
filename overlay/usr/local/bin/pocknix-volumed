@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pocknix-volumed — make the RP6 volume rocker actually change volume.
+# pocknix-volumed — make the volume rocker actually change volume.
 #
 # The rocker emits plain KEY_VOLUMEUP / KEY_VOLUMEDOWN. Steam's gamepadui shows the volume OSD on
 # these but doesn't change the volume (its volume action is tied to the Steam Deck controller's
@@ -19,16 +19,15 @@
 # race our timer; we track held state purely from the press (1) / release (0) edges, driven by a
 # short select() timeout while any key is held.
 #
-# Robustness (learned the hard way):
-#  - Match the source device by CAPABILITY (it reports the volume keys), NOT by name. An earlier
-#    version hardcoded name == "gpio-keys" and exited when the evdev *name* differed from the
-#    interrupt name -> daemon dead -> volume keys did nothing.
+# Robustness:
+#  - Match the source device by CAPABILITY (it reports the volume keys), NOT by name: the evdev
+#    name need not match the interrupt name (gpio-keys).
 #  - NEVER sys.exit: if no device is present yet, keep waiting/rescanning (the service must not die).
 #  - Capability-match also opens InputPlumber's virtual keyboard, which comes and goes (e.g. our
 #    suspend hook stops InputPlumber). A hung-up fd makes select() spin a CPU at 100%, so we DROP a
-#    fd the moment it errors and rescan to pick up replacements. (InputPlumber only sources
-#    rsinput-gamepad, not the rocker, so the virtual device never actually emits the rocker's
-#    volume events -> no double-counting.)
+#    fd the moment it errors and rescan to pick up replacements. On sm8550 InputPlumber grabs
+#    gpio-keys exclusively and re-emits KEY_VOLUMEUP on that virtual keyboard, so that copy is
+#    the one we see.
 #  - wpctl runs with a TIMEOUT so a stuck PipeWire call can never block key handling (the freeze).
 import sys, os, time, select, struct, subprocess
 try:

@@ -7,7 +7,7 @@ never appears. Only the 92-byte header is wrong: the entry array is intact in
 both copies and the backup header is valid, which is what makes rebuilding the
 primary from the backup contained enough to do.
 
-  scan            ok / repairable / absent for the disk holding abl_a
+  scan            ok / repairable / unknown / absent for the disk holding abl_a
   repair <dev>    rebuild that disk's primary header from its backup
 """
 import glob

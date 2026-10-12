@@ -1,4 +1,4 @@
-pocknix — Your Games Folder
+pocknix - Your Games Folder
 ===========================
 
 This folder (~/Emulation) is where everything goes. Copy your files into the
@@ -19,12 +19,12 @@ matching subfolder and they are picked up automatically the next time ES-DE star
      PS2:       rename your BIOS dump to  ps2-bios.bin
      PS1:       scph5501.bin (and friends) as dumped
      Dreamcast: dc/dc_boot.bin + dc/dc_flash.bin (note the dc subfolder)
-     GBA:       gba_bios.bin (optional — improves accuracy)
-   If a game won't boot, it's usually a missing or misnamed BIOS — the emulator's
+     GBA:       gba_bios.bin (optional - improves accuracy)
+   If a game won't boot, it's usually a missing or misnamed BIOS - the emulator's
    error message names the exact file it wants.
 
 3. NINTENDO SWITCH
-   Pocknix ships no Switch emulator. Drop your own Eden or Ryujinx build in (section 5)
+   Pocknix ships no Switch emulator. Drop your own Eden or Ryujinx build in (section 4)
    and it is set up for you: controller, fullscreen, vsync and resolution come
    pre-configured. Both need your own keys and firmware, in their own folders (not BIOS/):
      Eden:     keys prod.keys + title.keys -> ~/.local/share/eden/keys/
@@ -40,7 +40,7 @@ matching subfolder and they are picked up automatically the next time ES-DE star
 
 5. GET IT INTO YOUR STEAM LIBRARY
    In ES-DE, press the Favorite button on any game to star it. Starred games are
-   added to your Steam library automatically (in a "Pocknix" collection) — no manual
+   added to your Steam library automatically (in a "Pocknix" collection) - no manual
    setup. Un-star to remove it again. New/removed favorites appear next time you
    enter Game Mode.
 

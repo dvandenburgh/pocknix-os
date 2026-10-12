@@ -24,8 +24,8 @@ if [ ! -f "${POCKNIX_ROOT}/devices/${DEVICE}/profile.conf" ]; then
 fi
 source "${POCKNIX_ROOT}/devices/${DEVICE}/profile.conf"
 source "${POCKNIX_ROOT}/kernel/${SOC}/kernel.conf"
-# Per-SoC userspace compiler tuning (mesa/gamescope/mangohud/fex-emu are built
-# with these; build-packages.sh injects them into makepkg's environment).
+# Per-SoC userspace compiler tuning: the tuned packages/soc PKGBUILDs read these
+# (build-packages.sh injects them into makepkg's environment).
 source "${POCKNIX_ROOT}/config/tuning/${SOC}.conf"
 
 # Paths derived from the profile (must come after it):
@@ -34,18 +34,18 @@ source "${POCKNIX_ROOT}/config/tuning/${SOC}.conf"
 : "${ROCKNIX_DEVICE_DIR:=${ROCKNIX_PROJECT_DIR}/devices/${ROCKNIX_SOC}}"
 # Boot-image style for the SoC's bootloader: qcom-abl (ABL boots an Android
 # boot image, sm8550) or arm-efi (ABL chainloads GRUB, raw Image, sm8250).
-# Set per-profile; default keeps the original qcom-abl devices untouched.
+# Set per profile; default qcom-abl.
 : "${BOOTLOADER:=qcom-abl}"
 # Per-SoC pacman repo: tuned packages (mesa etc.) share pkgnames across SoCs
 # with different binaries, so each SoC gets its own localrepo/published tree.
 # packages/shared/* are byte-identical across SoCs: built once into the shared
 # localrepo, published once as [pocknix-shared] (repo membership doubles as
-# delivery targeting — see pocknix-notes dev/pacman-repo.md).
+# delivery targeting).
 : "${LOCALREPO_DIR:=${BUILD_DIR}/localrepo/${SOC}}"
 : "${LOCALREPO_SHARED_DIR:=${BUILD_DIR}/localrepo/shared}"
 # Publish staging area (stage-repo.sh): a mirror of the LIVE repo with only the
 # intended packages swapped in — publish-repo.sh publishes THIS, never the
-# shared localrepo (which parallel sessions fill with unvalidated builds).
+# raw localrepo (which parallel sessions fill with unvalidated builds).
 : "${STAGE_DIR:=${BUILD_DIR}/stage/${SOC}}"
 # Which repo tree stage-repo.sh/publish-repo.sh operate on: the per-SoC
 # [pocknix] tree (default) or the SoC-neutral [pocknix-shared] tree
@@ -61,12 +61,9 @@ else
   REPO_LOCALREPO_DIR="${LOCALREPO_DIR}"
   REPO_STAGE_DIR="${STAGE_DIR}"
 fi
-# Per-SoC kernel + image outputs: with one family per SoC, a shared build/kernel
-# and build/image/KERNEL meant "whatever family built last" — switching families
-# forced a full kernel rebuild just to regenerate an unchanged image, and the
-# out/soc guards had to police mixups. Per-SoC dirs keep each family's outputs
-# resident side by side. (build/cache and build/rootfs stay shared: the cache is
-# SoC-neutral downloads, the rootfs is wiped by bootstrap.sh on every build.)
+# Per-SoC kernel + image outputs, so switching families never forces a kernel rebuild
+# or mixes one family's out/ with another's. (build/cache and build/rootfs stay shared:
+# the cache is SoC-neutral downloads, the rootfs is wiped by bootstrap.sh on every build.)
 : "${KERNEL_BUILD_DIR:=${BUILD_DIR}/kernel/${SOC}}"
 : "${IMAGE_DIR:=${BUILD_DIR}/image/${SOC}}"
 
@@ -237,8 +234,7 @@ maybe_install_qemu() {
 
 # --- pinned ALARM base ------------------------------------------------------
 # Fetch + verify the ALARM base tarball into CACHE_DIR. One implementation for
-# bootstrap.sh (rootfs) and build-packages.sh (build chroot): the chroot used
-# to download with no sha check at all, so the two bases could diverge.
+# bootstrap.sh (rootfs) and build-packages.sh (build chroot), so the two bases cannot diverge.
 fetch_alarm_tarball() {
   local tarball="${CACHE_DIR}/${ALARM_TARBALL}"
   mkdir -p "${CACHE_DIR}"
@@ -260,7 +256,7 @@ fetch_alarm_tarball() {
 # Render the base pacman.conf: with a pinned snapshot, the only package source
 # is the frozen [pocknix-base] repo (ALARM's per-package .sig files are kept in
 # the snapshot, so package SigLevel stays Required; the repo-add DB is unsigned,
-# which DatabaseOptional permits). Without a pin: live ALARM, as before. Shared
+# which DatabaseOptional permits). Without a pin: live ALARM. Shared
 # by the rootfs and the build chroot so both always install from the SAME base.
 render_base_pacman_conf() {
   local out="$1"

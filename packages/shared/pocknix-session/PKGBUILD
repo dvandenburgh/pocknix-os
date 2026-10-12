@@ -4,7 +4,7 @@ pkgrel=4.1
 pkgdesc="pocknix tty1 session service + game/desktop session supervisor"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('bash' 'systemd')
 # steamos-session-select lived in pocknix-desktop up to -26; a lone install against that collides.
 conflicts=('pocknix-desktop<0.1.0-27')

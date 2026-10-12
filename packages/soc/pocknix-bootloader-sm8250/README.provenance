@@ -21,21 +21,21 @@ commands are wanted.
 Note: the RP5's and Flip 2's factory ABL already provides the UEFI environment
 that chainloads this bootaa64.efi. "tests against the same ABL" above refers to
 ROCKNIX validating this GRUB binary against that factory ABL. Nothing on sm8250
-flashes an ABL automatically — see the kit section below.
+flashes an ABL automatically - see the kit section below.
 
 grubenv is the pristine environment block from the same image. grubenv on
-/flash is user state (saved menu choice) — never overwritten on upgrade.
+/flash is user state (saved menu choice) - never overwritten on upgrade.
 
 grub.cfg.rocknix-reference is the GENERATED grub.cfg from the same image
-(boot=LABEL LibreELEC-style cmdline, savedefault menu, one entry per board) —
-kept as the reference for porting the multi-board menu/autodetect when a
-second sm8250 board lands. Our shipped grub.cfg is the pocknix-authored
-static one (root=PARTLABEL, single rp5 entry, timeout 0).
+(boot=LABEL LibreELEC-style cmdline, savedefault menu, one entry per board) -
+kept as a reference only. Our shipped grub.cfg is the pocknix-authored
+static one: root=PARTUUID (re-pinned by pocknix-update-grub), one entry per
+board and panel revision, timeout 0.
 
 
 # rocknix_abl kit (SM8250)
 
-abl_signed-SM8250.elf is NOT committed here — the PKGBUILD fetches it from the
+abl_signed-SM8250.elf is NOT committed here - the PKGBUILD fetches it from the
 same pinned ROCKNIX ABL release the sm8550 package uses:
 
   release:  https://github.com/ROCKNIX/abl/releases/tag/v1.2

@@ -7,7 +7,8 @@
 #   rename   every DROP='d name is replaces='d by something still published
 #   version  a swapped package is strictly newer than the live one
 #   shadow   a per-SoC copy of a shared name is not older than [pocknix-shared]
-# POCKNIX_STAGE_CHECK_OFFLINE=1 reuses the last downloaded dbs.
+#   order    no device can still hold a version a staged conflicts= range excludes
+# POCKNIX_STAGE_CHECK_OFFLINE=1 reuses the last downloaded dbs. A FAIL withdraws .staged-ok.
 
 source "$(dirname "$0")/lib.sh"
 for t in bsdtar vercmp rclone; do need_tool "$t"; done
@@ -328,9 +329,34 @@ if [ -f "${MARKER}" ]; then
   done
 fi
 
+# --- publish order for versioned conflicts= ----------------------------------
+# A device that -Syu's the conflicter while it still holds X in the range gets a conflict prompt
+# that --noconfirm refuses, so every live SoC that sees this stage must already serve X past the
+# range. A <name>-<soc> package its own live tree no longer serves stays on its devices; any
+# other absent name is one we never ship. Unversioned entries are mutual exclusion, not order.
+log "publish order (versioned conflicts=)"
+if [ "${POCKNIX_REPO_SCOPE}" = "shared" ]; then order_socs=("${LIVE_SOCS[@]}"); else order_socs=("${SOC}"); fi
+for n in "${!staged[@]}"; do
+  while IFS= read -r spec; do
+    x="${spec%%[<>=]*}"; r="${spec#"${x}"}"; op="${r%%[!<>=]*}"; want="${r#"${op}"}"
+    [ -n "${op}" ] || continue
+    for s in "${order_socs[@]}"; do
+      UNIVERSE="$(universe_for "${s}")"
+      if first_copy "${x}"; then
+        if vercheck "${ver["${FC}"]}" "${op}" "${want}"; then
+          FAIL "${n}: conflicts=${spec}, but a ${s} device's -Syu still gets ${x} ${ver["${FC}"]} from [${FC#*@}]; publish ${x} past the range first"
+        fi
+      elif [ "${x%-"${s}"}" != "${x}" ]; then
+        FAIL "${n}: conflicts=${spec}, but nothing in ${s}'s repo order serves ${x}; devices that have it keep it"
+      fi
+    done
+  done <<< "${confl["${n}@stage"]:-}"
+done
+
 echo
 if [ "${fail}" -eq 0 ]; then
   [ "${warned}" -eq 0 ] && ok "stage-check passed" || ok "stage-check passed with warnings"
 else
+  rm -f "${MARKER}"
   die "stage-check found problems (see FAIL lines above); fix and re-run make stage"
 fi

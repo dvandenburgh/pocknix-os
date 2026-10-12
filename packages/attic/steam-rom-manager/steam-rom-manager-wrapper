@@ -1,5 +1,5 @@
 #!/bin/bash
-# steam-rom-manager wrapper — exec the unpacked electron build. Flags earned on-device 2026-07-05:
+# steam-rom-manager wrapper: exec the unpacked electron build. Flags:
 # --no-sandbox           chrome-sandbox needs setuid-root/userns; neither guaranteed for deck, and
 #                        SRM only renders its own bundled UI.
 # --no-zygote            the zygote socket died mid-`add` ("Socket closed prematurely") and took

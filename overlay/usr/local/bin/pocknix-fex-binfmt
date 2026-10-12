@@ -1,12 +1,10 @@
 #!/bin/sh
 # pocknix-fex-binfmt — get/set/apply the global FEX x86 binfmt handlers (on|off).
 #
-# DEFAULT IS ON (2026-07-24, the x86-proton work): binfmt-on was hardware-validated
-# harmless for the ARM Proton path on both SoCs, and it is what makes x86 Proton + Steam
-# Linux Runtime work out of the box (x86_64 ELFs — pressure-vessel, x86 Wine, native x86
-# Linux games — exec transparently through FEX). The historical "binfmt breaks Proton
-# compat-tool setup" is stale; ARM Proton never needed the handlers either way (its x86
-# game code goes Wine->FEX internally, not via Linux binfmt).
+# DEFAULT IS ON: binfmt is what makes x86 Proton + Steam Linux Runtime work out of the box
+# (x86_64 ELFs such as pressure-vessel, x86 Wine and native x86 Linux games exec transparently
+# through FEX). It is harmless to the ARM Proton path, whose x86 game code goes Wine->FEX
+# internally, not via Linux binfmt.
 #
 # "off" remains available for debugging/troubleshooting. The choice persists across
 # reboots in /var/lib/pocknix/fex-binfmt (absent = on, the shipped default) and is

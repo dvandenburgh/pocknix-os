@@ -67,28 +67,11 @@ Your own ROCKNIX checkout (`../distribution` or `DISTRIBUTION_DIR`) lacks this S
 Add `projects/ROCKNIX/devices/<SOC>` to its sparse checkout, or move the checkout aside so
 `make sync` fetches the pinned commit into `vendor/distribution` itself.
 
-**`error ROCKNIX firmware overlay not at .../vendor/... — run 'make sync'`**
-
-`make build` needs the device firmware in `vendor/`, which only `make sync` puts there. Run
-`make sync` (see the [Quick start](README.md#quick-start)) and check that
-`vendor/rocknix-sm8550/filesystem/usr/lib/kernel-overlays/base/lib/firmware` lists `ath12k` and
-`qcom`.
-
-**`error no SM8550 firmware in this ROCKNIX checkout, and no extra-firmware pin at ...`**
-
-ROCKNIX moved the SM8550 firmware out of its tree on 2026-08-03, into its `extra-firmware` repo,
-and `make sync` reads which commit of it to fetch from your own ROCKNIX checkout. Add that file to
-the sparse checkout, then sync again:
-
-```bash
-git -C ../distribution sparse-checkout add projects/ROCKNIX/packages/linux-firmware/extra-firmware
-make sync
-```
-
 **`error could not fetch https://github.com/ROCKNIX/... at ...`**
 
-The build host cannot reach GitHub, or a proxy is in the way. `git` must be able to fetch from
-`github.com`; check with `git ls-remote https://github.com/ROCKNIX/extra-firmware`.
+`make sync` cannot reach GitHub, or a proxy is in the way. `git` must be able to fetch from
+`github.com`; check with `git ls-remote https://github.com/ROCKNIX/distribution`. No build step
+needs `make sync`, so an image still builds without it.
 
 **`git status` shows many changes under `kernel/` after `make sync`**
 

@@ -9,7 +9,7 @@ set -euo pipefail
 
 DEVICE="${DEVICE:-${POCKNIX_INTERNAL_DISK:-/dev/sda}}"
 BOOT_NAME="${POCKNIX_BOOT_GPT_NAME:-POCKNIX}"     # GPT name of the boot FAT  (pocknix-install-internal)
-ROOT_NAME="${POCKNIX_ROOT_LABEL:-POCKNIX_ROOT}"   # GPT name of the ext4 root
+ROOT_NAME="${POCKNIX_ROOT_LABEL:-POCKNIX_ROOT}"   # GPT name of the root
 DRY_RUN=0 ; ASSUME_YES=0
 
 say()  { echo -e "[\033[1;34mpocknix-uninstall\033[0m] $*"; }

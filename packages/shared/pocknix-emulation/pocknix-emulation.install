@@ -1,10 +1,10 @@
-# Images before 0.1.0-15 enabled the user unit with `systemctl --global enable`, a link pacman
+# Older images enabled the user unit with `systemctl --global enable`, a link pacman
 # never owned. rm, not systemctl: this also runs in the image-build chroot.
 _drop_unowned_wants() {
   rm -f /etc/systemd/user/default.target.wants/pocknix-roms-init.service
 }
 # Kept ONCE, never refreshed: it has to describe the templates from before baselines existed,
-# which is what gives such a device a real three-way first merge (dev/emulation.md).
+# which is what gives such a device a real three-way first merge.
 _stash_prev_templates() {
   [ -e /var/lib/pocknix/seed-prev ] && return 0
   [ -d /usr/share/pocknix-emulation ] || return 0

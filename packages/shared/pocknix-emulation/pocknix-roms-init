@@ -119,7 +119,7 @@ seed_retroarch() {
   # Input pad has no bindings at all.
   [ -d /usr/share/libretro/autoconfig/udev ] && \
     seed_a /usr/share/libretro/autoconfig/udev "${HOME}/.config/retroarch/autoconfig/udev"
-  # Linked, not copied (79 MB); the dir stays writable so preset saving works. A real
+  # Linked, not copied; the dir stays writable so preset saving works. A real
   # shaders_slang (Online Updater) wins.
   local shaders="${HOME}/.config/retroarch/shaders/shaders_slang"
   if [ -d /usr/share/libretro/shaders/shaders_slang ] && [ ! -e "${shaders}" ]; then

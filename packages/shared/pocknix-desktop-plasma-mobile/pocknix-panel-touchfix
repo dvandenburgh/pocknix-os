@@ -2,7 +2,7 @@
 # pocknix-panel-touchfix — patch the shell package's on-disk views/Panel.qml (the containment
 # owning the status bar is compiled into a .so) so the auto-hidden bar stops swallowing touches.
 # Both writers of the panel's input region must be driven, and the containment re-grabs 18 of
-# its 24px after every state change. Full forensics: pocknix-notes/dev/desktop.md.
+# its 24px after every state change.
 
 set -u
 

@@ -1,6 +1,5 @@
 # pocknix-decky — Decky Loader (QAM plugin framework) + the Pocknix Control plugin.
-# Everything ships under /usr/share; pocknix-decky-sync.service seeds deck's ~/homebrew at boot,
-# version-compared so Decky's own self-updates are never downgraded.
+# Everything ships under /usr/share; pocknix-decky-sync seeds deck's ~/homebrew at boot.
 # The plugin frontend (dist/index.js) is prebuilt and committed — no node at package build time.
 pkgname=pocknix-decky
 pkgver=0.1.0
@@ -8,8 +7,8 @@ pkgrel=44
 pkgdesc="Decky Loader (under FEX, namespaced binfmt) + Pocknix Control QAM plugin"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
-# Every game's launch options name pocknix-game-launch, which pocknix-steam 67 introduced.
+license=('GPL-2.0-or-later')
+# Every game's launch options name pocknix-game-launch; older pocknix-steam releases lack it.
 depends=('fex-emu' 'fex-rootfs' 'pocknix-steam>=0.1.0-67')
 _loaderver=v3.2.10
 source=('pocknix-decky-run' 'pocknix-decky-sync' 'pocknix-decky-killall' 'pocknix-decky-sync.service'

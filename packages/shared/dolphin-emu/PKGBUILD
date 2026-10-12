@@ -1,5 +1,5 @@
 # dolphin-emu — GameCube/Wii emulator, built from source because ALARM carries no aarch64
-# build and upstream's Linux binaries are x86_64-only. Qt6 build, 30-60 min in the VM.
+# build and upstream's Linux binaries are x86_64-only.
 pkgname=dolphin-emu
 pkgver=2609a
 pkgrel=1

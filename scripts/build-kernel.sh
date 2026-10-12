@@ -2,8 +2,7 @@
 # build-kernel.sh — build the linux-pocknix kernel for the selected device's SoC
 # (kernel/${SOC}/, chosen by the device profile) and stage the boot artifact for
 # the SoC's BOOTLOADER style: qcom-abl (mkbootimg Android boot image, sm8550) or
-# arm-efi (raw Image loaded by GRUB, sm8250). Reproduces ROCKNIX's recipe
-# (packages/linux/package.mk):
+# arm-efi (raw Image loaded by GRUB, sm8250). The recipe:
 #
 #   stock kernel.org linux-${KERNEL_VERSION}   (pinned in kernel/${SOC}/kernel.conf)
 #     + patch stack in numeric subdir order: kernel/${SOC}/patches/*/
@@ -11,11 +10,11 @@
 #     + the SoC tree's device trees (kernel/${SOC}/dts) with ensured Makefile entries
 #     + the SoC config (kernel/${SOC}/config/linux.aarch64.conf)
 #   -> make Image modules + the shipped boards' dtbs
-#   -> boot image = gzip(Image) ++ appended DTBs, dummy ramdisk, mkbootimg (header v0)
+#   -> boot image = gzip(Image) ++ appended DTBs, empty cpio ramdisk, mkbootimg (header v0)
 #
-# We boot a plain ext4 root with NO initramfs (UFS/SCSI/ext4 are built-in), so the
-# cmdline uses a standard root= spec (KERNEL_CMDLINE) instead of ROCKNIX's
-# LibreELEC boot=/disk=LABEL= convention, and the ramdisk stays a dummy.
+# We boot a btrfs root with NO initramfs (UFS/SCSI/btrfs are built-in), so the
+# cmdline uses a standard root= spec (KERNEL_CMDLINE), not a
+# boot=/disk=LABEL= convention, and the ramdisk stays an empty cpio.
 #
 # Outputs (per SoC):
 #   build/kernel/<soc>/out/{Image,dtbs/,modroot/lib/modules/<ver>/,kernelrelease,soc}
@@ -156,100 +155,50 @@ configure() {
   # pocknix kernel config deltas (applied on top of the synced ROCKNIX config, so
   # they survive `make sync`):
   #  - zstd-compressed firmware loading (Arch ships firmware as .zst)
-  #  - DRM_MSM built-in (=y, matching ROCKNIX). It was a MODULE to dodge an a740_sqe.fw
-  #    "-2" at built-in probe (fw is on the not-yet-mounted root), BUT that made mdss+dpu+
-  #    dsi+gpu all bind LATE (~4.1s) via one post-root udev modprobe, so the first DPU
-  #    commit raced the panel's command-mode tearcheck into a PERSISTENT TE-dead latch
-  #    (~10fps, "ctl start interrupt wait failed" / commit-done -22) that survived reboots
-  #    (dummy panel regulators = the OS can't power-cycle the panel to reset it). =y makes
-  #    msm probe EARLY during kernel init, off disp_cc's fresh power-on-reset PLL/RCG state,
-  #    and bring the panel up clean — exactly ROCKNIX's bring-up. The "-2" is benign: the
-  #    a6xx GPU is a separate platform device that -EPROBE_DEFERs on missing firmware, so the
-  #    DISPLAY comes up regardless and the GPU retries once root mounts (ROCKNIX loads the fw
-  #    at ~11.9s). VALIDATE on-device that GPU accel recovers; if it doesn't on our
-  #    initramfs-less root, embed the fw via CONFIG_EXTRA_FIRMWARE rather than reverting to =m.
-  #  - Android binder + binderfs for Waydroid: the synced config has
-  #    ANDROID_BINDER_IPC off, so the Waydroid container can't start ("Failed to
-  #    initialize Waydroid"). MEMFD_CREATE is already on, so modern Waydroid needs no
-  #    ASHMEM. binderfs creates the binder/hwbinder/vndbinder devices dynamically.
-  #  - USB/IP vhci-hcd: InputPlumber emulates the "Valve Steam Deck Controller"
-  #    target as a virtual USB device via vhci-hcd; without it InputPlumber hides the
-  #    physical gamepad but fails to create the virtual one, so Steam sees no controller
-  #    ("modprobe: FATAL: Module vhci-hcd not found"). =m so InputPlumber modprobes it.
-  #  - sched_ext (SCHED_CLASS_EXT) + BTF (DEBUG_INFO_BTF): the pluggable BPF scheduler
-  #    class, so scx_lavd (the gaming/latency-aware, big.LITTLE-aware scheduler from the
-  #    ALARM scx-scheds package, run --autopilot by pocknix-lavd.service) can load. BPF
-  #    syscall/JIT are already on; a sched_ext program only attaches if the kernel exposes
-  #    BTF at /sys/kernel/btf/vmlinux, which needs DEBUG_INFO_BTF=y AND pahole (dwarves)
-  #    present in the build VM at compile time. The sm8550 base config sets
-  #    DEBUG_INFO_REDUCED=y, which strips the type info BTF needs (BTF depends on
-  #    !DEBUG_INFO_REDUCED) — so we turn REDUCED off too, else olddefconfig silently
-  #    drops BTF *and* SCHED_CLASS_EXT (they vanish, with no "is not set" line).
-  #    The sm8250 base config disables DEBUG_KERNEL entirely, which HIDES the whole
-  #    debug-info choice from Kconfig: our DWARF selection gets dropped as invisible,
-  #    the choice defaults to DEBUG_INFO_NONE, and BTF vanishes the same silent way
-  #    (shipped once: lavd skipped on the RP5, session fell back to EEVDF,
-  #    2026-07-13). Enable DEBUG_KERNEL (a visibility gate; sm8550 — our perf
-  #    baseline — already ships =y) + force the choice off NONE onto
-  #    DWARF_TOOLCHAIN_DEFAULT (both no-ops on sm8550). Both target symbols are
-  #    covered by the post-olddefconfig assertions, which is how this was caught.
-  #  - KALLSYMS_ALL: also DEBUG_KERNEL-gated, also missing from the sm8250 base
-  #    config (sm8550 ships =y). scx_lavd's BPF resolves the per-cpu 'runqueues'
-  #    ksym via kallsyms, and DATA symbols are only listed with _ALL — without it
-  #    the prog load dies with "ldimm64 failed to find the address for kernel
-  #    symbol 'runqueues'" (seen on the RP5 once BTF was fixed). Asserted below.
-  #  - SCHED_CLUSTER: sm8550-baseline parity (cluster-aware scheduler topology;
-  #    the 865 is 4xA77+4xA55 DynamIQ, same shape the option exists for).
+  #  - Android binder + binderfs for Waydroid: the synced config has ANDROID_BINDER_IPC
+  #    off, so the container can't start. binderfs creates the binder/hwbinder/vndbinder
+  #    devices dynamically.
+  #  - USB/IP vhci-hcd =m: InputPlumber's "Valve Steam Deck Controller" target is a
+  #    virtual USB device on vhci-hcd; without it the physical gamepad is hidden and no
+  #    virtual one appears, so Steam sees no controller.
+  #  - sched_ext (SCHED_CLASS_EXT) + BTF (DEBUG_INFO_BTF), so scx_lavd (pocknix-lavd.service)
+  #    can load: a sched_ext program attaches only if /sys/kernel/btf/vmlinux exists, which
+  #    needs DEBUG_INFO_BTF=y and pahole at compile time. BTF depends on !DEBUG_INFO_REDUCED
+  #    (the sm8550 base sets REDUCED), and the whole debug-info choice is hidden without
+  #    DEBUG_KERNEL (the sm8250 base disables it, so the choice falls to DEBUG_INFO_NONE).
+  #    Either way olddefconfig drops BTF and SCHED_CLASS_EXT silently, with no "is not set"
+  #    line: so DEBUG_KERNEL on, REDUCED off, the choice forced onto DWARF_TOOLCHAIN_DEFAULT.
+  #  - KALLSYMS_ALL: also DEBUG_KERNEL-gated and missing from the sm8250 base config.
+  #    scx_lavd resolves the per-cpu 'runqueues' ksym via kallsyms, and DATA symbols are
+  #    only listed with _ALL; without it the prog load dies with "ldimm64 failed to find".
+  #  - SCHED_CLUSTER: cluster-aware scheduler topology for the big.LITTLE DynamIQ parts.
   #  - tracing / BPF events (FTRACE, KPROBES, KPROBE_EVENTS, PERF_EVENTS -> BPF_EVENTS):
-  #    scx_lavd's BPF objects call bpf_trace_printk and attach futex/execve tracepoints.
-  #    The ROCKNIX config ships FTRACE off, so bpf_trace_printk's helper proto is absent
-  #    and the verifier rejects the whole scheduler ("program of this type cannot use
-  #    helper bpf_trace_printk", BPF load -EINVAL -> scx_lavd crash-loops). BPF_EVENTS is
-  #    def_bool y once (KPROBE_EVENTS||UPROBE_EVENTS) + PERF_EVENTS are on, which need the
-  #    tracing core (FTRACE) + KPROBES.
-  #  - FUNCTION_TRACER + DYNAMIC_FTRACE (-> WITH_CALL_OPS/WITH_DIRECT_CALLS on arm64):
-  #    scx-scheds >= 1.1 attaches fentry programs (scx_lib_init_probe), which need the BPF
-  #    trampoline; on arm64 that requires dynamic-ftrace direct calls. Without it the attach
-  #    fails -ENOTSUPP (error 524), scx_lavd exits, systemd hits the start limit, and the
-  #    session falls back to EEVDF, where Steam's nice-19 main thread starves (sub-10fps UI,
-  #    low clocks). KPROBES alone was enough for scx 1.0.x; the rolling ALARM package moved.
-  #    DYNAMIC_FTRACE patches call sites to NOPs at boot, so runtime overhead when not
-  #    tracing is ~zero. The WITH_CALL_OPS/WITH_DIRECT_CALLS variants are not directly
-  #    selectable; they follow from these two via olddefconfig (verified in the built
-  #    .config by the assertion below).
+  #    scx_lavd's BPF objects call bpf_trace_printk and attach tracepoints; with FTRACE off
+  #    the helper proto is absent and the verifier rejects the whole scheduler (-EINVAL,
+  #    crash-loop). BPF_EVENTS is def_bool y once KPROBE_EVENTS + PERF_EVENTS are on.
+  #  - FUNCTION_TRACER + DYNAMIC_FTRACE: scx-scheds attaches fentry programs, which need
+  #    the BPF trampoline, and on arm64 that needs dynamic-ftrace direct calls. Without them
+  #    the attach fails -ENOTSUPP (524) and the session falls back to EEVDF, where Steam's
+  #    nice-19 main thread starves. DYNAMIC_FTRACE NOPs the call sites at boot, so the idle
+  #    cost is ~zero. The WITH_CALL_OPS/WITH_DIRECT_CALLS variants are not directly
+  #    selectable; they follow from these two via olddefconfig (asserted below).
   #  - default cpufreq governor performance -> schedutil: LAVD does its own per-core DVFS
-  #    via scx_bpf_cpuperf_set(), which only takes effect under schedutil (the one governor
-  #    that honours scheduler frequency hints). Under performance, clocks pin to max and
-  #    LAVD's frequency intelligence — and the handheld's thermal headroom — is lost. Still
-  #    runtime-overridable (echo performance > .../cpufreq/policy*/scaling_governor) to A/B.
+  #    via scx_bpf_cpuperf_set(), which only schedutil honours; under performance the
+  #    clocks pin to max and the thermal headroom is lost. Still runtime-overridable.
   #  - MMC_SDHCI_MSM_DOWNSTREAM: the Qualcomm downstream sdhci-msm driver (patches
-  #    0210-0212, from armbian PR #9546). The RP6 + Odin 2 family dts rebind sdhc_2 (microSD) to it
-  #    ("qcom,sdhci-msm-v5-downstream") for UHS-I SDR104 (~85MB/s vs ~13MB/s): the
-  #    upstream driver has an SDR104 tuning/clock regression on sm8550, which is why
-  #    the vendor DTs cap the slot to legacy High-Speed. =y like MMC_SDHCI_MSM (which
-  #    stays on; distinct compatibles + driver names, no conflict).
-  #  - QCOM_Q6V5_PAS as MODULE: the synced sm8250 config has it =y (built-in), so the
-#    adsp/cdsp/slpi remoteprocs probe at ~1s — before our initramfs-less root (and thus
-#    /usr/lib/firmware) exists — and remoteproc does NOT retry a failed request_firmware:
-#    the DSPs sit offline forever and the q6 sound card never assembles ("no soundcards",
-#    RP5 bring-up 2026-07-13; LPASS pinctrl also fails its clocks without the ADSP).
-#    =m loads post-root exactly like the sm8550 config already ships (=m there, which is
-#    why RP6 audio never hit this), the firmware is present, the ADSP authenticates and
-#    boots, and LPASS/soundwire/codecs cascade in (verified live via manual rebind).
-#    No-op on sm8550. (cdsp still fails PAS auth -22 on the RP5 with linux-firmware's
-#    blob — harmless, nothing uses it; same on ROCKNIX.)
-#  - UNICODE (UTF-8 normalization + casefolding tables): the ROCKNIX config ships this off.
-  #    SteamOS formats every SD card with the ext4 `casefold` feature (case-insensitive dir
-  #    lookups, so mixed-case Windows/Proton game paths resolve). ext4 REFUSES to mount a
-  #    casefold filesystem without CONFIG_UNICODE ("Filesystem with casefold feature cannot be
-  #    mounted without CONFIG_UNICODE") — so a card formatted on another Steam Deck won't mount
-  #    here at all, and Steam never sees it. =y builds the UTF-8 normalization table in (no
-  #    module: filesystems may be mounted before modules load). Pairs with the SD automount
-  #    stack (pocknix-sdcard-automount) that mounts + registers the card with Steam.
-  #  - BTRFS_FS: the root filesystem of snapshot-capable images (subvolumes + set-default
-  #    rollback). Both synced base configs already ship =y, but there is no initramfs, so
-  #    a future `make sync` flipping it to =m/off would ship an image that cannot mount
-  #    its own root — pin it and assert below.
+  #    0210-0212). The sm8550 family dts rebind sdhc_2 (microSD) to it
+  #    ("qcom,sdhci-msm-v5-downstream") for UHS-I SDR104: the upstream driver has an
+  #    SDR104 tuning/clock regression on sm8550, which is why the vendor DTs cap the slot
+  #    to High-Speed. =y beside MMC_SDHCI_MSM (distinct compatibles + driver names).
+  #  - QCOM_Q6V5_PAS =m: built in (as the synced sm8250 config ships it) the adsp/cdsp/slpi
+  #    remoteprocs probe before the initramfs-less root holds /usr/lib/firmware, and remoteproc
+  #    never retries a failed request_firmware: the DSPs stay offline and the q6 sound card
+  #    never assembles. =m loads post-root; no-op on sm8550, which already ships =m.
+  #  - UNICODE =y: SteamOS formats SD cards with the ext4 `casefold` feature, and ext4
+  #    refuses to mount a casefold filesystem without CONFIG_UNICODE, so a card from another
+  #    Deck would never mount here. Built in, not a module: filesystems mount before modules.
+  #  - BTRFS_FS =y: the root filesystem, and there is no initramfs, so a `make sync` flipping
+  #    it to =m would ship an image that cannot mount its own root. Pinned + asserted below.
   #  - PM_DEBUG + PM_SLEEP_DEBUG: /sys/power/pm_wakeup_irq (which irq woke us) and
   #    /sys/power/pm_test (staged suspend entry that auto-resumes per stage) for
   #    suspend triage on a device with no serial console.
@@ -306,8 +255,8 @@ configure() {
 
   # Assert the whole scx_lavd chain actually resolved: the fentry/BPF-trampoline
   # symbols (attach fails ENOTSUPP without them) AND BTF + sched_ext themselves —
-  # olddefconfig silently drops any of these when a dependency is missing (bitten
-  # twice: REDUCED on sm8550, DEBUG_INFO_NONE on sm8250), and the failure only
+  # olddefconfig silently drops any of these when a dependency is missing
+  # (REDUCED on sm8550, DEBUG_INFO_NONE on sm8250), and the failure only
   # shows up on-device as pocknix-lavd's ConditionPathExists quietly skipping.
   local sym
   for sym in FUNCTION_TRACER DYNAMIC_FTRACE DYNAMIC_FTRACE_WITH_DIRECT_CALLS \
@@ -380,8 +329,8 @@ fetch_mkbootimg() {
   cp -r "${KBUILD}/mkbootimg-src/gki" "${KBUILD}/mkbootimg-src/mkbootimg.py" "${KBUILD}/mkbootimg/"
 }
 
-# Assemble the qcom-abl boot image. $1 = optional ramdisk path; default is a dummy
-# (we have no initramfs). gzip(Image) with all DTBs appended is the "kernel".
+# Assemble the qcom-abl boot image. $1 = optional ramdisk path; default is an empty
+# cpio (we have no initramfs). gzip(Image) with all DTBs appended is the "kernel".
 assemble_bootimg() {
   fetch_mkbootimg
   mkdir -p "${IMAGE_DIR}"
@@ -389,7 +338,7 @@ assemble_bootimg() {
   gzip -c "${KBUILD}/out/Image" > "${kgz}"
   for d in "${KBUILD}"/out/dtbs/*.dtb; do [ -f "${d}" ] && cat "${d}" >> "${kgz}"; done
   if [ -z "${ramdisk}" ]; then
-    # We don't use an initramfs (UFS/ext4 are built in). Ship a VALID empty cpio
+    # We don't use an initramfs (UFS/btrfs are built in). Ship a VALID empty cpio
     # so the kernel unpacks it cleanly instead of printing "Initramfs unpacking
     # failed" (harmless, but noisy). Falls back to a dummy string if cpio is absent.
     ramdisk="${KBUILD}/out/ramdisk.empty"
@@ -454,9 +403,7 @@ main() {
       ;;
   esac
   printf '%s' "${KERNEL_CMDLINE}" > "${KBUILD}/out/cmdline"
-  # SoC marker: records which SoC produced out/. Kernel outputs live in
-  # per-SoC dirs now, so the downstream marker checks are insurance against
-  # manual copies/renames rather than a shared-dir necessity.
+  # SoC marker: records which SoC produced out/, so downstream checks catch a copied/renamed dir.
   printf '%s' "${SOC}" > "${KBUILD}/out/soc"
   printf '%s\n' "${inputs}" > "${KBUILD}/out/inputs"
   ok "${KERNEL_PKG} build complete"

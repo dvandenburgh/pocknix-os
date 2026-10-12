@@ -92,7 +92,7 @@ if [ -n "${POCKNIX_TOUCH2_NAME:-}" ]; then
   systemctl stop pocknix-second-screen.service 2>/dev/null || true
 fi
 
-# Rotation autodetects (scanout when the plane can, else composited; dev/graphics.md).
+# Rotation autodetects (scanout when the plane can, else composited).
 # Panels past the DPU rotator's 1088-line cap must opt in here or scan out black.
 GS_ROTATE=()
 if [ "${POCKNIX_PANEL_ROTATE_SHADER:-0}" = "1" ]; then

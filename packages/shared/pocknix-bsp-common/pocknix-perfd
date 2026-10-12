@@ -11,6 +11,7 @@ sys.path.insert(0, "/usr/lib/pocknix")
 import pocknix_perf as pp  # noqa: E402
 
 FACTORY = "/usr/share/pocknix/power-profiles.conf"
+DROPINS = "/usr/share/pocknix/power-profiles.d"
 OVERRIDE = "/etc/pocknix/power-profiles.conf"
 STATE = "/var/lib/pocknix/perfd.state"
 CPUFREQ = "/sys/devices/system/cpu/cpufreq"
@@ -113,7 +114,9 @@ class Perf:
 
     def load_config(self):
         try:
-            self.factory = pp.load_factory(open(FACTORY).read())
+            names = sorted(n for n in os.listdir(DROPINS) if n.endswith(".conf")) if os.path.isdir(DROPINS) else []
+            dropins = [(n, open(os.path.join(DROPINS, n)).read()) for n in names]
+            self.factory = pp.load_factory(open(FACTORY).read(), dropins)
         except (OSError, pp.FactoryError) as e:
             log(f"factory profiles unusable, leaving stock clocks: {e}")
             self.factory = self.eff = None

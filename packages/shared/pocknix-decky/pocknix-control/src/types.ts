@@ -4,7 +4,7 @@ export interface GameTweak {
   fexProfile?: string;
   /** Audio buffer in ms (PULSE_LATENCY_MSEC exported by pocknix-game-launch); "" = game default. */
   audioLatency?: string;
-  /** Turnip series pin (e.g. "25.2"); the wrapper resolves arch + point release. "" = default. */
+  /** Turnip series pin ("25.2"); pocknix-game-launch picks arch + point release. "" = default. */
   mesaVersion?: string;
   /** Space-separated KEY=VALUE pairs applied at launch; launch options win over these. */
   envVars?: string;
@@ -12,7 +12,7 @@ export interface GameTweak {
   fanMode?: string;
   /** Per-game scx_lavd mode override, applied for the game session only; "" = use global. */
   lavdMode?: string;
-  /** Wrapper exports PROTON_USE_XALIA=0 unless false; absent = disabled. */
+  /** pocknix-game-launch exports PROTON_USE_XALIA=0 unless false; absent = disabled. */
   disableXalia?: boolean;
   /** true = the touchscreen is inhibited while this game runs (pocknix_control/touch.py). */
   touchDisabled?: boolean;
@@ -47,7 +47,7 @@ export interface Config {
   lavdMode: string;
   tweaks: Tweaks;
   fexProfiles: Record<string, FexProfile>;
-  /** Turnip payload choices, one per series (data "25.2"). ARM Proton only. */
+  /** Turnip payload choices, one per series (data "25.2"); the label marks single-arch series. */
   mesaVersions?: DropdownChoice[];
   installedGames: InstalledGame[];
   led: LedConfig;

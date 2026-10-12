@@ -1,6 +1,6 @@
 # ALARM packages hosted in [pocknix-base] but installed by no image (opt-in via
 # pacman -S on a locked device). The harvest only sees what a build installed, hence
-# a hand list; every dep must be hosted too or snapshot-base.sh refuses. dev/pacman-repo.md
+# a hand list; every dep must be hosted too or snapshot-base.sh refuses.
 
 # --- VPN / remote access ---
 tailscale
@@ -11,7 +11,7 @@ samba
 
 # --- emulation layer (opt-in: no image installs it, Pocknix Tools does) ---
 # Its ALARM deps, the optional emulators' included. Derive changes from an orphan set on a
-# device, not from the snapshot guard: that reads the metas' depends= only (dev/pacman-repo.md).
+# device, not from the snapshot guard: that reads the metas' depends= only.
 retroarch
 libretro-core-info
 ppsspp

@@ -1,7 +1,7 @@
 # Trim the pacman cache after every transaction: pacman keeps every version it downloads and nothing
 # on stock Arch prunes it, on the one rw filesystem. Needs pacman-contrib (base.list).
 # -rk2 keeps 2 versions of each installed package; -ruk0 drops uninstalled ones entirely.
-# 95-: after our 90- kernel/binfmt hooks. Non-fatal by design, a full cache must not break -Syu.
+# 95-: after the 90- kernel and binfmt hooks. Non-fatal by design, a full cache must not break -Syu.
 [Trigger]
 Operation = Install
 Operation = Upgrade

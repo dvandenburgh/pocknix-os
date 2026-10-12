@@ -3,7 +3,7 @@
 #
 # Pipeline:
 #   bootstrap -> configure pacman -> install packages (base + session lists) -> local pocknix
-#   packages (incl. the linux-pocknix kernel) -> SM8550 firmware -> bake the native Steam client
+#   packages (incl. the SoC kernel and firmware) -> bake the native Steam client
 #
 # The output is a finished rootfs at ${ROOTFS_DIR}. Turning that into a flashable image
 # (partitioning, boot KERNEL, first-boot config) is a SEPARATE step: scripts/build-sd-image.sh
@@ -12,7 +12,7 @@
 source "$(dirname "$0")/lib.sh"
 need_linux
 need_root build
-for t in curl tar rsync sed; do need_tool "$t"; done
+for t in curl tar sed; do need_tool "$t"; done
 
 LOCAL_REPO_DIR="${LOCALREPO_DIR}"                 # per-SoC: build/localrepo/${SOC} (set in lib.sh)
 LOCAL_REPO_SHARED_DIR="${LOCALREPO_SHARED_DIR}"   # SoC-neutral: build/localrepo/shared
@@ -104,7 +104,7 @@ install_local_packages() {
   else log "emulation layer left out (POCKNIX_EMULATION=1 bakes it in)"; fi
   chroot "${root}" pacman -S --noconfirm --needed "${metas[@]/#/pocknix-shared/}"
   # GUARD: these local builds MUST come from [pocknix], not silently fall back / go missing. gamescope
-  # especially: ALARM's vanilla lacks --use-rotation-shader and black-screens on the RP6 (bitten 3x).
+  # especially: without composite rotation it requests a plane rotation the msm DPU rejects.
   local mesa_ver; mesa_ver="$(chroot "${root}" pacman -Q mesa 2>/dev/null | awk '{print $2}')"
   case "${mesa_ver}" in
     2:*) log "mesa OK: ${mesa_ver} (epoch-2 pocknix trimmed build)" ;;
@@ -121,14 +121,12 @@ install_local_packages() {
       die "${lp} not installed — its local build wasn't in [pocknix]. Build it: 'make packages PKG=${lp}' (fex-rootfs downloads the ~1.1 GB Arch x86 squashfs once), confirm build/localrepo/${lp}-*.pkg.tar.* exists, then re-run."
     }
   done
-  # pocknix-desktop must come from [pocknix] too (it pulls the Plasma Mobile stack from ALARM).
+  # pocknix-desktop must come from [pocknix-shared] too (its flavour dep pulls in the whole DE).
   chroot "${root}" pacman -Q pocknix-desktop >/dev/null 2>&1 || {
     die "pocknix-desktop not installed — its local build wasn't in [pocknix]. Build it: 'make packages PKG=pocknix-desktop', confirm build/localrepo/pocknix-desktop-*.pkg.tar.* exists, then re-run."
   }
-  # Source-built emulators are optdepends of pocknix-emulation-full, installed
-  # OPTIONAL-warn here (first-ever aarch64 builds = likeliest to fail; a missing
-  # one just leaves that system out of ES-DE, which degrades gracefully) — don't
-  # fail the whole image over 3DS/GameCube/WiiU.
+  # Source-built emulators are optdepends of pocknix-emulation-full: a missing one only
+  # drops that system from ES-DE, so warn here rather than fail the whole image.
   local oe
   if [ "${POCKNIX_EMULATION}" = 1 ]; then
     for oe in dolphin-emu azahar cemu; do
@@ -165,10 +163,9 @@ install_local_packages() {
   # deletes them from the IMAGE copy instead (they must not ship: see there).
   # Drop the build-only stanzas (their file:///localrepo* bind mounts don't exist on
   # the device). With POCKNIX_REPO_URL set, re-add stanzas pointing at the PUBLISHED
-  # repos (see pocknix-notes dev/pacman-repo.md), inserted ABOVE [core]: `pacman -S
+  # repos, inserted ABOVE [core]: `pacman -S
   # <name>` picks the FIRST repo that carries the name, so pocknix must outrank ALARM
-  # for our same-name packages (mesa, gamescope, ...). Without it the image ships
-  # reflash-only, as before.
+  # for our same-name packages (mesa, gamescope, ...). Without it the image is reflash-only.
   sed -i '/^\[pocknix\]/,+2d;/^\[pocknix-shared\]/,+2d' "${root}/etc/pacman.conf"
   # Published repos: POCKNIX_REPO_URL is the BASE url. [pocknix] is per-SoC
   # (<base>/<soc> — tuned packages share pkgnames across SoCs with different
@@ -177,9 +174,8 @@ install_local_packages() {
   # never be shadowed by a same-name shared one.
   if [ -n "${POCKNIX_REPO_URL}" ]; then
     log "shipping [pocknix] -> ${POCKNIX_REPO_URL}/${SOC} + [pocknix-shared] -> ${POCKNIX_REPO_URL}/shared (SigLevel ${POCKNIX_REPO_SIGLEVEL})"
-    # anchor = the first base repo: [core] on a live-ALARM conf, [pocknix-base]
-    # on a pinned one (which has no [core] at all — the old sed silently
-    # no-opped there and the image shipped with NO [pocknix] stanza)
+    # anchor = the first base repo: [core] on a live-ALARM conf, [pocknix-base] on a
+    # pinned one (which has no [core] at all, so anchoring on [core] would silently no-op)
     local anchor="core"
     grep -q '^\[pocknix-base\]' "${root}/etc/pacman.conf" && anchor="pocknix-base"
     sed -i "0,/^\[${anchor}\]/s||[pocknix]\nSigLevel = ${POCKNIX_REPO_SIGLEVEL}\nServer = ${POCKNIX_REPO_URL}/${SOC}\n\n[pocknix-shared]\nSigLevel = ${POCKNIX_REPO_SIGLEVEL}\nServer = ${POCKNIX_REPO_URL}/shared\n\n[${anchor}]|" \
@@ -230,47 +226,14 @@ install_packages() {
   chroot "${root}" pacman -Syyu --noconfirm --needed "${pkgs[@]}"
 }
 
-# Install the SoC device firmware (ath12k wifi board data, adsp/cdsp, vpu, ...)
-# from ROCKNIX's synced overlay into the rootfs. The path comes from the device
-# profile (FW_SRC_REL). It's a large synced vendor blob, so installed directly
-# here rather than packaged (could become pocknix-firmware-<soc> later).
-FW_SRC="${VENDOR_DIR}/${FW_SRC_REL}"
-install_firmware() {
-  local root="$1"
-  if [ -d "${FW_SRC}" ] && [ -n "$(ls -A "${FW_SRC}" 2>/dev/null)" ]; then
-    log "installing ${SOC} device firmware -> rootfs /usr/lib/firmware ($(du -sh "${FW_SRC}" | cut -f1))"
-    mkdir -p "${root}/usr/lib/firmware"
-    # --chown=root:root: the vendor firmware tree is owned by the host build user (uid 1000); plain
-    # rsync -a would bake that into the rootfs as 'alarm'-owned firmware (and re-own /usr). Force root.
-    rsync -a --chown=root:root "${FW_SRC}/" "${root}/usr/lib/firmware/"
-  elif [ "${SOC}" = "sm8250" ]; then
-    # Expected: ROCKNIX ships NO firmware overlay for SM8250 — every blob in
-    # kernel/sm8250/config/kernel-firmware.dat (a650 GPU, adsp/cdsp, ath11k,
-    # BT) comes from upstream linux-firmware, which ALARM's linux-firmware/
-    # linux-firmware-qcom packages already put in the rootfs.
-    log "no ${SOC} firmware overlay (expected: all blobs come from ALARM linux-firmware packages)"
-  else
-    # Fatal, not a warn: this shipped an image with dead wifi/audio/battery once
-    # (fresh worktree, gitignored vendor/ absent) and the warn scrolled past.
-    die "ROCKNIX firmware overlay not at ${FW_SRC} — run 'make sync' (or copy vendor/ from a synced checkout). Without it wifi, audio and battery reporting are dead on ${SOC}."
-  fi
-}
-
-# NOTE: kernel integration (modules + Image, and replacing ALARM's linux-aarch64) is now done by
-# the linux-pocknix PACKAGE, installed in install_local_packages() — no separate install_kernel().
-
-# Bake the native ARM Steam client at BUILD time (armada's generate-steam-bootstrap model) so first
-# boot needs no network (drops the Wi-Fi-preseed requirement). Runs the on-device installer in the
-# rootfs chroot — which already has the steam deps + Xvfb — under a STAGING HOME, verifies the tree
-# is complete (steamui.so + the channel .installed manifest, else the seed would re-install online),
-# strips per-session cruft, and tars the HOME-agnostic tree (relative .steam symlinks) into a
-# re-seedable seed cached at ${CACHE_DIR}/steam-seed.tar.zst. The tar is a BUILD-TIME INTERMEDIATE:
-# we unpack it straight into the rootfs's /home/deck at the end of this function (see below) so the
-# extracted tree is part of ROOTFS_DIR before build-sd-image.sh sizes the image partition, and the
-# tar itself is never shipped. First boot then has no extract wait AND no network need.
-# Cached in ${CACHE_DIR} so it runs once (POCKNIX_REBOOTSTRAP_STEAM=1 forces a rebake) — repeat
-# builds reuse the cache and need no network. The bake is mandatory: the on-device launcher has no
-# network-installer fallback, so a build with no seed would ship a Steam session that hard-fails.
+# Bake the native ARM Steam client at BUILD time so first boot needs no network: the on-device
+# launcher has no network-installer fallback, so an image with no seed ships a Steam session that
+# hard-fails. Runs the on-device installer in the rootfs chroot under a STAGING HOME, verifies the
+# tree is complete (steamui.so + the channel .installed manifest, else the seed would re-install
+# online), strips per-session cruft and tars the HOME-agnostic tree (relative .steam symlinks) into
+# ${CACHE_DIR}/steam-seed.tar.zst. The tar is a BUILD-TIME INTERMEDIATE, unpacked into the rootfs
+# at the end of this function and never shipped. The cache makes repeat builds offline;
+# POCKNIX_REBOOTSTRAP_STEAM=1 forces a rebake.
 bootstrap_steam_seed() {
   local root="$1"
   local seed="${CACHE_DIR}/steam-seed.tar.zst"
@@ -295,7 +258,7 @@ bootstrap_steam_seed() {
       umount "${root}/dev/shm" 2>/dev/null || true
       die "steam bake incomplete (no steamui.so / .installed) — the seed is broken. Re-run (POCKNIX_REBOOTSTRAP_STEAM=1 forces a clean rebake)."
     fi
-    # strip per-session cruft AND registry.vdf (like armada) so the seed shows the OOBE on first boot
+    # strip per-session cruft AND registry.vdf so the seed shows the OOBE on first boot
     # — the user configures Wi-Fi there; pocknix-steamos-shim's steamos-update keeps the OOBE's
     # required-update step from dead-ending. Then tar the HOME-agnostic tree.
     chroot "${root}" bash -c "set -e; cd '${home}'
@@ -360,10 +323,8 @@ main() {
   # back to C.UTF-8 on every launch, and the C path is slower. Set en_US.UTF-8 system-wide.
   configure_locale "${ROOTFS_DIR}"
 
-  # 4. device support (Phase 2): SM8550 firmware + pocknix-bsp (suspend hooks etc.).
-  #    The kernel (linux-pocknix: Image + modules, replacing ALARM's linux-aarch64) is installed
-  #    inside install_local_packages from build/kernel/out — run `make kernel` first.
-  install_firmware "${ROOTFS_DIR}"
+  # 4. device support: the local packages (layer metas, the SoC kernel from
+  #    ${KERNEL_BUILD_DIR}/out, the device set). Run `make kernel` first.
   install_local_packages "${ROOTFS_DIR}"
   prune_fontconfig_compat_links "${ROOTFS_DIR}"
 

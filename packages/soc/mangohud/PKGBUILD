@@ -1,8 +1,7 @@
 # mangohud — Vulkan/GL overlay + the mangoapp binary gamescope --mangoapp spawns.
-# Pinned to v0.8.3: mangoapp is tightly coupled to gamescope's version, and 0.8.4 gave an
-# overlay that runs and reads its config but never composites. Subprojects come from meson
-# wraps, so the build chroot needs network. Patch files stay flat in the package dir —
-# makepkg strips local source entries to their basename.
+# mangoapp is tightly coupled to gamescope's version: bump the two together. Subprojects come
+# from meson wraps, so the build chroot needs network. Patch files stay flat in the package
+# dir: makepkg strips local source entries to their basename.
 pkgname=mangohud
 pkgver=0.8.3
 pkgrel=6
@@ -17,31 +16,25 @@ makedepends=('meson' 'ninja' 'git' 'glslang' 'vulkan-headers' 'libglvnd' 'libdrm
              'python-mako' 'mesa')
 source=("git+https://github.com/flightlessmango/MangoHud.git#tag=v${pkgver}"
         '0001-Qualcomm-GPU-support.patch'
-        '0002-SM8550-GPU.patch'
-        '0002-SM8250-GPU.patch'
+        '0002-GPU-hwmon.patch'
         '0003-Battery-name.patch'
         '0004-Qualcomm-battery-power-now.patch'
         '0005-RAM-name.patch'
         '0006-mangoapp-pace-redraw-to-frame-messages.patch')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd MangoHud
-  # Order matters: 0001 must precede 0002. The 0002 pair are drop-in alternatives with the
-  # same hunks — the devfreq node 3d00000.gpu is shared, only the hwmon zone differs
-  # (gpuss_0_thermal on sm8550, gpu_top_thermal on sm8250). Fallback = sm8550 so a
-  # standalone makepkg without build-packages.sh's POCKNIX_SOC still builds.
-  local _socpatch
-  case "${POCKNIX_SOC:-sm8550}" in
-    sm8250) _socpatch=0002-SM8250-GPU ;;
-    *)      _socpatch=0002-SM8550-GPU ;;
-  esac
-  for p in 0001-Qualcomm-GPU-support "${_socpatch}" 0003-Battery-name \
+  # Order matters: 0001 must precede 0002. No default zone: a guessed one builds fine and
+  # reads the wrong sensor, or none, on the next chip.
+  [ -n "${POCKNIX_GPU_HWMON:-}" ] || { echo "POCKNIX_GPU_HWMON unset (devices/<soc>/profile.conf GPU_HWMON)" >&2; return 1; }
+  for p in 0001-Qualcomm-GPU-support 0002-GPU-hwmon 0003-Battery-name \
            0004-Qualcomm-battery-power-now 0005-RAM-name \
            0006-mangoapp-pace-redraw-to-frame-messages; do
     echo "  applying ${p}.patch"
     git apply -p1 "${srcdir}/${p}.patch"
   done
+  sed -i "s|@GPU_HWMON@|${POCKNIX_GPU_HWMON}|" src/gpu_fdinfo.cpp
 }
 
 build() {

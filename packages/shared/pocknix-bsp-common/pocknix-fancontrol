@@ -1,8 +1,7 @@
 #!/bin/bash
 # pocknix-fancontrol — fan curve, run as root. Nothing else takes PWM control of the fan, so
 # without this it never spins and the device cooks. /var/lib/pocknix/fan-mode is re-read every
-# tick, so switching curves is a bare file write with no service restart. Curves and the quiet
-# default are ROCKNIX's (their system.cfg ships cooling.profile=quiet).
+# tick, so switching curves is a bare file write with no service restart.
 set -u
 
 MODE_FILE=/var/lib/pocknix/fan-mode
@@ -28,7 +27,7 @@ SPEEDS=(255 204 153 119 102 77 51 0)
 # temp hovering on a boundary can't start and stop the fan every tick.
 HYST=5000
 
-# Per-game override, "<pid> <fan> <lavd>" from pocknix-proton-wrapper; "-" = not overridden.
+# Per-game override, "<pid> <fan> <lavd>" from pocknix-game-launch; "-" = not overridden.
 # The pid IS the game session, so a dead pid means no override and exits need no cleanup step.
 # The helpers below run every tick, so they set variables with builtins instead of forking.
 effective_mode() {  # -> MODE

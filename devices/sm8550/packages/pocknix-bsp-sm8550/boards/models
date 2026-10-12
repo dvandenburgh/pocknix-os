@@ -1,0 +1,9 @@
+# <board> <devicetree model>: what /proc/device-tree/model reads -> boards/<board>.conf.
+# The first row is also the fallback for an unknown or absent model (image-build chroot).
+rp6          Retroid Pocket 6
+rp6          Retroid Pocket 6 TOP-DPAD
+odin2        AYN Odin 2
+odin2mini    AYN Odin 2 Mini
+odin2portal  AYN Odin 2 Portal
+thor         AYN Thor
+rpnova       Retroid Pocket Nova

@@ -1,7 +1,7 @@
 #!/bin/bash
 # pocknix-update — terminal system updater behind the "Pocknix Updater" Plasma entry.
 # Starts as the session user and re-execs itself through pkexec (passwordless for wheel via
-# 50-pocknix-deck.rules). Always -Syu, never -Sy: a refreshed index on an un-upgraded
+# 51-pocknix-update.rules). Always -Syu, never -Sy: a refreshed index on an un-upgraded
 # system is the partial-upgrade trap.
 set -euo pipefail
 

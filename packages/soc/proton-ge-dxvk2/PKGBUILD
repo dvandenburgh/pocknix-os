@@ -3,7 +3,7 @@
 #
 # The donor is VALVE Proton 11's dlls, not a GE release: even GE's oldest ARM build carries
 # DXVK's storageBuffer8BitAccess floor, which landed on master before the 3.0 tag, so a
-# "2.7.1-*" version string proves nothing — verify per build. Valve's dlls run under GE's
+# DXVK version string proves nothing: verify per build. Valve's dlls run under GE's
 # wine but CRASH under cachy's, so any donor change must respect that lineage.
 pkgname=proton-ge-dxvk2
 _srctag=GE-Proton11-7

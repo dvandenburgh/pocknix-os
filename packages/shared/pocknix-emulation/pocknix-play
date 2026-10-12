@@ -1,7 +1,7 @@
 #!/bin/bash
 # pocknix-play <system> <rom> — the launch target of every Steam favorite shortcut, so an
 # emulator or core swap happens here once and existing shortcuts keep working. ES-DE launches
-# do NOT come through here (bundled commands + es_find_rules.xml): keep the two aligned.
+# do NOT come through here (es_systems.xml calls the es-* wrappers directly): keep the two aligned.
 set -u
 
 system="${1:-}"; rom="${2:-}"

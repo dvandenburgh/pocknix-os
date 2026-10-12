@@ -1,4 +1,4 @@
-// See pocknix-steam/proton-toolmanifest.vdf.
+// Installed OVER the tarball's own: commandline must run the pocknix-proton shim beside proton.
 "manifest"
 {
   "version" "2"

@@ -8,8 +8,8 @@ pkgname=fex-rootfs
 _rootfsdate=2026-01-08             # pinned dated image from FEX's rootfs CDN (immutable path)
 _mesaver=26.2.4-1                  # x86_64 turnip dropped INTO the image (see repack below)
 # Per-game Mesa Version payloads (same pins as pocknix-turnip-x86) must live INSIDE the image:
-# pressure-vessel captures graphics against this rootfs, not the host, so host-only payloads
-# are invisible to it. vk-x86-container.list ships to the host as the wrapper's SLR pin gate.
+# pressure-vessel captures graphics against this rootfs, not the host, so host-only payloads are
+# invisible to it. vk-x86-container.list ships to the host as pocknix-game-launch's SLR pin gate.
 _vkvers=('25.2.7-1' '25.3.5-1' '26.0.6-1' '26.1.6-1' "${_mesaver}")
 pkgver=${_rootfsdate//-/}          # 20260108
 pkgrel=10

@@ -90,7 +90,6 @@ Follow the [Quick start](README.md#quick-start). In short:
 (`make image` is the same; `./build.sh --help` lists the options), or step by step:
 
 ```bash
-make sync                                    # firmware -> vendor/
 sudo make seed && sudo make kernel && make pending
 sudo make build && sudo make sd-image
 ```

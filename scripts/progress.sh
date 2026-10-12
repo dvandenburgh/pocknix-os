@@ -18,7 +18,6 @@ PR_NOW=0 PR_ELAPSED=0 PR_LEFT=0 PR_PCT=0 PR_OVER=0 PR_ALIVE=1
 step_label() {
   case "$1" in
     host) printf 'host check' ;;
-    firmware) printf 'firmware' ;;
     seed) printf 'published packages' ;;
     kernel) printf 'kernel' ;;
     packages) printf 'packages' ;;

@@ -1,4 +1,4 @@
-# pocknix-os — Arch-ARM dual-session distro for the Retroid Pocket 6 (SM8550)
+# pocknix-os: Arch-ARM dual-session distro for Qualcomm handhelds (DEVICE=<soc> picks the SoC family)
 # See "Building from source" in README.md for the build quick start.
 #
 # Most targets build an aarch64 Linux image and must run on a Linux host as root
@@ -14,7 +14,7 @@ SCRIPTS := scripts
 help: ## Show this help
 	@echo "pocknix-os build targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
 image: ## Everything from host check to flashable SD image, skipping what is current (as yourself; sudo once). SSH=1: SSH on. Same as ./build.sh
 	@$(SCRIPTS)/build-all.sh
@@ -31,7 +31,7 @@ watch: ## make status, redrawn every 2 s until the build ends (Ctrl-C stops watc
 host-setup: ## Install this host's build tools and give qemu's binfmt the C flag (Debian/Ubuntu, Fedora, Arch; uses sudo)
 	@$(SCRIPTS)/host-setup.sh
 
-sync: ## Fetch the device firmware into vendor/ from the pinned ROCKNIX (POCKNIX_SYNC_SCOPE=all also moves kernel/)
+sync: ## Fetch ROCKNIX reference material into vendor/ from the pinned commit (POCKNIX_SYNC_SCOPE=all also moves kernel/)
 	@$(SCRIPTS)/sync.sh
 
 bootstrap: ## Download + verify + extract the ALARM base rootfs (root, Linux)
@@ -43,7 +43,7 @@ build: ## Image build: bootstrap -> packages -> assemble; needs 'make kernel' fi
 kernel: ## Build only the in-project kernel (linux-pocknix-<soc>); does nothing if its inputs are unchanged
 	@$(SCRIPTS)/build-kernel.sh
 
-packages: ## Build local pocknix-* packages -> build/localrepo (root); skips up-to-date ones. PKG="a b" forces a subset
+packages: ## Build local pocknix-* packages -> build/localrepo/{<soc>,shared} (root); skips up-to-date ones. PKG="a b" forces a subset
 	@$(SCRIPTS)/build-packages.sh $(PKG)
 
 seed: ## Fill build/localrepo from the published repo, so 'make build' compiles only what differs (root)
@@ -85,7 +85,7 @@ publish-shared: ## Sign + publish the staged [pocknix-shared] repo (run 'make st
 publish-image: ## Compress + checksum + upload the SD image for download
 	@$(SCRIPTS)/publish-image.sh
 
-install: ## Install to internal storage, preserving ABL [Phase 6] (on-device)
+install: ## Point at the on-device internal installer (pocknix-install-internal); nothing runs on the host
 	@$(SCRIPTS)/install.sh
 
 check: ## Preflight: validate harness + any built artifacts

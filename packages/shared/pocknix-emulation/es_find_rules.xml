@@ -1,9 +1,8 @@
 <?xml version="1.0"?>
 <!--
   pocknix ES-DE emulator find-rules, seeded to ~/ES-DE/custom_systems/ by pocknix-roms-init.
-  This does NOT redefine systems: it only tells ES-DE where our binaries live so the bundled
-  launch commands resolve. Each staticpath lists the AppImage and a /usr/bin fallback, first
-  match wins. PS2 rides the stock "PCSX2" emulator name to reach ARMSX2.
+  This does NOT redefine systems. es_systems.xml owns the launch commands (absolute es-* wrapper
+  paths); these rules cover what it does not override. Within a staticpath, first match wins.
 -->
 <ruleList>
 

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Blocks a commit while a tracked doc is out of step with the tree. Branches cut before
+# check-docs.sh existed have nothing to run. `git commit --no-verify` skips it.
+root="$(git rev-parse --show-toplevel)"
+[ -x "${root}/scripts/check-docs.sh" ] || exit 0
+"${root}/scripts/check-docs.sh" && exit 0
+echo "pre-commit: fix the docs above (or commit with --no-verify)" >&2
+exit 1

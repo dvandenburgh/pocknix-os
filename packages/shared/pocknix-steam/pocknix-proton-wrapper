@@ -1,5 +1,5 @@
 #!/bin/sh
-# pocknix-proton-wrapper — pass-through. Tweaks moved to pocknix-game-launch; this name stays
-# because pocknix-proton shims already in Proton dirs, the SLR and the proton-cachyos/-ge
-# packages exec it, and a missing target there would break the launch.
+# pocknix-proton-wrapper — pass-through. The name stays because pocknix-proton shims already in
+# Proton dirs, the SLR and the proton-cachyos/-ge packages exec it, and a missing target there
+# would break the launch. Per-game tweaks live in pocknix-game-launch.
 exec "$@"

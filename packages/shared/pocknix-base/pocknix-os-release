@@ -4,7 +4,7 @@
 # "OS Version" and BUILD_ID as "OS Build". ID/ID_LIKE stay archarm/arch for tooling.
 set -euo pipefail
 
-# Bump at each image cut (maintainer-guide, "Cut a release").
+# Bump at each image cut.
 POCKNIX_VERSION=0.4.0
 
 osr=/usr/lib/os-release

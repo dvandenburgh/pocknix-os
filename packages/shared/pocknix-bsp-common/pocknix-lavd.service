@@ -5,7 +5,7 @@ Documentation=https://github.com/sched-ext/scx
 # settle late and leave this start job queued forever. The guards below hold from kernel init.
 After=basic.target
 # /sys/kernel/sched_ext needs CONFIG_SCHED_CLASS_EXT=y; /sys/kernel/btf/vmlinux needs
-# DEBUG_INFO_BTF=y + pahole at build time. Skip cleanly until such a kernel is deployed.
+# DEBUG_INFO_BTF=y + pahole at build time. A kernel built without them skips this unit cleanly.
 ConditionPathExists=/sys/kernel/sched_ext
 ConditionPathExists=/sys/kernel/btf/vmlinux
 # A kernel without the tracing/BPF-events stack fails the BPF load every time; give up

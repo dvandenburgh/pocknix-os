@@ -6,9 +6,9 @@ pkgrel=3
 pkgdesc="pocknix gamepad calibration: replays the saved stick/trigger calibration at boot"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('systemd')
-# retires the GPcal app's python-pyxel (dev/cruft.md)
+# retires the GPcal app's python-pyxel
 replaces=('python-pyxel')
 conflicts=('python-pyxel')
 source=('pocknix-gamepad-calibration-restore' 'pocknix-gamepad-calibration.service')

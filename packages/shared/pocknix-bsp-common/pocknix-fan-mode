@@ -1,10 +1,8 @@
 #!/bin/sh
 # pocknix-fan-mode — get/set the pocknix-fancontrol curve (companion to pocknix-lavd-mode).
 #
-# The chosen mode persists across reboots in /var/lib/pocknix/fan-mode. pocknix-fancontrol
-# re-reads the file every curve tick (~3s), so setting a mode is JUST the file write — no
-# service restart. Curves = ROCKNIX's ("performance" = their "aggressive"); unknown/absent
-# values fall back to quiet (the default).
+# Persisted in /var/lib/pocknix/fan-mode, which pocknix-fancontrol re-reads every tick, so a set
+# is just the file write. Unknown/absent values fall back to quiet (the default).
 #
 #   pocknix-fan-mode                # print the current mode
 #   pocknix-fan-mode moderate       # set a mode (quiet|moderate|performance)

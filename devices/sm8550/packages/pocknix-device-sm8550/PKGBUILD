@@ -1,7 +1,8 @@
-# pocknix-device-sm8550 — metapackage: the per-SoC members of an SM8550 system.
-# ONLY per-SoC packages belong here (BSP, kernel, bootloader, the SoC's proton
-# choice); shared members live on pocknix-core / the pocknix-*-full layers —
-# a dep edge from here would block `pacman -Rs` of an optional layer.
+# pocknix-device-sm8550 — metapackage: the per-SoC members of an SM8550 system
+# (BSP, kernel, bootloader, the SoC's proton choice) plus the delivery edges
+# shared packages need (pocknix-gamepad-calibration). Other shared members live
+# on pocknix-core / the pocknix-*-full layers: a dep edge from here would block
+# `pacman -Rs` of an optional layer.
 # Successor to the retired per-device metapackages; 'replaces' migrates
 # installed devices (e.g. an internal-installed RP6) on their next pacman -Syu.
 pkgname=pocknix-device-sm8550
@@ -10,7 +11,7 @@ pkgrel=10
 pkgdesc="pocknix device metapackage: SM8550 family (Retroid Pocket 6, AYN Odin 2 family)"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('pocknix-bsp-sm8550'
          'linux-pocknix-sm8550'
          'pocknix-bootloader-sm8550'

@@ -32,15 +32,12 @@ and is still the fastest way to build everything from source.
 
 ## What a build does
 
-1. **Firmware** - `make sync` puts the device firmware (Wi-Fi, audio, battery) into `vendor/`
-   (gitignored, never redistributed). It fetches the parts of ROCKNIX it needs at the commit
-   `config/pocknix.conf` pins, then ROCKNIX's `extra-firmware` repo at the commit that one pins.
-2. **Kernel** - `make kernel` builds the committed kernel (`kernel/<soc>/`) into a boot image.
-3. **Packages** - `make build` first builds every pocknix package that is not already in
+1. **Kernel** - `make kernel` builds the committed kernel (`kernel/<soc>/`) into a boot image.
+2. **Packages** - `make build` first builds every pocknix package that is not already in
    `build/localrepo/`; `make seed` fills that from the published repo so only real changes compile.
-4. **Root filesystem** - `make build` then installs the Arch Linux ARM base and the packages into
+3. **Root filesystem** - `make build` then installs the Arch Linux ARM base and the packages into
    `build/rootfs/`, and pre-installs the ARM Steam client so first boot works offline.
-5. **Image** - `make sd-image` turns that into a flashable `build/image/<soc>/pocknix-<soc>-sd.img`.
+4. **Image** - `make sd-image` turns that into a flashable `build/image/<soc>/pocknix-<soc>-sd.img`.
 
 `make help` lists every target; `make check` is a preflight that also reports what this host is
 missing for an image build.
@@ -58,7 +55,7 @@ git clone https://github.com/dvandenburgh/pocknix-os && cd pocknix-os
 `./build.sh` is the whole build in one command (`make image` is the same thing). Run it as
 yourself: it asks `sudo` once, for the steps that need root. On a fresh host it first runs
 `make host-setup` to install the build packages (`--no-host-setup` stops and lists them instead).
-The firmware, the kernel and every package skip themselves when already current, so after an
+The kernel and every package skip themselves when already current, so after an
 interruption (or a change) the same command redoes only what it must; the rootfs and the image are
 always rebuilt.
 
@@ -74,8 +71,6 @@ These are the steps it runs, and each is a target of its own:
 
 ```bash
 make check                                   # host lines must say ok (make host-setup fixes most)
-make sync                                    # firmware: the pinned ROCKNIX parts (~10 MB) and the
-                                             #   SM8550 firmware (~120 MB) -> vendor/ (gitignored)
 sudo make seed                               # optional on aarch64, strongly recommended on x86_64
 sudo make kernel
 make pending                                 # what `make build` would still compile
@@ -86,11 +81,15 @@ sudo make sd-image                           # -> build/image/sm8550/pocknix-sm8
 Flash the image with Balena Etcher, Rufus, or `dd`, then follow
 [How to install](../../README.md#how-to-install) in the project README.
 
-For an SD card **for SM8250**, add `DEVICE=sm8250` as above. SM8250 has no firmware overlay (its
-blobs come from Arch's `linux-firmware`), so `make sync` fetches no firmware for it.
+For an SD card **for SM8250**, add `DEVICE=sm8250` as above.
+
+SM8550 device firmware is a package like any other (`pocknix-firmware-sm8550`, fetched at a pinned
+commit and checked by sha256; SM8250's comes from Arch's `linux-firmware`), so no step puts it in
+place by hand. `make sync` only refreshes ROCKNIX
+reference material in `vendor/`, which no build reads.
 
 If you keep a ROCKNIX checkout of your own at `../distribution` (or point `DISTRIBUTION_DIR` at
-one), `make sync` uses it instead of the pinned commit. With `POCKNIX_SYNC_SCOPE=all` it also
+one), `make sync` reads it instead of the pinned commit. With `POCKNIX_SYNC_SCOPE=all` it also
 refreshes the committed kernel inputs in `kernel/<soc>/` from it: that is how the kernel moves to a
 newer ROCKNIX.
 

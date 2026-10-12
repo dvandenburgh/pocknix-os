@@ -1,28 +1,115 @@
-# ROCKNIX vendor blobs whose bare paths ALARM's linux-firmware owns (./paths):
-# any linux-firmware transaction reverts those to stock, killing sm8550 wifi at
-# the next firmware reload. /usr/lib/firmware/updates/ wins the kernel's search
-# and no ALARM package touches it; the overlay rest stays with build-image's rsync.
+# SM8550 family firmware upstream linux-firmware lacks or gets wrong (ath12k WCN7850, ADSP/CDSP,
+# speaker amps, audio topology, VPU). Pinned by commit + sha256, nothing in git. The Thor ADSP
+# pair comes from a separate pin: the build fielded Thors run, until a Thor tester validates
+# the newer one. /usr/lib/firmware/updates/ wins the kernel's search and no ALARM package writes
+# there, so linux-firmware updates never revert the ath12k board file that wifi needs.
 pkgname=pocknix-firmware-sm8550
 pkgver=0.1.0
-pkgrel=2
-pkgdesc="SM8550 family vendor firmware overrides (ath12k wifi + VPU), immune to linux-firmware updates"
+pkgrel=3
+pkgdesc="SM8550 family vendor firmware (wifi, ADSP/CDSP, audio, VPU), immune to linux-firmware updates"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('custom:qcom-firmware')
+license=('custom:qcom-firmware')   # Qualcomm vendor blobs
 # firmware blobs must ship byte-identical; some parse as ELF and strip would alter them
 options=('!strip')
-source=('paths')
-sha256sums=('SKIP')
+
+_extrafw=30c56e2f34af37fe372166b739d6ab277f5155b5   # ROCKNIX/extra-firmware, SM8550/
+_rocknix=e57806192e3f9a8522237c692820408ef4c7c6f1   # ROCKNIX/distribution, SM8550 kernel overlay
+_extrafw_files=(
+  ath12k/WCN7850/hw2.0/amss.bin
+  ath12k/WCN7850/hw2.0/board-2.bin
+  ath12k/WCN7850/hw2.0/m3.bin
+  ath12k/WCN7850/hw2.0/regdb.bin
+  qcom/sm8550/AYN-Odin2-tplg.bin
+  qcom/sm8550/SM8550-APS-tplg.bin
+  qcom/sm8550/ayn/cdsp.mbn
+  qcom/sm8550/ayn/cdsp_dtb.mbn
+  qcom/sm8550/ayn/odin2/adsp.mbn
+  qcom/sm8550/ayn/odin2/adsp_dtb.mbn
+  qcom/sm8550/ayn/odin2/adspr.jsn
+  qcom/sm8550/ayn/odin2/adsps.jsn
+  qcom/sm8550/ayn/odin2/adspua.jsn
+  qcom/sm8550/ayn/odin2/aw883xx_acf.bin
+  qcom/sm8550/ayn/odin2/battmgr.jsn
+  qcom/sm8550/ayn/odin2mini/adsp.mbn
+  qcom/sm8550/ayn/odin2mini/adsp_dtb.mbn
+  qcom/sm8550/ayn/odin2mini/adspr.jsn
+  qcom/sm8550/ayn/odin2mini/adsps.jsn
+  qcom/sm8550/ayn/odin2mini/adspua.jsn
+  qcom/sm8550/ayn/odin2mini/aw883xx_acf.bin
+  qcom/sm8550/ayn/odin2mini/battmgr.jsn
+  qcom/sm8550/ayn/odin2portal/adsp.mbn
+  qcom/sm8550/ayn/odin2portal/adsp_dtb.mbn
+  qcom/sm8550/ayn/odin2portal/adspr.jsn
+  qcom/sm8550/ayn/odin2portal/adsps.jsn
+  qcom/sm8550/ayn/odin2portal/adspua.jsn
+  qcom/sm8550/ayn/odin2portal/aw883xx_acf.bin
+  qcom/sm8550/ayn/odin2portal/battmgr.jsn
+  qcom/sm8550/ayn/thor/adspr.jsn
+  qcom/sm8550/ayn/thor/adsps.jsn
+  qcom/sm8550/ayn/thor/adspua.jsn
+  qcom/sm8550/ayn/thor/aw883xx_acf.bin
+  qcom/sm8550/ayn/thor/battmgr.jsn
+  qcom/vpu/vpu30_p4.mbn
+  renesas_usb_fw.mem
+)
+_rocknix_files=(
+  qcom/sm8550/ayn/thor/adsp.mbn
+  qcom/sm8550/ayn/thor/adsp_dtb.mbn
+)
+source=()
+for _f in "${_extrafw_files[@]}"; do
+  source+=("${_f//\//_}::https://raw.githubusercontent.com/ROCKNIX/extra-firmware/${_extrafw}/SM8550/${_f}")
+done
+for _f in "${_rocknix_files[@]}"; do
+  source+=("${_f//\//_}::https://raw.githubusercontent.com/ROCKNIX/distribution/${_rocknix}/projects/ROCKNIX/devices/SM8550/filesystem/usr/lib/kernel-overlays/base/lib/firmware/${_f}")
+done
+sha256sums=(
+  '5660a1aa3db12716b42c687b0c88ef4f6ac80bd46e42cfe3636ed332d3f6e6ee'
+  '8cc9a64baf68681ece5e26a8445630749eccbfb4517bdbf6802856787afa7c2d'
+  'ff40c57556c2fac552ac192c6e2ad59689fd8f50c9f9bcc997d13623c2bcee86'
+  'fe1327d789e4c93a9f6686afea5e17cd048b925693c6b9a7ac2c36026335d311'
+  '0e530c1fea0767c21b39bb1149fab01c17a7c736e78d84a63803f8f467784241'
+  'feef17790cf76d16fc9bce6a9b1bb44f669cfd5ce2b4d723d83943e3eca263ee'
+  'c8166bf798f3bab68defc2437a225a8e5fc7979faf1f5f3b3fc8b187b7f4cccf'
+  'aae496bed4987eebf69538ca21ec309c60c00ffa0e98ce743aee1531de6387d3'
+  '750d98172d9e780640fd02431dea2cb6827f11e34e8d2e71109be727bfc1d42d'
+  'dde0327058b0b2b6cdbf8259937c76a6adf097664d0428e4c1b3f3f7e9398d08'
+  '66ce8531efb7979d234e0f0eabbe18d038ac97da771a8a194f613df8f0724e81'
+  '12ac2f3ae8ced12aa4b06b3ab3a01bc4d8efe1c92ebea503c002f209a6ec176f'
+  '982a99853495e34726b8e44697fdfad303334de0a67cbf6cde306c8f1731000b'
+  'a73ecfe2239a56eb7ad1573fa35977fd57557cfa7c220ba5437f88d256c907ad'
+  'be8c6fba330908e4683fb6282761cb08485a302d6a66e09721e102e342f27236'
+  'f13cfcab0b910dbdc87be911004a76aa220feda7449cda7b88bf7c4d60cea685'
+  '0f6e9534a0d56d1ad6bf7426923fed00aa128f491685dd5f6a2221185487296b'
+  '66ce8531efb7979d234e0f0eabbe18d038ac97da771a8a194f613df8f0724e81'
+  '12ac2f3ae8ced12aa4b06b3ab3a01bc4d8efe1c92ebea503c002f209a6ec176f'
+  '982a99853495e34726b8e44697fdfad303334de0a67cbf6cde306c8f1731000b'
+  '310e37f985032cd85d49ca579509adfabe7f8b95fa177eb34614c53876ca8e39'
+  'be8c6fba330908e4683fb6282761cb08485a302d6a66e09721e102e342f27236'
+  '2259a124683f60af8ed5472c1606391603164aecab379b22fce51e3fe4342661'
+  '71865c9be058c4fe8903933df0fb3ce9a2abd155524c30a16917374054808ea3'
+  '66ce8531efb7979d234e0f0eabbe18d038ac97da771a8a194f613df8f0724e81'
+  '12ac2f3ae8ced12aa4b06b3ab3a01bc4d8efe1c92ebea503c002f209a6ec176f'
+  '982a99853495e34726b8e44697fdfad303334de0a67cbf6cde306c8f1731000b'
+  'a73ecfe2239a56eb7ad1573fa35977fd57557cfa7c220ba5437f88d256c907ad'
+  'be8c6fba330908e4683fb6282761cb08485a302d6a66e09721e102e342f27236'
+  '66ce8531efb7979d234e0f0eabbe18d038ac97da771a8a194f613df8f0724e81'
+  '12ac2f3ae8ced12aa4b06b3ab3a01bc4d8efe1c92ebea503c002f209a6ec176f'
+  '982a99853495e34726b8e44697fdfad303334de0a67cbf6cde306c8f1731000b'
+  'ecb5419011078e9178d25963ed788003c11c2c5b12cbcfaa8a98ce7eff3028af'
+  'be8c6fba330908e4683fb6282761cb08485a302d6a66e09721e102e342f27236'
+  'f59fec39dc69b34130fbf0b5cd72db266e585071324a1a3e384146bb19f53e66'
+  '177560c224c73d040836b17082348036430ecf59e8a32d7736ce2b80b2634f97'
+  '2259a124683f60af8ed5472c1606391603164aecab379b22fce51e3fe4342661'
+  '71865c9be058c4fe8903933df0fb3ce9a2abd155524c30a16917374054808ea3'
+)
 
 package() {
-  local staged="${startdir}/staged"   # populated by scripts/build-packages.sh from vendor/
-  local p
-  while IFS= read -r p; do
-    [ -n "${p}" ] || continue
-    if [ ! -f "${staged}/${p}" ]; then
-      echo "${pkgname}: ${p} not staged — build via 'make packages' (vendor/ lives on the build host)." >&2
-      return 1
-    fi
-    install -Dm644 "${staged}/${p}" "${pkgdir}/usr/lib/firmware/updates/${p}"
-  done < "${srcdir}/paths"
+  local _f
+  for _f in "${_extrafw_files[@]}" "${_rocknix_files[@]}"; do
+    install -Dm644 "${srcdir}/${_f//\//_}" "${pkgdir}/usr/lib/firmware/updates/${_f}"
+  done
+  # a git symlink upstream: a raw fetch returns its 18-byte target path, not the topology
+  ln -s AYN-Odin2-tplg.bin "${pkgdir}/usr/lib/firmware/updates/qcom/sm8550/AYN-Thor-tplg.bin"
 }

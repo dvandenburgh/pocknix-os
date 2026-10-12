@@ -19,7 +19,7 @@ def rom_dir() -> str:
     """The ROM directory is ES-DE's 'ROMDirectory' setting — the ONE knob for moving ROMs
     (ES-DE Menu > Other Settings > ROM directory; users pointing at an SD card etc.). The
     settings file is a rootless XML fragment, so regex it. Empty/absent = ES-DE's default
-    ~/ROMs (which is also the legacy pocknix layout)."""
+    ~/ROMs."""
     import re
     try:
         with open(os.path.join(HOME, "ES-DE", "settings", "es_settings.xml")) as f:

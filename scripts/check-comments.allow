@@ -1,0 +1,15 @@
+# Exceptions for scripts/check-comments.py: "<path glob> :: <regex>" or "<path glob> :: <kind> ::
+# <regex>" (kind = dead path | provenance/status | version), matched against the comment line.
+# Add one only when the number or path IS the mechanism (a threshold the code tests, a dependency
+# floor, a foreign tree path) or the wording is a licence attribution, never for a ledger fact.
+kernel/*/kernel.conf :: ROCKNIX's
+scripts/build-kernel.sh :: common-skip
+scripts/build-kernel.sh :: __assign_str
+packages/shared/pocknix-branding/pocknix-branding.install :: version :: 0\.1\.0-1
+packages/shared/pocknix-steam/pocknix-game-launch :: c000007b
+packages/soc/mangohud/PKGBUILD :: 3d00000\.gpu
+packages/shared/pocknix-tools/pocknix-internal-boot-rename :: from ROCKNIX to POCKNIX
+packages/shared/pocknix-sdcard-automount/format-device.sh :: SteamOS's deck
+packages/shared/wxwidgets-pocknix/PKGBUILD :: version :: >=3\.3
+packages/shared/cemu/PKGBUILD :: version :: >=3\.3
+packages/shared/pocknix-decky/pocknix-control/py_modules/pocknix_control/calibration.py :: provenance/status :: GPcal

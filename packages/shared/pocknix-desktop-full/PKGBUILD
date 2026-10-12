@@ -7,7 +7,7 @@ pkgrel=3
 pkgdesc="pocknix optional layer: Plasma Mobile desktop session, KDE apps, Waydroid, Flatpak"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('pocknix-desktop'
          'pocknix-desktop-plasma-mobile'   # the default flavour, named so no provider prompt
          'xdg-user-dirs'

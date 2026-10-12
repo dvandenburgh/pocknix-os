@@ -1,6 +1,6 @@
 # inputplumber — input router/remapper daemon: presents a unified virtual controller so Steam
 # Input sees a proper pad (Guide button, rumble). Upstream's PREBUILT aarch64 release, so the
-# build chroot needs no Rust toolchain; the per-device config ships in pocknix-bsp.
+# build chroot needs no Rust toolchain; the per-device config ships in pocknix-bsp-<soc>.
 pkgname=inputplumber
 pkgver=0.81.0
 pkgrel=1

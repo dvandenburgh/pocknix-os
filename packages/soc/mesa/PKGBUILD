@@ -1,6 +1,6 @@
 # mesa (pocknix) — Mesa trimmed to freedreno GL + turnip Vulkan, CPU-tuned per SoC.
-# x11+GLX stays enabled (ROCKNIX builds wayland-only): Steam and desktop apps run under
-# XWayland and need GLX/EGL-x11. epoch=2 outranks ALARM's epoch=1 mesa.
+# x11+GLX stays enabled: Steam and desktop apps run under XWayland and need GLX/EGL-x11.
+# epoch=2 outranks ALARM's epoch=1 mesa.
 pkgbase=mesa
 pkgname=(mesa vulkan-freedreno)
 epoch=2
@@ -8,11 +8,11 @@ pkgver=26.2.4
 # differs from pkgver only for RCs: the tarball keeps the hyphen makepkg forbids in pkgver
 _srcver=${pkgver}
 pkgrel=1
-pkgdesc="Mesa trimmed for the RP6/SM8550: freedreno GL + turnip Vulkan, cortex-x3 tuned (${_srcver})"
+pkgdesc="Mesa trimmed for Qualcomm handhelds: freedreno GL + turnip Vulkan, SoC-tuned (${_srcver})"
 arch=('aarch64')
 url="https://www.mesa3d.org/"
 license=("MIT AND BSD-3-Clause AND SGI-B-2.0")
-# glslang: 26.2 folded freedreno into the BVH shader set, so glslangValidator is now a hard
+# glslang: newer mesa folds freedreno into the BVH shader set, so glslangValidator is a hard
 # requirement of any build with vulkan-drivers=freedreno.
 makedepends=(
   meson ninja python-mako python-packaging python-yaml python-ply glslang
@@ -20,7 +20,7 @@ makedepends=(
   wayland wayland-protocols zlib zstd
   xorgproto libx11 libxcb libxext libxshmfence libxxf86vm libxrandr xcb-util-keysyms
 )
-# upstream considers LTO broken until explicit notice (Arch mesa does the same)
+# upstream considers LTO broken until explicit notice
 options=(!lto)
 source=("https://archive.mesa3d.org/mesa-${_srcver}.tar.xz")
 sha256sums=('bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9')
@@ -28,7 +28,7 @@ sha256sums=('bce5f7fbebb934373b86c999a064d52fb5065878dc57f287f95346648ec832e9')
 prepare() {
   cd "mesa-${_srcver}"
   # package release in the version string so Chromium/CEF (steamwebhelper) invalidates
-  # its GPU cache across our rebuilds — same trick as Arch's mesa.
+  # its GPU cache across our rebuilds.
   echo "${pkgver}-pocknix${epoch}.${pkgrel}" > VERSION
 }
 
@@ -71,7 +71,7 @@ build() {
   meson compile -C build
 }
 
-# Arch mesa's _pick: park files from $pkgdir in a side dir for the second package().
+# _pick: park files from $pkgdir in a side dir for the second package().
 _pick() {
   local p="$1" f d; shift
   for f; do
@@ -83,7 +83,7 @@ _pick() {
 }
 
 package_mesa() {
-  pkgdesc="Open-source OpenGL drivers, trimmed for the RP6 (freedreno + zink + softpipe)"
+  pkgdesc="Open-source OpenGL drivers, trimmed for Qualcomm handhelds (freedreno + zink + softpipe)"
   depends=(
     expat glibc libdrm libglvnd libx11 libxcb libxext libxshmfence libxxf86vm
     wayland zlib zstd
@@ -96,8 +96,8 @@ package_mesa() {
 
   (
     cd "${pkgdir}"
-    # ICD manifest name has varied across releases (freedreno_icd.aarch64.json at 26.2.3),
-    # hence the glob; the loader scans the whole icd.d dir so either name works at runtime.
+    # ICD manifest name has varied across releases, hence the glob; the loader scans the
+    # whole icd.d dir so either name works at runtime.
     _pick vkfdreno usr/lib/libvulkan_freedreno.so
     _pick vkfdreno usr/share/vulkan/icd.d/freedreno_icd*.json
     # indirect rendering (glvnd looks for libGLX_indirect)
@@ -108,7 +108,7 @@ package_mesa() {
 }
 
 package_vulkan-freedreno() {
-  pkgdesc="Open-source Vulkan driver for Adreno GPUs (turnip, cortex-x3 tuned)"
+  pkgdesc="Open-source Vulkan driver for Adreno GPUs (turnip, SoC-tuned)"
   depends=(
     expat glibc libdrm libdisplay-info libx11 libxcb libxshmfence spirv-tools
     systemd-libs vulkan-icd-loader wayland xcb-util-keysyms zlib zstd

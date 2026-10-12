@@ -1,7 +1,6 @@
 # Local kernel delta that make sync (scripts/sync.sh) restores from git after its rsync --delete,
 # paths under kernel/sm8550/. path = our edit of an upstream file, +path = our own file,
-# -path = deleted locally. Our 1000+ patches the sync deletes come back without a line here;
-# ROCKNIX's SM8550 set ships 1000, 1002, 1003, 1005 and 1020 itself, so watch those in the sync output.
+# -path = deleted locally. Our 1000+ patches the sync deletes come back without a line here.
 -patches/20-version/9999-fix-rust-build-error.patch
 -patches/20-version/0011-thermal-adc-tm5-drop-iio-val-int-check.patch
 +dts/qcom/qcs8550-ayn-odin2-sd.dtsi

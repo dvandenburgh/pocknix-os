@@ -1,5 +1,5 @@
 #!/bin/sh
-# Needs no keyboard or network: the report lands on the ext4 root and the FAT boot partition.
+# Needs no keyboard or network: the report lands on the root fs and the FAT boot partition.
 OUT=/var/log/pocknix-diag.txt
 {
   echo "=== pocknix first-boot diagnostic ==="

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # build-all.sh — ./build.sh and make image: from a checkout to a flashable SD image in one command.
-# Each step is the script behind its own make target; firmware, kernel and packages skip what is
+# Each step is the script behind its own make target; the kernel and packages skip what is
 # already current, so a re-run redoes only the rootfs and the image. Run it as yourself: the root
 # steps share one sudo. While it runs, a status bar on the terminal's bottom row shows the step,
 # the time so far and the time left, estimated from how long each step and each package took on
@@ -10,8 +10,8 @@ usage() {
   cat <<'EOF'
 usage: ./build.sh [options]          (the same as: make image, scripts/build-all.sh)
 
-Builds a flashable SD image from this checkout: host check -> firmware -> published packages ->
-kernel -> packages -> rootfs -> SD image (build/image/<soc>/pocknix-<soc>-sd.img). What is already
+Builds a flashable SD image from this checkout: host check -> published packages -> kernel ->
+packages -> rootfs -> SD image (build/image/<soc>/pocknix-<soc>-sd.img). What is already
 current is skipped, so running it again after an interruption carries on where it stopped. Run it
 as yourself: it asks for sudo once.
 
@@ -25,7 +25,7 @@ Image options
   --emulation           bake in the emulation layer (ES-DE and the emulators)
 
 Build options
-  -d, --device NAME     image target: sm8550 (default: RP6, Odin 2) or sm8250 (RP5, Flip 2)
+  -d, --device NAME     image target, a family under devices/ (listed below)
   -j, --jobs N          kernel compile jobs (default: every core)
   --no-sd-image         stop at the finished rootfs (build/rootfs), without the SD image
   --no-seed             compile every package instead of downloading the published ones
@@ -41,6 +41,11 @@ or `export SSH=1` to turn SSH on for every build:
 
 From another shell: make status shows how far it is and the time left; make watch follows it.
 EOF
+  printf '\nFamilies for --device (default: DEVICE in config/pocknix.conf):\n'
+  local p
+  for p in "$(dirname "$0")"/../devices/*/profile.conf; do
+    printf '  %-20s %s\n' "$(basename "$(dirname "${p}")")" "$(sed -n 's/^DEVICE_PRETTY="\(.*\)"$/\1/p' "${p}")"
+  done
 }
 
 # --- options: before lib.sh, which reads DEVICE and the SD_* knobs from the environment --------
@@ -95,15 +100,15 @@ if [ "${emu}" = on ]; then POCKNIX_EMULATION=1; else POCKNIX_EMULATION=0; fi
 export SD_SSH SD_IMAGE POCKNIX_SEED POCKNIX_HOST_SETUP POCKNIX_STATUS_BAR POCKNIX_EMULATION
 
 # --- the plan ----------------------------------------------------------------------------------
-STEPS=(host firmware)
+STEPS=(host)
 if [ "${POCKNIX_SEED}" = on ] && [ -n "${POCKNIX_REPO_URL}" ]; then STEPS+=(seed); fi
 STEPS+=(kernel packages rootfs)
 if [ "${SD_IMAGE}" = on ]; then STEPS+=(image); fi
-FIRST_ROOT=3   # host and firmware run as you, everything from here on as root
+FIRST_ROOT=2   # the host check runs as you, everything from here on as root
 
 step_target() {
   case "$1" in
-    host) printf 'make check' ;; firmware) printf 'make sync' ;; seed) printf 'make seed' ;;
+    host) printf 'make check' ;; seed) printf 'make seed' ;;
     kernel) printf 'make kernel' ;; packages) printf 'make packages' ;;
     rootfs) printf 'make build' ;; image) printf 'make sd-image' ;;
   esac
@@ -141,22 +146,6 @@ step_host() {
 ${problems}"
 }
 
-sync_needed() {
-  local dst="${VENDOR_DIR}/rocknix-${SOC}"
-  [ ! -d "${dst}" ] \
-    || { [ "${SOC}" != sm8250 ] && [ -z "$(ls -A "${VENDOR_DIR}/${FW_SRC_REL}" 2>/dev/null)" ]; } \
-    || { [ "${DISTRIBUTION_DIR}" = "${VENDOR_DIR}/distribution" ] \
-         && [ "$(cat "${dst}/.rocknix-commit" 2>/dev/null)" != "${ROCKNIX_COMMIT}" ]; }
-}
-step_firmware() {
-  if ! sync_needed; then log "vendor/ is current"; return 0; fi
-  # make sync runs as you; files an earlier sudo left in vendor/ would stop it halfway.
-  if [ "$(id -u)" -ne 0 ] && [ -n "$(find "${VENDOR_DIR}" ! -user "$(id -u)" -print -quit 2>/dev/null)" ]; then
-    die "vendor/ holds files owned by another user (an earlier sudo): sudo chown -R $(id -un) vendor"
-  fi
-  progress_detail "fetching the pinned ROCKNIX parts and firmware"
-  POCKNIX_SYNC_SCOPE=vendor "${S}/sync.sh"
-}
 step_seed()     { "${S}/seed-localrepo.sh"; }
 step_kernel()   { "${S}/build-kernel.sh"; }
 step_packages() { "${S}/pending.sh"; "${S}/build-packages.sh"; }
@@ -165,7 +154,7 @@ step_image()    { "${S}/build-sd-image.sh"; }
 
 # --- estimates -------------------------------------------------------------------------------------
 # Each step's last duration on this host (build/progress/history-<soc>), or a first-build guess
-# that sets EST_ROUGH. Steps that will find nothing to do (current firmware, kernel, packages) are
+# that sets EST_ROUGH. Steps that will find nothing to do (a current kernel, current packages) are
 # predicted with the same checks they make themselves.
 EST_ROUGH=0
 slow() { if [ "$(uname -m)" = aarch64 ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }  # <qemu> <native>
@@ -213,7 +202,6 @@ estimate_step() {  # <step> -> EST_S seconds, EST_KEY the history key its time i
   EST_KEY=""
   case "$1" in
     host) EST_S=10; return 0 ;;
-    firmware) if sync_needed; then EST_KEY=firmware; def=180; else EST_S=2; return 0; fi ;;
     seed) if seed_has_work; then EST_KEY=seed; def=900; else EST_S=20; return 0; fi ;;
     kernel)
       if "${S}/build-kernel.sh" --is-current >/dev/null 2>&1; then EST_S=5; return 0; fi

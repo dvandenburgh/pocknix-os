@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# publish-repo.sh — sign a repo tree and publish it as the public [pocknix] repo.
+# publish-repo.sh — sign a repo tree and publish it as a public repo: the per-SoC
+# [pocknix] or the SoC-neutral [pocknix-shared] (POCKNIX_REPO_SCOPE, lib.sh).
 #
-# The publish SOURCE is build/stage/<soc> (see stage-repo.sh / `make stage`): a
-# mirror of the live repo with only the intended packages swapped in. The raw
-# build/localrepo is shared mutable build output (parallel sessions drop test
-# packages into it) and publishing it wholesale has shipped unvalidated work, so
-# it is no longer publishable by default — `make stage` first, always.
+# The publish SOURCE is ${REPO_STAGE_DIR} (`make stage`): a mirror of the live repo with
+# only the intended packages swapped in. The raw localrepo is shared mutable build output
+# and is not publishable by default (why: see scripts/stage-repo.sh). `make stage` first.
 #
 # Publishing is: detach-sign every package, re-add them to a signed database,
 # export the public key alongside, and sync the directory to the host (rclone
@@ -18,7 +17,7 @@
 #   POCKNIX_REPO_RCLONE_REMOTE  rclone destination (optional: skip upload if empty)
 #
 # Modes:
-#   (default)    publish build/stage/<soc>: sign + repo-add --sign + upload.
+#   (default)    publish ${REPO_STAGE_DIR}: sign + repo-add --sign + upload.
 #                Requires the .staged-ok marker from `make stage`; the marker is
 #                consumed on success, so the next publish needs a fresh staging.
 #   --serve      LAN testing: prepare build/localrepo/<soc> and serve it over
@@ -27,10 +26,9 @@
 #   --unsigned   skip signing; only valid with --serve (pair with SigLevel
 #                Optional TrustAll on the device).
 #
-# Escape hatch: POCKNIX_PUBLISH_FROM=localrepo publishes the raw localrepo like
-# the old behavior (first-ever publish of a new SoC, disaster recovery). It
-# signs + syncs + PRUNES the bucket with whatever the dir holds — diff against
-# the live db before using it.
+# Escape hatch: POCKNIX_PUBLISH_FROM=localrepo publishes the raw localrepo (first-ever
+# publish of a new SoC, disaster recovery). It signs + syncs + PRUNES the bucket with
+# whatever the dir holds; diff against the live db before using it.
 #
 # Run as the user who owns the GPG key + rclone remote — NO sudo.
 # Never republish the same package filename with different bytes — bump pkgrel
@@ -122,7 +120,7 @@ if [ -n "${RCLONE_DEST}" ]; then
     --exclude '*.old*' "${SRC}" "${RCLONE_DEST}"
   # prune package versions that no longer exist locally (keeps the bucket bounded)
   rclone sync -L --exclude '*.old*' --exclude '.staged-ok' "${SRC}" "${RCLONE_DEST}"
-  # sweep any *.old* a pre-fix publish uploaded (idempotent; harmless if none)
+  # remove any *.old* already in the bucket (idempotent; harmless if none)
   rclone delete --include '*.old*' "${RCLONE_DEST}" 2>/dev/null || true
   # consume the staging marker: the next publish must go through a fresh
   # `make stage` (which re-mirrors live), so stale stagings cannot be re-shipped

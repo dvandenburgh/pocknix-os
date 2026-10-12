@@ -1,7 +1,6 @@
-# plasma-mobile — Arch's 6.7.4-1 rebuilt against the base's Qt 6.11.2 (Arch never rebuilt
-# it; the mobileshell plugin uses QtWaylandClient's private ABI, so the stale build
-# segfaults plasmashell). Drop once the base carries a plasma-mobile built against its
-# own Qt AND the 0001 config-page crash no longer reproduces on the base's stock QML.
+# plasma-mobile — Arch's build rebuilt against the base's Qt (Arch never rebuilt it; the
+# mobileshell plugin uses QtWaylandClient's private ABI, so the stale build segfaults
+# plasmashell).
 pkgname=plasma-mobile
 pkgver=6.7.4
 pkgrel=4

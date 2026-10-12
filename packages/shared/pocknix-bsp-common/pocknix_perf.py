@@ -59,11 +59,23 @@ def _validate_overlay(keys):
     return {k: _ratio(v, 0.0 if k == "gpu_min" else 0.3, 1.0) for k, v in keys.items()}
 
 
-def load_factory(text):
-    """Parse the factory file. Any defect raises FactoryError: it is a build-time bug."""
+def load_factory(text, dropins=()):
+    """Parse the factory file plus the family BSP's drop-ins ((name, text) pairs). Any defect
+    raises FactoryError: it is a build-time bug."""
+    # Drop-ins carry only the SoC's hardware data, so a family BSP can never redefine a profile.
+    for name, dtext in dropins:
+        d = _parser()
+        try:
+            d.read_string(dtext)
+        except configparser.Error as e:
+            raise FactoryError(f"{name} does not parse: {e}") from e
+        for sec in d.sections():
+            if len(sec.split(".")) != 3 or sec.split(".")[0] not in ("profile", "underclock"):
+                raise FactoryError(f"{name}: [{sec}] is not an [underclock.<SOC>.<level>] table or a [profile.<id>.<SOC>] overlay")
+    # One strict parse of the whole set: a section two files both define fails as a duplicate.
     p = _parser()
     try:
-        p.read_string(text)
+        p.read_string("\n".join([text] + [dtext for _, dtext in dropins]))
     except configparser.Error as e:
         raise FactoryError(f"factory file does not parse: {e}") from e
     if not p.has_section("general"):

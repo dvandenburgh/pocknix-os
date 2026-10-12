@@ -3,7 +3,7 @@
 > **Install the ROCKNIX ABL first** if you have not already - see
 > [How to install](../README.md#how-to-install) in the README. It is what makes switching between
 > the internal install and the SD card a menu choice, and it can remove an internal install on its
-> own. On **SM8550** devices (RP6, Odin 2) it is **REQUIRED, not optional**: Pocknix cannot boot
+> own. On **SM8550** devices (RP6, Nova, Odin 2 family, Thor) it is **REQUIRED, not optional**: Pocknix cannot boot
 > without it. Only **SM8250** devices (RP5, Flip 2) can run Pocknix on the stock bootloader, and the
 > ROCKNIX ABL is still recommended there.
 

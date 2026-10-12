@@ -10,7 +10,7 @@ url="https://www.mesa3d.org/"
 license=("MIT AND BSD-3-Clause AND SGI-B-2.0")
 depends=(expat glibc libdrm libdisplay-info libx11 libxcb libxshmfence spirv-tools
          systemd-libs vulkan-icd-loader wayland xcb-util-keysyms zlib zstd)
-# glslang: 26.2 folded freedreno into the BVH shader set, so glslangValidator is now a hard
+# glslang: newer mesa folds freedreno into the BVH shader set, so glslangValidator is a hard
 # requirement of any build with vulkan-drivers=freedreno.
 makedepends=(meson ninja python-mako python-packaging python-yaml python-ply glslang
              expat libdrm libglvnd libdisplay-info spirv-tools systemd-libs vulkan-icd-loader
@@ -20,7 +20,7 @@ options=(!lto)
 # The "devel" entry is a PINNED mesa main snapshot (main carries no tag) — pinned, not floating,
 # so rebuilds reproduce; refresh _develcommit deliberately.
 _develcommit=6b9cd5ab9cc3bfd0c79d9500a07a5e74351c72d1
-# 26.2 comes from mesa's own vk-arm payload; pinning mesa's pkgver here = file conflict.
+# The series mesa itself ships comes from its vk-arm payload; pinning mesa's pkgver here = file conflict.
 _versions=('25.0.7' '25.1.9' '25.2.8' '25.3.6' '26.0.8' '26.1.6' '26.3.0devel')
 source=('0001-c11-threads-fix-build-on-c23.patch'
         'https://archive.mesa3d.org/mesa-25.0.7.tar.xz'
@@ -99,7 +99,7 @@ package() {
     meson install -C "build-${v}" --destdir "${stage}" --no-rebuild
     dir="${pkgdir}/usr/share/pocknix/vk-arm/${v}"
     install -Dm755 "${stage}/usr/lib/libvulkan_freedreno.so" "${dir}/libvulkan_freedreno.so"
-    # ICD manifest name has varied across releases (freedreno_icd.aarch64.json at 26.2) — glob it.
+    # ICD manifest name has varied across releases, hence the glob.
     sed -E "s|\"library_path\": *\"[^\"]*\"|\"library_path\": \"/usr/share/pocknix/vk-arm/${v}/libvulkan_freedreno.so\"|" \
       "${stage}"/usr/share/vulkan/icd.d/freedreno_icd*.json > "${dir}/icd.json"
     chmod 0644 "${dir}/icd.json"

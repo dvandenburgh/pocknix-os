@@ -1,4 +1,4 @@
-# steamos-vapor-theme - the Vapor look of SteamOS's desktop mode, from Valve's
+# steamos-vapor-theme - the Vapor look of the SteamOS desktop mode, from Valve's
 # steamdeck-kde-presets. Only the theme is fetched (its metadata states GPL); Valve's wallpapers,
 # game-character avatars and Steam Deck logo splash stay out. Build with ./nodeps: makepkg -s
 # would drag all of KDE/Qt into the chroot for a data package.

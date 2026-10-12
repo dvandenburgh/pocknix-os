@@ -1,10 +1,12 @@
+# One package serves every SM8550 board: device.conf picks a boards/ file by devicetree
+# model and the input maps are model-gated, so a new board needs no new package.
 pkgname=pocknix-bsp-sm8550
 pkgver=0.2.0
-pkgrel=14.1
+pkgrel=16.1
 pkgdesc="pocknix board support: SM8550 family (RP6, Nova, Odin 2 family, Thor) — runtime board dispatch, input maps, suspend quirks, audio UCM, dual-screen touch policy"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 # The firmware reaches the fleet through this edge: -Syu never installs a new name alone.
 depends=('pocknix-bsp-common' 'pocknix-firmware-sm8550')
 # One BSP per device (wrong-device guard); replaces= migrates the retired per-device BSPs.
@@ -13,71 +15,46 @@ conflicts=('pocknix-bsp')
 replaces=('pocknix-bsp' 'pocknix-bsp-rp6' 'pocknix-bsp-odin2' 'pocknix-bsp-odin2mini' 'pocknix-bsp-odin2portal')
 optdepends=('inputplumber: gamepad -> Steam Input mapping (01-rsinput-controller.yaml, 02-ayn-thor-controller.yaml)'
             'alsa-ucm-conf: base UCM (codec include sequences for the AYN-Odin2 / AYN-Thor UCMs)')
-source=('device.conf'
-        '01-rsinput-controller.yaml' 'sm8550-gamepad.yaml'
-        '02-ayn-thor-controller.yaml' 'thor-gamepad.yaml'
-        'AYN-Odin2.conf' 'HiFi.conf' 'AYN-Thor.conf' 'HiFi-Thor.conf'
-        '71-pocknix-thor-touch.rules'
-        '10-pocknix-s2idle.conf' '30-pocknix-cpuidle.conf'
-        '99-pocknix-sm8550-usb-autosuspend.rules'
-        'cpuidle-state1-sleep-pre' 'cpuidle-state1-sleep-post'
-        'retroid.rp6.oled.lua' 'ayn.odin2portal.oled.lua' 'ayn.thor.oled.lua'
-        'kernel-cmdline')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+# device.conf is rendered from boards/models. Consumers source it (some under set -e, cores.sh
+# inside $(...)), so it stays POSIX sh, prints nothing and always returns 0.
+_device_conf() {  # $1 = boards/models
+  awk -v q="'" '
+    /^[[:space:]]*(#|$)/ { next }
+    {
+      b = $1; m = $0
+      sub(/^[[:space:]]*[^[:space:]]+[[:space:]]+/, "", m); sub(/[[:space:]]+$/, "", m)
+      if (fb == "") fb = b
+      arms = arms "  \"" m "\")\n    . /usr/lib/pocknix/boards/" b ".conf\n    ;;\n"
+    }
+    END {
+      print "# /usr/lib/pocknix/device.conf, generated from the BSP" q "s boards/models: picks the board"
+      print "# file by devicetree model. An unknown or absent model (the image-build chroot) gets"
+      print "# the first board and POCKNIX_BOARD_UNKNOWN=1. /etc/pocknix/device.conf overrides."
+      print "_pocknix_model=\"$(cat /proc/device-tree/model 2>/dev/null | tr -d " q "\\0" q ")\""
+      print "case \"${_pocknix_model}\" in"
+      printf "%s", arms
+      print "  *)"
+      print "    POCKNIX_BOARD_UNKNOWN=1"
+      print "    . /usr/lib/pocknix/boards/" fb ".conf"
+      print "    [ -n \"${_pocknix_model}\" ] && \\"
+      print "      logger -t pocknix \"device.conf: unknown DT model " q "${_pocknix_model}" q " - using " fb " board defaults\" 2>/dev/null || true"
+      print "    ;;"
+      print "esac"
+      print "unset _pocknix_model"
+    }' "$1"
+}
 
 package() {
-  # makepkg sources are flat, so boards/ comes from startdir (build-packages.sh fills it).
-  install -Dm644 "${srcdir}/device.conf" "${pkgdir}/usr/lib/pocknix/device.conf"
+  install -d "${pkgdir}/usr/lib/pocknix"
+  _device_conf "${startdir}/boards/models" > "${pkgdir}/usr/lib/pocknix/device.conf"
+  # root/ is the install tree. makepkg's umask 022 turns git's exec bit into 755/644, and
+  # files created under fakeroot are root-owned; -d keeps the UCM symlinks as links.
+  cp -dr "${startdir}/root/." "${pkgdir}/"
+  # boards/ also comes from startdir (build-packages.sh copies the whole package dir);
+  # models is not installed, family.conf is.
   local b
   for b in "${startdir}/boards/"*.conf; do
     install -Dm644 "${b}" "${pkgdir}/usr/lib/pocknix/boards/$(basename "${b}")"
   done
-
-  # The cluster-sleep kernel stack is s2idle-only; a deep entry wedges.
-  install -Dm644 "${srcdir}/10-pocknix-s2idle.conf" \
-    "${pkgdir}/usr/lib/systemd/sleep.conf.d/10-pocknix-s2idle.conf"
-  # cpu0 idle state1 off while awake: GMU issues.
-  install -Dm644 "${srcdir}/30-pocknix-cpuidle.conf" \
-    "${pkgdir}/usr/lib/tmpfiles.d/30-pocknix-cpuidle.conf"
-  # An idle DWC3 otherwise holds its USB-to-DDR interconnect vote while awake.
-  install -Dm644 "${srcdir}/99-pocknix-sm8550-usb-autosuspend.rules" \
-    "${pkgdir}/usr/lib/udev/rules.d/99-pocknix-sm8550-usb-autosuspend.rules"
-  install -Dm644 "${srcdir}/71-pocknix-thor-touch.rules" \
-    "${pkgdir}/usr/lib/udev/rules.d/71-pocknix-thor-touch.rules"
-  # Re-enable cpu0 state1 only across suspend, so s2idle reaches cluster sleep without
-  # touching the awake-time GMU workaround.
-  install -Dm755 "${srcdir}/cpuidle-state1-sleep-pre" \
-    "${pkgdir}/usr/lib/pocknix/sleep.d/pre/010-cpuidle-state1"
-  install -Dm755 "${srcdir}/cpuidle-state1-sleep-post" \
-    "${pkgdir}/usr/lib/pocknix/sleep.d/post/010-cpuidle-state1"
-
-  install -Dm644 "${srcdir}/01-rsinput-controller.yaml" \
-    "${pkgdir}/usr/share/inputplumber/devices/01-rsinput-controller.yaml"
-  install -Dm644 "${srcdir}/sm8550-gamepad.yaml" \
-    "${pkgdir}/usr/share/inputplumber/capability_maps/sm8550-gamepad.yaml"
-  install -Dm644 "${srcdir}/02-ayn-thor-controller.yaml" \
-    "${pkgdir}/usr/share/inputplumber/devices/02-ayn-thor-controller.yaml"
-  install -Dm644 "${srcdir}/thor-gamepad.yaml" \
-    "${pkgdir}/usr/share/inputplumber/capability_maps/thor-gamepad.yaml"
-
-  # Family boards report card "AYN-Odin2", the Thor "AYN-Thor".
-  local ucm="${pkgdir}/usr/share/alsa/ucm2"
-  install -Dm644 "${srcdir}/AYN-Odin2.conf" "${ucm}/AYN/Odin2/AYN-Odin2.conf"
-  install -Dm644 "${srcdir}/HiFi.conf"      "${ucm}/AYN/Odin2/HiFi.conf"
-  install -d "${ucm}/conf.d/sm8550"
-  ln -sf "../../AYN/Odin2/AYN-Odin2.conf" "${ucm}/conf.d/sm8550/AYN-Odin2.conf"
-  install -Dm644 "${srcdir}/AYN-Thor.conf" "${ucm}/AYN/Thor/AYN-Thor.conf"
-  install -Dm644 "${srcdir}/HiFi-Thor.conf" "${ucm}/AYN/Thor/HiFi.conf"
-  ln -sf "../../AYN/Thor/AYN-Thor.conf" "${ucm}/conf.d/sm8550/AYN-Thor.conf"
-
-  # gamescope panel profiles for the EDID-less HDR OLEDs (colorimetry + HDR range), matched on
-  # GAMESCOPE_INTERNAL_DEVICE_ID = POCKNIX_DEVICE; each such board sets POCKNIX_PANEL_HDR_NITS.
-  local gsd="${pkgdir}/usr/share/gamescope/scripts/10-pocknix/displays"
-  install -Dm644 "${srcdir}/retroid.rp6.oled.lua"     "${gsd}/retroid.rp6.oled.lua"
-  install -Dm644 "${srcdir}/ayn.odin2portal.oled.lua" "${gsd}/ayn.odin2portal.oled.lua"
-  install -Dm644 "${srcdir}/ayn.thor.oled.lua"        "${gsd}/ayn.thor.oled.lua"
-
-  # build-packages.sh asserts it matches devices/sm8550/profile.conf.
-  install -Dm644 "${srcdir}/kernel-cmdline" "${pkgdir}/usr/lib/pocknix/kernel-cmdline"
 }

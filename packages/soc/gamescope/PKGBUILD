@@ -1,6 +1,6 @@
 # gamescope (pocknix) - Valve tag plus a small series for msm handhelds.
-# pocknix-steam passes logical LANDSCAPE -W/-H and relies on upstream composite rotation
-# (3.16.31+); older builds, ALARM's included, request a plane rotation the msm DPU rejects.
+# pocknix-steam passes logical LANDSCAPE -W/-H and relies on upstream composite rotation;
+# a build without it requests a plane rotation the msm DPU rejects.
 # epoch=1 outranks ALARM's gamescope. The pkgver segment after "rocknix." must vercmp higher
 # on every bump, hence commit date then sha — a bare sha is non-monotonic.
 pkgname=gamescope

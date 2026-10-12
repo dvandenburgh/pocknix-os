@@ -6,7 +6,7 @@ pkgrel=2
 pkgdesc="pocknix desktop flavour: Plasma Mobile"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('bash'
          'pocknix-desktop-kde'
          'plasma-mobile'

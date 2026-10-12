@@ -6,7 +6,7 @@ import { SelectEdit } from "./widgets";
 import type { Config } from "../types";
 
 // Audio buffer (PULSE_LATENCY_MSEC): absorbs FEX-mixer overruns (SFX-burst crackle) at the
-// cost of audio latency — keep rhythm games on Game default. 60 measured ~10x fewer underruns.
+// cost of audio latency — keep rhythm games on Game default.
 export const audioLatencyOptions = [
   { data: "", label: "Game default" },
   { data: "60", label: "60 ms" },

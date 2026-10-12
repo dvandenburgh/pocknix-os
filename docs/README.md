@@ -2,8 +2,9 @@
 
 User guides for pocknix-os. New here? Start with the [project README](../README.md).
 
-- [pocknix-control.md](pocknix-control.md) - the in-game control panel: per-game tweaks, adding
-  non-Steam games, fan/CPU modes, SD card formatting, and system updates
+- [pocknix-control.md](pocknix-control.md) - the in-game control panel: per-game tweaks, fan/CPU
+  modes, adding non-Steam games, file sharing, SD card formatting, controller calibration and
+  stick lights, and system updates
 - [emulation-setup.md](emulation-setup.md) - where to put ROMs, BIOS, and firmware, how to launch
   games, and how to tweak emulator settings
 - [waydroid.md](waydroid.md) - running Android apps: setup, installing apps, and app shortcuts
@@ -14,6 +15,7 @@ User guides for pocknix-os. New here? Start with the [project README](../README.
   restoring the factory bootloader
 - [snapshots.md](snapshots.md) - automatic pre-update snapshots, one-button rollback, and
   manual recovery when an update goes wrong
+- [licensing.md](licensing.md) - the project license and the third-party components it ships
 
 ## For developers
 

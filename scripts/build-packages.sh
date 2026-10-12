@@ -2,10 +2,10 @@
 # build-packages.sh — build the local pocknix-* packages with makepkg.
 #
 # The host (Fedora) has no makepkg, so we build inside a dedicated Arch Linux ARM
-# build chroot (base-devel). Results + a pacman repo DB land in build/localrepo,
-# which build-image.sh consumes via the [pocknix] repo.
+# build chroot (base-devel). Results + pacman repo DBs land in ${LOCALREPO_DIR} (per-SoC)
+# and ${LOCALREPO_SHARED_DIR}, which build-image.sh consumes as [pocknix] + [pocknix-shared].
 #
-# Standalone: `sudo make packages` (test this in isolation first).
+# Standalone: `sudo make packages`.
 # Needs a Linux host + root (chroot/mount); native makepkg on aarch64, qemu on x86.
 
 source "$(dirname "$0")/lib.sh"
@@ -162,12 +162,11 @@ setup_chroot() {
   printf '%s\n' "PKGEXT='.pkg.tar.zst'" 'MAKEFLAGS="-j$(nproc)"' \
     > "${BROOT}/etc/makepkg.conf.d/pocknix.conf"
 
-  # Local [pocknix] repo so a package can depend on another locally-built one
-  # (e.g. pocknix-steam -> gamescope, gtk2). Points at the bind-mounted /localrepo.
-  # SigLevel Never, same reason as build-image.sh's append_local_repo: make publish signs
-  # the localrepo db in place, so Optional TrustAll dies on the unknown key when makepkg -s
-  # installs a locally-built dep (first bitten by proton-cachyos -> pocknix-steam). The
-  # sed branch repairs REUSED chroots that were created with the old stanza.
+  # Local [pocknix] repo so a package can depend on another locally-built one. Points at
+  # the bind-mounted /localrepo. SigLevel Never, same reason as build-image.sh's
+  # append_local_repo: a signed localrepo db makes Optional TrustAll die on the unknown
+  # key when makepkg -s installs a locally-built dep. The sed branch repairs REUSED
+  # chroots that were created with the old stanza.
   if ! grep -q '^\[pocknix\]' "${BROOT}/etc/pacman.conf"; then
     printf '\n[pocknix]\nSigLevel = Never\nServer = file:///localrepo\n' \
       >> "${BROOT}/etc/pacman.conf"
@@ -176,7 +175,7 @@ setup_chroot() {
       "${BROOT}/etc/pacman.conf"
   fi
   # Same for [pocknix-shared]: makepkg -s must resolve shared siblings too
-  # (e.g. cemu -> wxwidgets-pocknix now lands in the shared repo).
+  # (e.g. cemu -> wxwidgets-pocknix).
   if ! grep -q '^\[pocknix-shared\]' "${BROOT}/etc/pacman.conf"; then
     printf '\n[pocknix-shared]\nSigLevel = Never\nServer = file:///localrepo-shared\n' \
       >> "${BROOT}/etc/pacman.conf"
@@ -230,7 +229,7 @@ build_one() {
   # each pay a network DB refresh.
   chroot "${BROOT}" pacman -Sy --noconfirm >/dev/null 2>&1 || true
   # linux-pocknix-<soc> is a THIN package: it doesn't compile the kernel (no makepkg/toolchain
-  # in the chroot for that), it just packages `make kernel`'s output. Stage build/kernel/out
+  # in the chroot for that), it just packages `make kernel`'s output. Stage ${KERNEL_BUILD_DIR}/out
   # into the package build dir as ./staged so its package() can lay it out as /boot +
   # /usr/lib/modules. NB: only the CURRENT device's SoC kernel can be staged (make kernel
   # builds one SoC at a time); other SoCs' kernel packages skip with a warning.
@@ -244,38 +243,26 @@ build_one() {
       warn "${name}: no kernel build at ${kout} — run 'make kernel' first; skipping"
       return 1
     fi
-    # SoC marker sanity (kernel outputs are per-SoC dirs now; insurance only)
+    # SoC marker sanity: catches a copied/renamed out/ dir from another SoC
     if [ -f "${kout}/soc" ] && [ "$(cat "${kout}/soc")" != "${SOC}" ]; then
       warn "${name}: ${kout} was built for SOC=$(cat "${kout}/soc"), not ${SOC} — run 'make kernel DEVICE=${DEVICE}' first; skipping"
       return 1
     fi
     cp -a "${kout}" "${BROOT}/build/${name}/staged"
   ;; esac
-  # pocknix-firmware-<soc> is thin too: it packages vendor overlay blobs listed in
-  # its ./paths. Staged here because the gitignored vendor/ tree exists only on the
-  # build host, never inside the chroot.
-  case "${name}" in pocknix-firmware-*)
-    local fwsrc="${POCKNIX_ROOT}/vendor/rocknix-${name#pocknix-firmware-}/filesystem/usr/lib/kernel-overlays/base/lib/firmware"
-    local fwp
-    while IFS= read -r fwp; do
-      [ -n "${fwp}" ] || continue
-      [ -f "${fwsrc}/${fwp}" ] || die "${name}: ${fwp} missing from ${fwsrc} — vendor overlay incomplete (make sync?)"
-      install -Dm644 "${fwsrc}/${fwp}" "${BROOT}/build/${name}/staged/${fwp}"
-    done < "${pkgdir}/paths"
-  ;; esac
   # Drift guard: a device BSP's committed kernel-cmdline must byte-match its own device
   # profile's KERNEL_CMDLINE (the boot image is built from the profile; the BSP file feeds
   # the on-device /flash/KERNEL rebuild — they must agree). The device is derived from the
   # package's path (devices/<dev>/packages/<pkg>).
-  if [ -f "${pkgdir}/kernel-cmdline" ]; then
+  if [ -f "${pkgdir}/root/usr/lib/pocknix/kernel-cmdline" ]; then
     local devdir want_cmdline
     devdir="$(dirname "$(dirname "${pkgdir%/}")")"
     if [ -f "${devdir}/profile.conf" ]; then
       want_cmdline="$(profile_get "${devdir}" KERNEL_CMDLINE)"
-      if [ "$(cat "${pkgdir}/kernel-cmdline")" != "${want_cmdline}" ]; then
+      if [ "$(cat "${pkgdir}/root/usr/lib/pocknix/kernel-cmdline")" != "${want_cmdline}" ]; then
         die "${name}: kernel-cmdline drifted from ${devdir}/profile.conf KERNEL_CMDLINE —
   profile: ${want_cmdline}
-  package: $(cat "${pkgdir}/kernel-cmdline")
+  package: $(cat "${pkgdir}/root/usr/lib/pocknix/kernel-cmdline")
 Update one to match the other."
       fi
     fi
@@ -305,12 +292,11 @@ Update one to match the other."
   chroot "${BROOT}" chown builder:builder /build/srccache
   # makepkg refuses to run as root; build as the 'builder' user.
   # -s syncs makedepends (gamescope needs many). Device packages (devices/*/packages/*:
-  # BSPs + metapackages) are pure file-drop/meta packages built with --nodeps instead —
+  # BSPs + metapackages) are pure file-drop/meta packages built with --nodeps instead:
   # with -s makepkg would install their RUNTIME dependency closure into the build chroot
-  # (the kernel package, the Steam stack, the ~1.1 GB fex-rootfs) just to lay out a few
-  # files, which is slow and was the failure mode for pocknix-device-rp6. Their depends=
-  # still ships in the .pkg metadata; -d only skips build-time resolution. A ./nodeps
-  # marker opts other packages into the same treatment (the layer metapackages).
+  # (the kernel package, the Steam stack, fex-rootfs) just to lay out a few files. Their
+  # depends= still ships in the .pkg metadata; -d only skips build-time resolution. A
+  # ./nodeps marker opts in other packages whose runtime deps would drag a layer in.
   # Per-SoC tuning (config/tuning/${SOC}.conf via lib.sh) rides the makepkg
   # environment: the tuned PKGBUILDs read POCKNIX_TUNE_CFLAGS/POCKNIX_FEX_TUNE_CPU
   # (falling back to their sm8550 strings when unset, e.g. standalone makepkg).
@@ -325,7 +311,7 @@ Update one to match the other."
     */packages/shared/*)
       tune_env="POCKNIX_BASE_URL=$(printf %q "${POCKNIX_BASE_URL}") POCKNIX_BASE_SNAPSHOT=$(printf %q "${POCKNIX_BASE_SNAPSHOT}")" ;;
     *)
-      tune_env="POCKNIX_SOC=$(printf %q "${SOC}") POCKNIX_TUNE_CFLAGS=$(printf %q "${POCKNIX_TUNE_CFLAGS}") POCKNIX_FEX_TUNE_CPU=$(printf %q "${POCKNIX_FEX_TUNE_CPU}") POCKNIX_BASE_URL=$(printf %q "${POCKNIX_BASE_URL}") POCKNIX_BASE_SNAPSHOT=$(printf %q "${POCKNIX_BASE_SNAPSHOT}")" ;;
+      tune_env="POCKNIX_SOC=$(printf %q "${SOC}") POCKNIX_TUNE_CFLAGS=$(printf %q "${POCKNIX_TUNE_CFLAGS}") POCKNIX_FEX_TUNE_CPU=$(printf %q "${POCKNIX_FEX_TUNE_CPU}") POCKNIX_GPU_HWMON=$(printf %q "${GPU_HWMON:-}") POCKNIX_BASE_URL=$(printf %q "${POCKNIX_BASE_URL}") POCKNIX_BASE_SNAPSHOT=$(printf %q "${POCKNIX_BASE_SNAPSHOT}")" ;;
   esac
   if ! chroot "${BROOT}" runuser -u builder -- \
       bash -lc "cd /build/${name} && LC_ALL=C SRCDEST=/build/srccache ${tune_env} makepkg ${mkflags} -f --noconfirm --nocheck --skippgpcheck"; then
@@ -334,7 +320,7 @@ Update one to match the other."
   fi
   # Collect what makepkg ACTUALLY produced via `makepkg --packagelist`: a split PKGBUILD
   # (packages/soc/mesa -> mesa + vulkan-freedreno) emits sibling packages a "${name}-*" glob
-  # misses (bitten by mesa: only the mesa half reached localrepo), while a bare *.pkg.tar.*
+  # misses (only the mesa half would reach localrepo), while a bare *.pkg.tar.*
   # sweep would grab .pkg.tar.* files that are makepkg *sources* symlinked into the build
   # dir (e.g. fex-emu's pinned x86 sysroot pkgs). --packagelist names exactly the built
   # artifacts, epoch and all.
@@ -382,9 +368,8 @@ main() {
   progress_detail "checking which packages are current"
 
   chroot_mount "${BROOT}"
-  # Keep both local repos bind-mounted throughout so makepkg -s can resolve
-  # inter-package local deps (pocknix-steam -> gamescope, gtk2; cemu ->
-  # wxwidgets-pocknix) from the [pocknix]/[pocknix-shared] repos as we go.
+  # Keep both local repos bind-mounted throughout so makepkg -s can resolve inter-package
+  # local deps (e.g. cemu -> wxwidgets-pocknix) from [pocknix]/[pocknix-shared] as we go.
   mkdir -p "${BROOT}/localrepo" "${BROOT}/localrepo-shared"
   mount --bind "${LOCALREPO}" "${BROOT}/localrepo"
   mount --bind "${LOCALREPO_SHARED}" "${BROOT}/localrepo-shared"
@@ -400,7 +385,7 @@ main() {
     fi
   done
 
-  # Build a package (build_one registers its artifacts in [pocknix] so later packages
+  # Build a package (build_one registers its artifacts in its repo so later packages
   # see them; the pacman -Sy refresh happens inside build_one, only for real builds).
   try_build() {
     if build_one "$1" "${2:-0}"; then
@@ -443,10 +428,10 @@ main() {
     try_build "${pkgdir}" "${force}" || failed+=("${pkgdir}")
   done
 
-  # Dependency order != alphabetical: a package can depend on a sibling the glob builds LATER
-  # (e.g. pocknix-steam depends on pocknix-steamos-shim, which sorts after it), so its first
-  # `makepkg -s` aborts with "target not found". Retry failures — once a dep lands in [pocknix]
-  # the dependent builds. Loop until a full pass makes no progress (then they're real failures).
+  # Dependency order != alphabetical: a package can depend on a sibling the glob builds LATER,
+  # so its first `makepkg -s` aborts with "target not found". Retry failures: once a dep lands
+  # in its repo the dependent builds. Loop until a full pass makes no progress (then they're
+  # real failures).
   while [ "${#failed[@]}" -gt 0 ]; do
     local -a retry=("${failed[@]}"); failed=(); local progress=0
     for pkgdir in "${retry[@]}"; do
@@ -455,9 +440,9 @@ main() {
     [ "${progress}" -eq 1 ] || break
   done
   # --- failure summary: surface the SILENT danger. A failed rebuild that left an OLDER build in
-  # localrepo gets installed by build-image with no error, so a stale package ships (exactly how an
-  # old pocknix-emulation reached an image, 2026-07-08). Split the failures into "stale artifact
-  # still present" (dangerous, loud) vs "no artifact" (build-image errors at install, not silent).
+  # localrepo gets installed by build-image with no error, so a stale package ships. Split the
+  # failures into "stale artifact still present" (dangerous, loud) vs "no artifact" (build-image
+  # errors at install, not silent).
   if [ "${#failed[@]}" -gt 0 ]; then
     local -a stale=() gone=()
     local fp fname base p af had line frepo

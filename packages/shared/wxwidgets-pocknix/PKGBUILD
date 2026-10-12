@@ -1,7 +1,6 @@
 # wxwidgets-pocknix — wxWidgets 3.3 (gtk3), existing solely because cemu needs >=3.3 and ALARM
 # ships 3.2. The name plus provides/conflicts is the resolution trick: ALARM's 3.2 cannot satisfy
-# cemu's 'wxwidgets-gtk3>=3.3', so pacman falls through to this provider. A same-name epoch bump
-# would NOT work: unqualified `pacman -S <name>` takes the first repo with the name, [pocknix] is last.
+# cemu's 'wxwidgets-gtk3>=3.3', so pacman falls through to this provider.
 pkgname=wxwidgets-pocknix
 pkgver=3.3.2
 pkgrel=3

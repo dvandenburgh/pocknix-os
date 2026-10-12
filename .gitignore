@@ -16,7 +16,7 @@
 # decky plugin frontend build deps (dist/ IS committed — built on the dev Mac, needed by PKGBUILD)
 /packages/shared/pocknix-decky/pocknix-control/node_modules/
 
-# local Claude Code settings + context (recreate from pocknix-notes/dev/claude-setup.md)
+# local Claude Code settings + context (private, never shipped)
 /.claude/
 /CLAUDE.md
 

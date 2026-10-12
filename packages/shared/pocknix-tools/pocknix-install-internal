@@ -8,8 +8,8 @@
 # subvol layout, or ext4 from a pre-snapshot SD. Nothing before `userdata` (abl, xbl,
 # modem, persist) is touched. When it finishes: power off, remove the SD card, power on.
 #
-# One-time gateway only. After install, update in place (pacman -U / -S a package, rsync the
-# overlay, pacman -U linux-pocknix for a kernel) — never re-run this.
+# One-time gateway only. After install, update in place (pacman -S / -U a package; a kernel is
+# linux-pocknix-<soc>, deployed by its pacman hook), never re-run this.
 #
 # Usage: pocknix-install-internal [--dry-run] [--yes] [--userdata-gib N] [--device /dev/sdX]
 #        pocknix-install-internal --detect    # read-only probe: k=v state for pocknix-installer-gui

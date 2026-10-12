@@ -14,7 +14,7 @@ SOCKETS=(smb.socket avahi-daemon.socket)
 # guest_account in smb.conf; kept in sync by hand because smb.conf ships alongside this.
 SHARE_USER=deck
 
-# Samba is an opt-in base extra, not in any image (74.5 MB for devices that never share).
+# Samba is an opt-in base extra, not in any image: devices that never share carry none of it.
 is_installed() { command -v smbd >/dev/null 2>&1; }
 
 is_on() {
@@ -42,7 +42,7 @@ case "${1:-status}" in
     ;;
   install)
     # Keep the install behind this program's polkit rule: a bare `pkexec pacman` lands in
-    # pkexec's text agent, broken on polkit 127 (polkit#686) - see dev/desktop.md.
+    # pkexec's text agent, broken on polkit 127 (polkit#686).
     need_root
     is_installed && { echo "installed=yes"; exit 0; }
     pacman -Syu --needed --noconfirm samba

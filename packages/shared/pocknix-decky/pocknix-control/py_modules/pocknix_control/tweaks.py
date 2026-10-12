@@ -5,8 +5,8 @@ from pathlib import Path
 
 from .system import atomically_write
 
-# The tweaks file is consumed at game launch by pocknix-game-launch; the profile contract
-# ships with that wrapper, so the plugin-dir copy is only a fallback for a missing pocknix-steam.
+# The tweaks file is consumed at game launch by pocknix-game-launch; the profile contract ships
+# with it, so the plugin-dir copy is only a fallback for a missing pocknix-steam.
 TWEAKS_CONFIG = Path("/etc/pocknix/game-tweaks.json")
 FEX_PROFILES_CONFIG = Path("/usr/share/pocknix/fex-profiles.json")
 PLUGIN_FEX_PROFILES_CONFIG = Path(__file__).resolve().parent.parent.parent / "fex-profiles.json"
@@ -15,9 +15,9 @@ CONTAINER_VK_LIST = Path("/usr/share/fex-emu/vk-x86-container.list")
 
 
 def mesa_versions():
-    # One entry per series ("25.2"); the wrapper resolves the point release per Proton flavor.
-    # x86 SLR captures graphics from the FEX rootfs, so an x86 payload that is not embedded in
-    # the image would be a pin the wrapper refuses at launch.
+    # One entry per series ("25.2"); pocknix-game-launch resolves the point release per Proton
+    # flavor. x86 SLR captures graphics from the FEX rootfs, so an x86 payload not embedded in
+    # the image would be a pin it refuses at launch.
     try:
         embedded = set(CONTAINER_VK_LIST.read_text().split())
     except OSError:
@@ -99,7 +99,7 @@ def load_tweaks():
 
 
 def sanitize_tweaks(data):
-    # The proton wrapper reads this at game launch, so a bad key here breaks launching.
+    # pocknix-game-launch reads this at every launch, so a bad key here breaks launching.
     if not isinstance(data, dict):
         raise ValueError("tweaks must be an object")
     if len(json.dumps(data)) > 256 * 1024:

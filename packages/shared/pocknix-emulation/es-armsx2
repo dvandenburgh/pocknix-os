@@ -1,8 +1,8 @@
 #!/bin/bash
-# ES-DE's bundled launch commands bypass pocknix-play, so es_find_rules.xml points at these
-# wrappers instead: the big-core pin has to live here too, or unpinned emulator threads land
-# on a little core (chop + audio crackle). The /opt AppImages are also not in PATH, so this
-# is ES-DE's only route to them.
+# ES-DE launches through these wrappers (es_systems.xml), bypassing pocknix-play, so the
+# big-core pin has to live here too, or unpinned emulator threads land on a little core
+# (chop + audio crackle). The /opt AppImages are also not in PATH, so this is ES-DE's only
+# route to them.
 . /usr/lib/pocknix/emu-resolve.sh
 exe="$(emu_path armsx2)" || emu_missing armsx2
 exec taskset -c "$(big_cores)" "${exe}" "$@"

@@ -2,8 +2,8 @@ from pathlib import Path
 
 from .tweaks import load_tweaks
 
-# The kernel's per-device inhibit switch (5.11+): an inhibited device is closed at the
-# driver and emits nothing, to gamescope and Steam alike. It does not survive a reboot.
+# The kernel's per-device inhibit switch: an inhibited device is closed at the driver and
+# emits nothing, to gamescope and Steam alike. It does not survive a reboot.
 INPUT_DIR = Path("/sys/class/input")
 UDEV_DATA = Path("/run/udev/data")
 
@@ -22,7 +22,7 @@ def touchscreens(input_dir=INPUT_DIR, udev_data=UDEV_DATA):
 
 
 def touch_disabled_for(tweaks, appid):
-    # Same merge as the proton wrapper: per-game values only count while the game is enabled.
+    # Same merge as pocknix-game-launch: per-game values only count while the game is enabled.
     settings = dict(tweaks.get("global") or {})
     game = (tweaks.get("games") or {}).get(str(appid)) if appid else None
     if isinstance(game, dict) and game.get("enabled") is True:

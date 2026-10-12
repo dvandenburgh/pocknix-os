@@ -1,8 +1,8 @@
 #!/bin/sh
 # pocknix-os: install an APK into Waydroid, auto-starting a session if none is
-# running. Wired up as the default handler for application/vnd.android.package-archive
-# so double-clicking an .apk in the file manager installs it. Runs as the session
-# user (deck), which is what `waydroid app *` expects.
+# running. Its .desktop declares the application/vnd.android.package-archive MimeType,
+# so it appears under Open With for .apk files (not the default handler). Runs as the
+# session user (deck), which is what `waydroid app *` expects.
 apk="$1"
 name=$(basename "$apk")
 

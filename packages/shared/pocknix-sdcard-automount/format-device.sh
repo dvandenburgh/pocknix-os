@@ -1,9 +1,8 @@
 #!/bin/bash
 # format-device.sh — pkexec'd as root by steamos-format-device when the Storage UI formats a card.
-# mmcblk ONLY: Valve's original also accepts /dev/sd[a-z], but on the RP6 `sda` is the INTERNAL UFS
-# OS disk. Owner is stamped 1000:1000 (SteamOS's deck, not our local 1001) so a fresh card stays
-# writable on a genuine SteamOS device; sdcard-mount.sh's idmap presents it back as 1001 here.
-# Derived from Valve jupiter-hw-support's /usr/lib/hwsupport/format-device.sh.
+# mmcblk ONLY, never /dev/sd[a-z]: on the RP6 `sda` is the INTERNAL UFS OS disk. Owner is
+# stamped 1000:1000 (SteamOS's deck, not our local 1001) so a fresh card stays writable on a
+# genuine SteamOS device; sdcard-mount.sh's idmap presents it back as 1001 here.
 
 set -uo pipefail
 

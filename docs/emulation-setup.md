@@ -8,7 +8,7 @@ For the full list of supported systems, see the [README](../README.md#emulation)
 
 ## Installing it
 
-As of v0.4 emulation is optional, so a fresh install does not have it. Switch to desktop mode, open
+Emulation is optional, so a fresh install does not have it. Switch to desktop mode, open
 **Pocknix Tools** and pick *Install the emulation layer (ES-DE + emulators)*. It is a large
 download; everything is ready when it finishes, with no restart or logout needed.
 
@@ -21,7 +21,7 @@ Everything lives under `~/Emulation` (created for you on first login):
 
 ```
 ~/Emulation/
-  ROMs/<system>/     your games, one folder per system (gba, snes, ps1, ps2, ...)
+  ROMs/<system>/     your games, one folder per system (gba, snes, psx, ps2, ...)
   BIOS/              BIOS / firmware / key files (see below)
   Saves/             in-game saves
   States/            save states
@@ -35,7 +35,7 @@ and saves all travel together.
 
 The ROM directory can live anywhere, and ES-DE is the single source of truth. Go to **ES-DE Menu
 → Other Settings → ROM directory** and point it at the new location (for example
-`/run/media/<card>/ROMs`). Move your files there, then rescan. `BIOS/`, `Saves/`, and `States/`
+`/run/media/deck/<card label>/ROMs`). Move your files there, then rescan. `BIOS/`, `Saves/`, and `States/`
 stay in `~/Emulation`.
 
 ## BIOS and firmware
@@ -66,7 +66,7 @@ Turn it on in either place:
 - **Game Mode**: Quick Access Menu → **Pocknix Control** → **Library** → *Share my home folder*
 - **Desktop**: **Pocknix Tools** → *File sharing (SMB) is off - turn it on...*
 
-The first time, you will be offered a 7.4 MB download (Samba is not shipped in the image, so
+The first time, you will be offered a small download (Samba is not shipped in the image, so
 devices that never share a file never pay for it). It then stays on across reboots until you
 turn it off in the same place.
 
@@ -75,7 +75,7 @@ Once it is on, open one of these from the other computer:
 | | |
 |---|---|
 | macOS | Finder → the device appears in the sidebar under **Network**, or press ⌘K and enter `smb://pocknix.local` |
-| Windows | Explorer address bar: `\\pocknix` |
+| Windows | Explorer address bar: `\\pocknix.local` |
 | Linux | Files → *Other Locations* → `smb://pocknix.local` |
 
 **Connect as Guest - there is no password.** Two shares appear:
@@ -102,17 +102,19 @@ on the next entry, never mid-session.
 Defaults are tuned for the RP6, but you can change per-emulator settings any time:
 
 - **RetroArch systems** (NES, SNES, N64, Game Boy, GBA, DS, Genesis, Saturn, Dreamcast,
-  PlayStation, PSP, Arcade, and more): while a game is running, open the **RetroArch Quick Menu**
-  (hold Select and press X on the controller, or press F1 on a keyboard). From there you can
+  PlayStation, Arcade, and more): while a game is running, open the **RetroArch Quick Menu**
+  (click both sticks in, L3 + R3, on the controller, or press F1 on a keyboard). From there you can
   change the core options, video/shader settings, controls, and save an override that applies to
   that game or that whole system.
-- **Standalone emulators** (ARMSX2 for PS2, Dolphin for GameCube/Wii, PPSSPP for PSP, Azahar for
-  3DS, Eden or Ryujinx for Switch): each has its own in-app settings menu. Launch the emulator
+- **Standalone emulators** (ARMSX2 for PS2, RPCS3 for PS3, Vita3K for PS Vita, Dolphin for
+  GameCube/Wii, Cemu for Wii U, PPSSPP for PSP, Azahar for 3DS, xemu for the original Xbox,
+  Eden or Ryujinx for Switch): each has its own in-app settings menu. Launch the emulator
   from the desktop to reach its full configuration UI.
 
 Settings you change are yours: when a Pocknix update ships a better default, only settings you
 never touched follow it. **Pocknix Tools** has a *Restore emulator default settings* entry that
-puts a single emulator back to the shipped defaults, keeping your old file as a `.bak` copy.
+puts one emulator, or all of them, back to the shipped defaults, keeping your old file as a
+`.bak-<date>` copy.
 
 ## Using your own emulator build
 

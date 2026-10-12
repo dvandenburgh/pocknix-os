@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# build-sd-image.sh - flashable SD image, laid out like ROCKNIX's so the device's ABL boots it:
+# build-sd-image.sh - flashable SD image, laid out the way the device's ABL expects:
 #   p1 fat32 "${SD_BOOT_PARTNAME}": /KERNEL (+ EFI/ and boot/grub/ with the dtbs on arm-efi)
 #   p2 btrfs "${ROOT_LABEL}": subvols @ @home @snapshots @pacman-cache @var-log
 # The kernel mounts root by PARTUUID (no initramfs) and boots the btrfs DEFAULT subvol: the
 # cmdline and fstab must never name one, that is what lets pocknix-rollback switch roots.
-# Layout rationale and traps: pocknix-notes dev/building.md "SD image assembly".
 # Prereqs: `sudo make build` + `make kernel`. Run as root (loop + mount).
 
 source "$(dirname "$0")/lib.sh"
@@ -128,7 +127,7 @@ EOF
   # pocknix-flathub.service deliberately absent: at boot it fails on DNS (the NM dispatcher starts it).
   chroot "${root}" systemctl enable pocknix-waydroid-tuning.service 2>/dev/null || true
 
-  # iwd must not run its own netconfig or it fights NM for DHCP (dev/steam.md "Wi-Fi").
+  # iwd must not run its own netconfig or it fights NM for DHCP.
   install -d -m 755 "${root}/etc/NetworkManager/conf.d"
   # Country stays for 5 GHz regdom
   install -d -m 755 "${root}/etc/iwd"
@@ -187,7 +186,7 @@ EOF
   fi
 
   # upower + udisks2 are D-Bus-activatable, but Steam queries them once at startup and never
-  # retries. fstrim: root is mounted without discard. No USB gadget on purpose (dev/building.md).
+  # retries. fstrim: root is mounted without discard. No USB gadget on purpose.
   chroot "${root}" systemctl enable iwd NetworkManager systemd-resolved seatd inputplumber \
         bluetooth upower udisks2 fstrim.timer \
         pocknix-diag.service pocknix-expand-root.service pocknix-session.service \

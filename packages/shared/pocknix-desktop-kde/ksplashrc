@@ -1,7 +1,4 @@
-# Previously Theme=None/Engine=none, on the concern that Plasma Mobile never sends the
-# "desktop ready" signal and the splash would sit through its full fallback timeout.
-# It does not: plasma-ksplash.service runs ksplashqml Type=oneshot and it exits on its own.
-# Deleting this file restores the old behaviour if some device does hang.
+# A theme is safe under Plasma Mobile: ksplashqml runs Type=oneshot and exits on its own.
 [KSplash]
 Theme=com.pocknix.splash
 Engine=KSplashQML

@@ -7,7 +7,7 @@ pkgrel=3
 pkgdesc="pocknix optional layer: ES-DE frontend, RetroArch cores, standalone emulators (Switch: bring your own)"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('pocknix-emulation'
          'es-de'
          'libretro-cores-pocknix'

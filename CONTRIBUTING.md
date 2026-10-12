@@ -5,14 +5,13 @@ hardware, so the most valuable thing a PR can bring is **evidence it works on a 
 and **instructions that let me reproduce that on mine**.
 
 Questions, ideas, or "is this worth doing?" chats: the
-[pocknix Discord](https://discord.gg/mSSNKQg9m) or a GitHub issue. For anything large
+[pocknix Discord](https://discord.gg/jEpwudj4Fx) or a GitHub issue. For anything large
 (a new device family, a new session, a kernel bump, a new packaging approach), open an issue
 first so we can agree the shape before you spend the time.
 
 Especially welcome:
 
-- **Emulator configs** that you have dialled in on a device (see the "Not all pre-baked
-  emulator configs have been validated yet" note in the README).
+- **Emulator configs** that you have dialled in on a device.
 - **Device support and testing** for hardware I do not own (AYN Odin 2 family, Thor, Nova).
 - **Pocknix Control features and fixes.**
 - **Docs corrections** - these need no hardware and no build.
@@ -49,21 +48,27 @@ Especially welcome:
 
 | Path | What lives there |
 |---|---|
-| `packages/<pkg>/` | Package sources, `PKGBUILD`s, patch series. Most contributions land here. |
+| `packages/shared/<pkg>/` | SoC-neutral packages, built once for every device. Most contributions land here. |
+| `packages/soc/<pkg>/` | Packages built per SoC family (GPU stack, emulators, kernels); a `socs` file names the families or says `all`. |
+| `packages/attic/<pkg>/` | Retired recipes, kept for reference and never built. |
 | `devices/<soc>/` | Per-SoC-family and per-board facts: `profile.conf`, the device metapackage, BSP package, InputPlumber configs. See `devices/README.md`. |
 | `kernel/<soc>/` | Committed kernel inputs: pinned version, patch series, config, dts. See `kernel/README.md`. |
+| `kernel/common/patches/` | Our SoC-neutral kernel patches, applied to every SoC. |
 | `scripts/` | The build harness (`build-*.sh`, `lib.sh`, `stage-repo.sh`, ...). |
 | `overlay/` | Files baked into the image rootfs at build time. |
-| `config/` | Global build config. |
+| `config/` | Global build config: `pocknix.conf`, base package lists (`config/packages/`), per-SoC tuning (`config/tuning/`). |
 | `docs/` | User-facing guides. |
+| `.github/` | Issue and PR templates, the CI workflow. |
+| `.githooks/` | Git hooks; `pre-commit` runs the doc check. |
+| `build/` | Build output (gitignored): rootfs, images, `localrepo/<soc>` and `localrepo/shared`. |
 | `vendor/` | **Do not edit.** Regenerated wholesale by `make sync` from ROCKNIX. |
 
 Three rules that catch most first-time contributors:
 
-- **Kernel config changes go in the delta block in `scripts/build-kernel.sh`**, not in
-  `kernel/<soc>/config` - that file is a synced ROCKNIX snapshot and `make sync` overwrites it.
-  The deltas are applied on top of it, with hard asserts for options that must survive
-  `olddefconfig`.
+- **Kernel config changes go in a delta**, not in `kernel/<soc>/config` - that file is a
+  synced ROCKNIX snapshot and `make sync` overwrites it. Use the delta block in
+  `scripts/build-kernel.sh` for every SoC, or `kernel/<soc>/config-delta` (plus
+  `config-assert` for options that must survive `olddefconfig`) for one.
 - **Anything in `overlay/` or the image scripts only reaches people who reflash.** It does not
   ship through `pacman -Syu`. If a fix needs to reach existing installs, it belongs in a
   package with a bumped `pkgrel`. If it genuinely cannot, say so in the PR.
@@ -85,12 +90,13 @@ covers your change:
 ```bash
 make check      # preflight: validates the harness and any built artifacts
 make help       # every target
+git config core.hooksPath .githooks   # once per clone: the doc check runs before each commit
 ```
 
 **Pocknix Control frontend** (any host with Node, no aarch64 needed):
 
 ```bash
-cd packages/pocknix-decky/pocknix-control
+cd packages/shared/pocknix-decky/pocknix-control
 npm ci
 npm run build         # regenerates dist/index.js - this IS committed, see Package rules
 npx tsc --noEmit      # must be clean
@@ -100,7 +106,7 @@ npx tsc --noEmit      # must be clean
 qemu-user - see [docs/building/](docs/building/README.md)):
 
 ```bash
-sudo make packages PKG="pocknix-decky"    # -> build/localrepo/<pkg>-*.pkg.tar.zst
+sudo make packages PKG="pocknix-decky"    # -> build/localrepo/shared/ (per-SoC packages: build/localrepo/<soc>/)
 ```
 
 **A full image** (same Linux host with root; the kernel build is 1-2 hours the first time):
@@ -116,11 +122,12 @@ publish flow.
 ## Testing on a device
 
 The normal loop is **build the package, copy it over, `pacman -U`, exercise it**. You do not
-need to reflash an image for a package change.
+need to reflash an image for a package change. SSH is off by default: turn it on in Pocknix
+Tools, or build your image with `SD_SSH=on`.
 
 ```bash
 # on the build host
-scp build/localrepo/pocknix-decky-*.pkg.tar.* root@<device-ip>:/tmp/
+scp build/localrepo/shared/pocknix-decky-*.pkg.tar.* root@<device-ip>:/tmp/
 
 # on the device (default password for root and deck is 'pocknix')
 pacman -U /tmp/pocknix-decky-*.pkg.tar.*
@@ -214,10 +221,10 @@ Concretely:
 ## How to test
 
     sudo make packages PKG="pocknix-decky"
-    scp build/localrepo/pocknix-decky-*.pkg.tar.* root@device:/tmp/
+    scp build/localrepo/shared/pocknix-decky-*.pkg.tar.* root@device:/tmp/
     ssh root@device 'pacman -U /tmp/pocknix-decky-*.pkg.tar.* && reboot'
 
-1. Boot to game mode, open the QAM, Pocknix Control -> Lighting.
+1. Boot to game mode, open the QAM, Pocknix Control -> Controller -> Stick Lights.
 2. Move the Brightness slider to ~10%. Expected: the rings dim smoothly and stay the
    chosen hue. Before this change the bottom third of the slider was nearly dead and
    0% lost the colour permanently.
@@ -236,13 +243,17 @@ check it, which is the single biggest reason a PR stalls.
   an upstream version change, and reset `pkgrel=1` when you do.
 - **Never republish an existing package filename with different contents.** In practice this
   means: always bump, never quietly rebuild.
-- **Committed build output must be reproducible.** `packages/pocknix-decky/pocknix-control/dist/`
+- **Committed build output must be reproducible.** `packages/shared/pocknix-decky/pocknix-control/dist/`
   is committed and I rebuild it from your sources during review; it should come out
   byte-identical with the pinned toolchain (`npm ci && npm run build`), and `npx tsc --noEmit`
   should be clean. Commit `dist/index.js` and `dist/index.js.map` alongside the `src/` change.
 - **Patch series**: numbered files in the package directory, added to `source=()` with
   matching checksums, applying cleanly against the pinned base. If you touch a component
-  listed in `PATCHES.md` (gamescope, mesa, mangohud, FEX, the kernels, GRUB), update its row.
+  with a row in `PATCHES.md`, update that row.
+- **License**: a package you author for pocknix-os declares `license=('GPL-2.0-or-later')`.
+  One that repackages third-party content keeps the upstream license and names it in a
+  comment on the same line (`license=('zlib')   # Valve's DXVK build, repackaged`). `make check`
+  enforces both.
 - **New dependencies** should come from the Arch Linux ARM repos or `[pocknix]`. Flag anything
   large - image size matters on a handheld.
 - **A new package name needs a `depends=` edge** from the layer metapackage that owns it
@@ -251,6 +262,17 @@ check it, which is the single biggest reason a PR stalls.
   only fresh images get it. Renaming a package needs `replaces=` + `conflicts=` for the old
   name. The maintainer's publish gate (`scripts/stage-check.sh`) rejects both omissions, so
   fixing them up front saves a round trip.
+- **A `replaces=` or `conflicts=` entry in a `packages/shared/` PKGBUILD** acts on every SoC's
+  devices in one publish (`replaces=` uninstalls the old package on `-Syu`), so each entry gets
+  a row with its reason in `scripts/shared-conflicts.allow`
+  (`<package dir> :: <field>=<entry> :: <reason>`). `make check` fails on an entry without a row
+  and on a row whose entry is gone.
+- **Shared code does not name a chip.** A code line outside `devices/`, `kernel/`, the family
+  docs and `packages/soc/<name>-<soc>/` that names an SoC (`sm8550`) handles today's chips and
+  mishandles the next one. Make it chip-neutral (read device.conf or the build's `SOC`); a
+  deliberate exception gets a row in `scripts/soc-ids.allow` (`<path glob> :: <regex> ::
+  <reason>`). `make check` fails on an uncovered chip id and on a row that matches nothing, so
+  fixing a leak deletes its row.
 - **Do not touch `vendor/`.** `make sync` regenerates it.
 
 ## Requesting a package
@@ -280,10 +302,20 @@ works against the locked base.
   submit. A commit should be a complete, verified change.
 - **Rebase on `main`** rather than merging it in, and re-test after the rebase.
 - **Code comments: 2 to 4 lines, and only the WHY.** Status, plan, and validation narrative do
-  not belong in comments or commit bodies.
+  not belong in comments or commit bodies. A comment is self-contained: it may point at a file
+  in this repo, never at anything outside it. `make check` enforces the mechanical part
+  (`scripts/check-comments.py`): a repo path a comment names must exist, and a comment carries
+  no lineage or validation wording, no version, pkgrel, commit hash or date, and no pointer to
+  documents outside the repo. An exception
+  whose number or path IS the mechanism goes in `scripts/check-comments.allow`
+  (`<glob> :: <regex>` or `<glob> :: <kind> :: <regex>`, one per line).
 - **CI must be green.** The `lint` job runs `bash -n` over every script and `PKGBUILD`,
-  resolves each device profile chain, and checks that every `kernel-cmdline` file still
-  matches its `profile.conf`. It is fast; there is no excuse for a red PR.
+  resolves each device profile chain, checks that every `kernel-cmdline` file still
+  matches its `profile.conf`, and checks the docs against the tree (`scripts/check-docs.sh`:
+  every path and `make` target they name exists, layout blocks match their dirs, structural
+  READMEs carry no versions or counts; a line that must keep one carries
+  `docs-check: allow`) and the code comments against the tree (`scripts/check-comments.py`,
+  see above). A doc that describes what you changed moves in the same PR. It is fast; there is no excuse for a red PR.
 - **No unrelated reformatting.** It makes the real change unreviewable.
 
 ## AI assistance

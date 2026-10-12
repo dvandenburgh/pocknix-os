@@ -1,21 +1,18 @@
 # pocknix-branding — Pocknix OS artwork: the plymouth boot theme, the Plasma splash, and
 # the desktop wallpaper. The Plasma splash and wallpaper carry the Pocknix wordmark; the boot
-# theme shows the animated logo alone. The boot theme sits on SteamOS's black field (game
-# mode boots like a Deck); the Plasma splash and wallpaper keep the #202126 desktop field.
+# theme shows the animated logo alone. The boot theme sits on a black field, as on the
+# SteamOS boot (game mode boots like a Deck); the Plasma splash and wallpaper keep the #202126 desktop field.
 pkgname=pocknix-branding
 pkgver=0.1.0
 pkgrel=2.1
 pkgdesc="Pocknix OS branding: plymouth boot theme, Plasma splash, wallpaper"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('bash')
 install='pocknix-branding.install'
-# The plymouth theme is DERIVED from the stock spinner at build time rather than committed:
-# copying 66 animation frames into this repo would duplicate plymouth's own assets and let
-# them drift. Building against the installed theme keeps the spinner in step with whatever
-# plymouth version the image ships, while the OUTPUT still lands in our own directory - which
-# is what makes it survive a plymouth upgrade (the reason a custom theme dir was wanted).
+# The plymouth theme is DERIVED from the installed stock spinner at build time, not committed:
+# copied frames would drift from plymouth's own; output in our own dir survives a plymouth upgrade.
 # librsvg: the watermark and particle frames are drawn from SVG at build time, so no rendered
 # PNG is committed.
 makedepends=('plymouth' 'librsvg')
@@ -57,7 +54,7 @@ package() {
   rm -f "${theme}"/throbber-*.png
   install -m644 "${srcdir}"/render/throbber-*.png "${theme}/"
 
-  # Name/Description/ImageDir point at OUR dir; black field and white mark follow SteamOS's boot
+  # Name/Description/ImageDir point at OUR dir; black field and white mark follow the SteamOS boot
   # screen. two-step tops the watermark at a(H-h) but centres the throbber on aH, so the logo and
   # its particles share a top on any screen only when a*h(watermark) = h(throbber)/2. a = 7/16
   # with the 288-high watermark and the 252-high throbber (288a = 126) puts the logo's centre

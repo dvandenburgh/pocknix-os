@@ -1,4 +1,4 @@
-# One package per line; '#' comments and blank lines ignored. Rationale: dev/building.md.
+# One package per line; '#' comments and blank lines ignored.
 
 # --- core system ---
 base
@@ -29,7 +29,7 @@ rsync
 cloud-guest-utils
 
 # --- graphics stack ---
-# Bootstrap only: install_local_packages replaces both with our epoch-2 builds.
+# Bootstrap only: install_local_packages replaces both with our [pocknix] builds.
 mesa
 vulkan-freedreno
 vulkan-icd-loader
@@ -37,8 +37,8 @@ libdrm
 mesa-utils
 vulkan-tools
 
-# --- GPU firmware (Adreno 740) ---
-# a740 sqe/zap ship .zst here: the kernel needs FW_LOADER_COMPRESS_ZSTD.
+# --- GPU firmware (Adreno) ---
+# The Adreno sqe/zap blobs ship .zst here: the kernel needs FW_LOADER_COMPRESS_ZSTD.
 linux-firmware-qcom
 
 # --- audio ---

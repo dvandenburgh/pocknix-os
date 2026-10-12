@@ -1,6 +1,5 @@
 # scx-scheds - sched_ext schedulers; scx_lavd is the default CPU scheduler (pocknix-lavd.service).
-# Shadows the base's copy by repo order, so a newer base scx never reaches devices while this
-# package is published: retire it once an upstream release carries the series.
+# Shadows the base's copy by repo order: a newer base scx never reaches devices while published.
 pkgname=scx-scheds
 pkgver=1.1.3
 pkgrel=1

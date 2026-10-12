@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ShadowBlip/InputPlumber/main/rootfs/usr/share/inputplumber/schema/composite_device_v1.json
+# InputPlumber composite device for the Retroid Pocket Flip 2: the RP5's MCU and phys
+# path, but no physical back button, so its own capability map carries the Guide+A ->
+# QuickAccess chord (rpflip2-gamepad.yaml); it resolves on the source side, Steam sees a
+# stock Deck pad.
+version: 1
+kind: CompositeDevice
+name: Retroid Pocket Flip 2
+
+matches:
+  - udev:
+      sys_path: /sys/firmware/devicetree/base
+      attributes:
+        - name: model
+          value: Retroid Pocket Flip2
+  - udev:
+      sys_path: /sys/firmware/devicetree/base
+      attributes:
+        - name: model
+          value: Retroid Pocket Flip2 Visionox
+
+single_source: false
+
+source_devices:
+  - group: gamepad
+    evdev:
+      phys_path: retroid-pocket-gamepad/input0
+      handler: event*
+    capability_map_id: retroid_rpflip2
+
+options:
+  auto_manage: true
+
+target_devices:
+  - deck-uhid
+  - keyboard

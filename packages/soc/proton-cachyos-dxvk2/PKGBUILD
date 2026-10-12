@@ -1,6 +1,6 @@
 # proton-cachyos-dxvk2 — proton-cachyos with DXVK pinned to 2.7, for a6xx GPUs that lack
-# storageBuffer8BitAccess and so are rejected by every DXVK 3 tool. See dev/steam.md
-# "The sm8250 DXVK-3 wall", and proton-cachyos's header for the shared packaging rules.
+# storageBuffer8BitAccess and so are rejected by every DXVK 3 tool. proton-cachyos's header
+# carries the shared packaging rules.
 #
 # Publish to the sm8250 repo ONLY: on sm8550 the replaces= would downgrade DXVK for a GPU
 # that supports 3.x. The donor must stay SAME-VENDOR — arm64ec dxvk dlls do not transplant

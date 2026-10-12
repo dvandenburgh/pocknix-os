@@ -6,7 +6,7 @@ pkgrel=6
 pkgdesc="Locked/rolling base mode switch and desktop updater for pocknix"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('MIT')
+license=('GPL-2.0-or-later')
 # base-lock rides along so `pocknix-base status` can always name the snapshot
 depends=('pacman' 'pocknix-base-lock')
 install=pocknix-base.install

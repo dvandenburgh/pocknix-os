@@ -7,7 +7,7 @@ pkgrel=3
 pkgdesc="pocknix optional layer: Steam gamescope session, FEX x86 runtime, Decky"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
-license=('GPL2')
+license=('GPL-2.0-or-later')
 depends=('pocknix-steam'
          'gamescope'            # must be ours: vanilla black-screens rotated panels
          'mangohud'             # must be ours: vanilla has no Adreno sysfs reader

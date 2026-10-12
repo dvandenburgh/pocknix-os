@@ -17,8 +17,8 @@ _format_lock = threading.Lock()  # one format at a time; a second RPC fails fast
 
 
 def _init_ns_mountpoint(part):
-    # The loader lives in a private mount namespace (pocknix-decky-run), so our own
-    # mountinfo misses automounts that happened after loader start; ask for PID 1's view.
+    # Ask PID 1: the loader runs in its own mount namespace (pocknix-decky-run), and the host's
+    # mount table is the authoritative one for what the UI reports.
     proc = run_cmd(["findmnt", "-N", "1", "-fno", "TARGET", part], timeout=10)
     if proc is None or proc.returncode != 0:
         return ""
@@ -26,7 +26,7 @@ def _init_ns_mountpoint(part):
 
 
 def _boots_from(disk):
-    # PID 1's view again (private namespace), and btrfs SOURCE carries a [/subvol] suffix
+    # PID 1's view again (own namespace), and btrfs SOURCE carries a [/subvol] suffix
     # lsblk cannot resolve. /flash counts: a card can hold boot without hosting /.
     for target in ("/", "/flash"):
         proc = run_cmd(["findmnt", "-N", "1", "-fno", "SOURCE", target], timeout=10)
@@ -47,8 +47,7 @@ def detect_sdcard():
     absent = {"present": False}
     if not Path(SD_DISK).exists():
         return absent
-    # FSTYPE/LABEL come from the udev db on the shared /run tmpfs, so they stay current
-    # inside the namespace even though the mount table doesn't.
+    # FSTYPE/LABEL come from the udev db on the shared /run tmpfs, so lsblk reads them current here.
     proc = run_cmd(["lsblk", "-J", "-b", "-o", "NAME,SIZE,FSTYPE,LABEL", SD_DISK], timeout=10)
     if proc is None or proc.returncode != 0:
         return absent

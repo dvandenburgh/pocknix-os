@@ -1,7 +1,7 @@
 #!/bin/bash
 # pocknix-expand-root — on first boot, grow the root partition to fill the whole card, then
 # grow the root filesystem online (btrfs on current images; ext4 on pre-snapshot installs).
-# The SD image is built as rootfs + SD_SLACK_MIB (a few GB), so flashed to a bigger card it
+# The SD image is built as rootfs + SD_SLACK_MIB of slack, so flashed to a bigger card it
 # leaves the rest unallocated; without this the root fills up fast (e.g. mid-Steam-download).
 # Runs once (guarded by a flag); idempotent + safe to re-run.
 set -euo pipefail

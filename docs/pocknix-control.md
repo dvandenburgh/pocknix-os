@@ -10,9 +10,9 @@ tapping the icons:
 
 | Tab | What it does |
 |---|---|
-| 🎮 Games | Per-game performance/audio tweaks |
+| 🎮 Games | Fan curve, CPU scheduler and game tweaks, globally or per game |
 | 📚 Library | Add non-Steam games, share your files over the network, format a microSD card for Steam |
-| ⚡ Power | Fan curve and CPU scheduler |
+| 🕹️ Controller | Stick and trigger calibration, stick lights |
 | 🔄 Updater | Check for and install system updates, roll back the last update |
 
 Settings save automatically as you change them.
@@ -26,8 +26,22 @@ Every installed Steam game is listed, and so are non-Steam shortcuts (marked `·
 If you open the menu while a game is running, that game is preselected. To override the
 defaults for one game, select it and flip **Use Per-Game Settings** on.
 
-Changes apply on the **next game launch**.
+Two sections follow: **Performance** (applies live) and **Game Tweaks** (applies on the
+**next game launch**, except where noted). A game's settings are also reachable from its
+library page: **Manage → Pocknix Settings**.
 
+**Performance**
+
+- **Fan Curve**: **Quiet**, **Moderate**, or **Performance**. Applies live, no restart.
+- **CPU Scheduler**: **Autopilot** (the `scx_lavd` default - adapts to load on the fly) or
+  **Performance** (keeps the CPU aggressive at the cost of battery and heat).
+
+Per game, either can stay on the global value.
+
+**Game Tweaks**
+
+- **Proton Version** (per game only): the compatibility tool Steam launches the game with,
+  the same setting as the game's **Properties → Compatibility**.
 - **FEX Preset**: **Default**, **Fast**, or **Compatible**. Trades x86 translation accuracy
   for speed. Try **Fast** for more FPS; switch to **Compatible** if a game misbehaves
   (crashes, glitched physics, odd audio).
@@ -41,6 +55,18 @@ Changes apply on the **next game launch**.
   While it is off, touch is off everywhere, the Steam overlay and on-screen keyboard included;
   use the controls there. Unlike the other tweaks this one takes effect immediately, even
   mid-game, and it works for every game Steam launches, native and emulators included.
+- **Mesa Version** (per game only): run the game on a different Turnip (GPU driver) build
+  than the system default, when more than one is installed.
+- **Disable Xalia**: on by default. Xalia is Proton's controller-navigation helper and costs
+  CPU in every game; turn this off only for a game that needs it.
+- **Environment Variables**: extra variables for the game's launch, the same as a Steam
+  launch option.
+
+### Sharing a game's config
+
+With per-game settings on, the **Config** section exports the game's settings to a
+`<name>.pocknix.json` file, and imports one, so a tuned setup can be passed to other Pocknix
+users. Importing overwrites that game's settings.
 
 ## Library
 
@@ -76,8 +102,8 @@ the setting survives reboots.
 
 Two shares appear on the network, both as **Guest** with no password: `deck` (your home folder,
 including `Emulation/` and every emulator's own firmware directory) and `sdcard` (the card
-slot). macOS and Linux find the device by name in their file manager's network view; on Windows
-use `\\pocknix`.
+slot). macOS and Linux find the device by name in their file manager's network view, or open
+`smb://pocknix.local`; on Windows type `\\pocknix.local` into Explorer's address bar.
 
 > **There is no password.** Anyone on the same network can read and write everything in your
 > home folder, Steam login and SSH keys included. Sharing only answers on private home-network
@@ -104,11 +130,16 @@ The card is formatted the same way a Steam Deck would (ext4 with casefolding), m
 automatically, and gets added to Steam as a library folder - Steam offers it as an install
 target right away, and cards formatted here also work in a real Steam Deck (and vice versa).
 
-## Power
+## Controller
 
-- **Fan Curve**: **Quiet**, **Moderate**, or **Performance**. Applies live, no restart.
-- **CPU Scheduler**: **Autopilot** (the `scx_lavd` default - adapts to load on the fly) or
-  **Performance** (keeps the CPU aggressive at the cost of battery and heat).
+- **Calibration**: **Calibrate Controller**, then **Start**, walks each stick and trigger to its edge and back, then
+  shows live readings to check (a full push reads 100 at the edge, 0 at rest). **Save** keeps
+  it across reboots, **Discard** drops it, **Reset to Defaults** returns to the driver's
+  values. The controller is paused for Steam while it runs, so **Cancel** works by touch.
+  Boards whose gamepad driver cannot be calibrated say so.
+- **Stick Lights** (boards with stick LEDs): **Enable**, **Link Left & Right** to give both
+  sticks one colour, **Side Lights** to match the side lighting to the sticks, then colour and
+  brightness per stick.
 
 ## Updater
 
@@ -147,7 +178,5 @@ Notes:
 - The section also shows free storage. If the card is nearly full, snapshots are skipped
   (updates still install - you just would not be able to undo that one).
 - The QAM always rolls back the **last** update only. To go further back, or if game mode
-  itself is broken, use the **Pocknix Rollback** shortcut in desktop mode or the terminal -
+  itself is broken, use **Pocknix Tools** in desktop mode (*Roll back the last update...*) or the terminal -
   see [snapshots.md](snapshots.md) for those and for how it all works underneath.
-- Older pocknix installs (before the snapshot feature) do not show the Rollback section at
-  all; a reflash with a current image is what enables it.

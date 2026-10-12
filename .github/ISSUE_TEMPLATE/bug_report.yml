@@ -13,6 +13,8 @@ body:
         - AYN Odin 2
         - AYN Odin 2 Mini
         - AYN Odin 2 Portal
+        - AYN Thor
+        - Retroid Pocket Nova
         - Other / not device-specific
     validations:
       required: true
@@ -22,8 +24,8 @@ body:
       label: Pocknix version
       description: >
         The release you installed, or the version of the affected package if you
-        know it (`pacman -Q pocknix-steam`, `pacman -Q linux-pocknix`, ...).
-      placeholder: "v0.3, or pocknix-steam 0.1.0-56"
+        know it (`pacman -Q pocknix-steam`, `pacman -Qs linux-pocknix`, ...).
+      placeholder: "the release tag, or the output of pacman -Q <package>"
     validations:
       required: true
   - type: dropdown
