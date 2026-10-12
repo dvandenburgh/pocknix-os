@@ -1,9 +1,10 @@
-# cemu — Wii U emulator, built from source at a pinned commit. Upstream's releases are
-# x86-only, but the tree carries a native AArch64 recompiler backend that no release includes yet.
+# cemu — Wii U emulator, built from upstream main at a pinned commit: the releases are x86-only,
+# the AArch64 recompiler backend only exists on main. Bump = move _commit to a newer main commit
+# and set pkgver to <last release>.<commit date>.<short sha>, which vercmp orders by date.
 pkgname=cemu
-pkgver=2.6.rocknix.6f6c129
-pkgrel=3
-_commit=6f6c1299e29fa6e1062ae283a035b4ef787cc397
+pkgver=2.6.20261009.aa20e2f
+pkgrel=1
+_commit=aa20e2f86e93c9f625f048dbd2b6b993f1973180
 pkgdesc="Cemu — Wii U emulator (native aarch64 build with the ARM64 recompiler)"
 arch=('aarch64')
 url="https://cemu.info"
