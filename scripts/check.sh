@@ -374,6 +374,18 @@ for _f in "${POCKNIX_ROOT}"/devices/*/packages/pocknix-bsp-*/PKGBUILD; do
 done
 if [ -z "${_drift}" ]; then note "BSP _device_conf copies" "identical"
 else note "BSP _device_conf copies" "differ from ${SOC}'s:${_drift}"; fail=1; fi
+
+# The AppImage packages each carry _appimage_icon for the same reason; a fix to one copy (the
+# binfmt marker, a new runtime) has to reach every AppImage package.
+appimage_icon_body() { sed -n '/^_appimage_icon()/,/^}/p' "$1"; }
+_ref=""; _drift=""
+for _f in $(grep -l '^_appimage_icon()' "${POCKNIX_ROOT}"/packages/*/*/PKGBUILD); do
+  [ -n "${_ref}" ] || _ref="$(appimage_icon_body "${_f}")"
+  [ "$(appimage_icon_body "${_f}")" = "${_ref}" ] || _drift="${_drift} ${_f#"${POCKNIX_ROOT}"/}"
+done
+_raw="$(grep -l -- '--appimage-extract' "${POCKNIX_ROOT}"/packages/*/*/PKGBUILD | xargs -r grep -L '^_appimage_icon()' || true)"
+if [ -z "${_drift}${_raw}" ]; then note "AppImage _appimage_icon copies" "identical"
+else note "AppImage _appimage_icon copies" "differ:${_drift}${_raw:+ (runs --appimage-extract without it: ${_raw//${POCKNIX_ROOT}\//})}"; fail=1; fi
 # Self-test: a line added inside the body must change what the comparison sees.
 if [ "$(awk '{ print } /^_device_conf\(\)/ { print "  : drifted" }' "${_bsp}/PKGBUILD" |
         device_conf_body /dev/stdin)" != "${_ref}" ]; then note "BSP _device_conf self-test" "ok"

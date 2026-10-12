@@ -3,7 +3,7 @@
 # RPCS3/rpcs3-binaries-linux-arm64, one release per commit tagged build-<sha>.
 pkgname=rpcs3-bin
 pkgver=0.0.43.20210
-pkgrel=1
+pkgrel=1.1
 pkgdesc="RPCS3 — PS3 emulator, official aarch64 AppImage (vendored)"
 arch=('aarch64')
 url="https://rpcs3.net"
@@ -18,21 +18,31 @@ sha256sums=('3e306fec3eb8fc3fdb991373a6b9d5e197439ff350d8483c36f840e61887cb1f'
             'SKIP')
 noextract=("rpcs3-${pkgver}.AppImage")
 
+# The icon comes from the AppImage's own --appimage-extract (no FUSE needed). Run as is it would
+# fail on an x86 build host: the chroot reaches aarch64 code through qemu's binfmt rule, which
+# needs ELF header bytes 8-10 zero, and an AppImage keeps its "AI\2" marker there. A copy with
+# the marker cleared runs; the runtime never reads it back.
+_appimage_icon() {  # <AppImage> <out>: the file its .DirIcon resolves to
+  local run="${srcdir}/.appimage-run" root=squashfs-root t=.DirIcon l n=0
+  cp "$1" "${run}"
+  printf '\0\0\0' | dd of="${run}" bs=1 seek=8 conv=notrunc status=none
+  chmod u+x "${run}"
+  rm -rf squashfs-root AppDir
+  "${run}" --appimage-extract "${t}" >/dev/null 2>&1 || true
+  [ -d AppDir ] && root=AppDir
+  while [ -L "${root}/${t}" ] && [ "${n}" -lt 8 ]; do
+    l="$(readlink "${root}/${t}")"
+    case "${l}" in /*) t="${l#/}" ;; *) t="$(dirname "${t}")/${l}"; t="${t#./}" ;; esac
+    "${run}" --appimage-extract "${t}" >/dev/null 2>&1 || true
+    n=$((n + 1))
+  done
+  rm -f "${run}"
+  cp -L "${root}/${t}" "$2" && [ -s "$2" ]   # fails the build if the icon vanished upstream
+}
+
 prepare() {
   cd "${srcdir}"
-  chmod u+x "rpcs3-${pkgver}.AppImage"
-  rm -rf squashfs-root AppDir
-  "./rpcs3-${pkgver}.AppImage" --appimage-extract ".DirIcon" >/dev/null 2>&1 || true
-  local root=squashfs-root; [ -d AppDir ] && root=AppDir
-  local tgt; tgt="$(readlink "${root}/.DirIcon" 2>/dev/null || true)"
-  while [ -n "${tgt}" ]; do
-    "./rpcs3-${pkgver}.AppImage" --appimage-extract "${tgt}" >/dev/null 2>&1 || true
-    local nxt; nxt="$(readlink "${root}/${tgt}" 2>/dev/null || true)"
-    [ -n "${nxt}" ] || break
-    tgt="${nxt}"
-  done
-  cp -L "${root}/${tgt:-.DirIcon}" "${srcdir}/icon.svg"
-  [ -s "${srcdir}/icon.svg" ]  # fail the build if the icon vanished upstream
+  _appimage_icon "rpcs3-${pkgver}.AppImage" "${srcdir}/icon.svg"
 }
 
 package() {

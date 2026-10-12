@@ -3,7 +3,7 @@
 # vendored on; taking a newer build means bumping the date AND clearing the srccache copy.
 pkgname=vita3k-bin
 pkgver=0.2026.10.09
-pkgrel=1
+pkgrel=1.1
 pkgdesc="Vita3K — PS Vita emulator, native aarch64 AppImage (vendored, rolling upstream)"
 arch=('aarch64')
 url="https://vita3k.org"
@@ -18,26 +18,36 @@ sha256sums=('2cf6944c58b024e5fd917c06119b4f0634b141ec5d86a8bd061b52be142ec8cd'
             'SKIP')
 noextract=("Vita3K-${pkgver}.AppImage")
 
+# The icon comes from the AppImage's own --appimage-extract (no FUSE needed). Run as is it would
+# fail on an x86 build host: the chroot reaches aarch64 code through qemu's binfmt rule, which
+# needs ELF header bytes 8-10 zero, and an AppImage keeps its "AI\2" marker there. A copy with
+# the marker cleared runs; the runtime never reads it back.
+_appimage_icon() {  # <AppImage> <out>: the file its .DirIcon resolves to
+  local run="${srcdir}/.appimage-run" root=squashfs-root t=.DirIcon l n=0
+  cp "$1" "${run}"
+  printf '\0\0\0' | dd of="${run}" bs=1 seek=8 conv=notrunc status=none
+  chmod u+x "${run}"
+  rm -rf squashfs-root AppDir
+  "${run}" --appimage-extract "${t}" >/dev/null 2>&1 || true
+  [ -d AppDir ] && root=AppDir
+  while [ -L "${root}/${t}" ] && [ "${n}" -lt 8 ]; do
+    l="$(readlink "${root}/${t}")"
+    case "${l}" in /*) t="${l#/}" ;; *) t="$(dirname "${t}")/${l}"; t="${t#./}" ;; esac
+    "${run}" --appimage-extract "${t}" >/dev/null 2>&1 || true
+    n=$((n + 1))
+  done
+  rm -f "${run}"
+  cp -L "${root}/${t}" "$2" && [ -s "$2" ]   # fails the build if the icon vanished upstream
+}
+
 prepare() {
   cd "${srcdir}"
-  chmod u+x "Vita3K-${pkgver}.AppImage"
-  rm -rf squashfs-root AppDir
-  "./Vita3K-${pkgver}.AppImage" --appimage-extract ".DirIcon" >/dev/null 2>&1 || true
-  local root=squashfs-root; [ -d AppDir ] && root=AppDir
-  local tgt; tgt="$(readlink "${root}/.DirIcon" 2>/dev/null || true)"
-  while [ -n "${tgt}" ]; do
-    "./Vita3K-${pkgver}.AppImage" --appimage-extract "${tgt}" >/dev/null 2>&1 || true
-    local nxt; nxt="$(readlink "${root}/${tgt}" 2>/dev/null || true)"
-    [ -n "${nxt}" ] || break
-    tgt="${nxt}"
-  done
-  cp -L "${root}/${tgt:-.DirIcon}" "${srcdir}/icon.png"
-  [ -s "${srcdir}/icon.png" ]  # fail the build if the icon vanished upstream
+  _appimage_icon "Vita3K-${pkgver}.AppImage" "${srcdir}/icon.svg"
 }
 
 package() {
   install -Dm755 "${srcdir}/Vita3K-${pkgver}.AppImage" \
     "${pkgdir}/opt/pocknix/emulators/vita3k/Vita3K.AppImage"
-  install -Dm644 "${srcdir}/icon.png" "${pkgdir}/opt/pocknix/emulators/vita3k/icon.png"
+  install -Dm644 "${srcdir}/icon.svg" "${pkgdir}/opt/pocknix/emulators/vita3k/icon.svg"
   install -Dm644 "${srcdir}/pocknix-vita3k.desktop" "${pkgdir}/usr/share/applications/pocknix-vita3k.desktop"
 }
