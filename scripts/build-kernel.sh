@@ -57,7 +57,10 @@ inputs_hash() {
   {
     printf '%s\n' "${KERNEL_VERSION}" "${KERNEL_SOURCE_SHA256}" "${KERNEL_CMDLINE}" \
       "${DEVICE_HOSTNAME}" "${BOOTLOADER}" "${MKBOOTIMG_COMMIT}" "$("${CROSS}gcc" --version | head -n 1)"
-    cd "${POCKNIX_ROOT}" && find "kernel/${SOC}" kernel/common scripts/build-kernel.sh -type f -print0 \
+    # kernel.conf also carries the package's release and legacy names, which only repackage the
+    # same kernel (build-packages.sh): a bump there must not recompile it.
+    cd "${POCKNIX_ROOT}" && grep -vE '^: "\$\{KERNEL_(PKGREL|LEGACY_NAMES):=' "kernel/${SOC}/kernel.conf"
+    find "kernel/${SOC}" kernel/common scripts/build-kernel.sh -type f ! -path "kernel/${SOC}/kernel.conf" -print0 \
       | sort -z | xargs -0 sha256sum
   } | sha256sum | cut -d' ' -f1
 }
