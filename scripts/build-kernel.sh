@@ -185,6 +185,12 @@ configure() {
   #  - default cpufreq governor performance -> schedutil: LAVD does its own per-core DVFS
   #    via scx_bpf_cpuperf_set(), which only schedutil honours; under performance the
   #    clocks pin to max and the thermal headroom is lost. Still runtime-overridable.
+  #  - HZ 250 -> 1000: sched_ext only ends a slice on the tick or on a kick, and scx_lavd
+  #    preempts mostly by zeroing the running task's slice (its "yield-based" preemption) and
+  #    caps a slice while a pinned task waits (--pinned-slice-us 500) in ops.tick. Its slices
+  #    run from half a millisecond to five, so a 4 ms tick let a waiting game thread sit up to
+  #    4 ms behind a half-millisecond slice; 1 ms bounds it. NO_HZ_IDLE keeps idle CPUs
+  #    tickless, so only busy ones pay.
   #  - MMC_SDHCI_MSM_DOWNSTREAM: the Qualcomm downstream sdhci-msm driver (patches
   #    0210-0212). The sm8550 family dts rebind sdhc_2 (microSD) to it
   #    ("qcom,sdhci-msm-v5-downstream") for UHS-I SDR104: the upstream driver has an
@@ -234,7 +240,10 @@ configure() {
     --enable PERF_EVENTS \
     --enable BPF_EVENTS \
     --disable CPU_FREQ_DEFAULT_GOV_PERFORMANCE \
-    --enable CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
+    --enable CPU_FREQ_DEFAULT_GOV_SCHEDUTIL \
+    --disable HZ_250 \
+    --enable HZ_1000 \
+    --set-val HZ 1000
 
   # Per-SoC deltas and assertions live beside kernel.conf, where make sync leaves them alone.
   local delta="${KERNEL_DIR}/config-delta" assert="${KERNEL_DIR}/config-assert"
@@ -260,7 +269,7 @@ configure() {
   # shows up on-device as pocknix-lavd's ConditionPathExists quietly skipping.
   local sym
   for sym in FUNCTION_TRACER DYNAMIC_FTRACE DYNAMIC_FTRACE_WITH_DIRECT_CALLS \
-             DEBUG_INFO_BTF SCHED_CLASS_EXT KALLSYMS_ALL; do
+             DEBUG_INFO_BTF SCHED_CLASS_EXT KALLSYMS_ALL HZ_1000; do
     grep -q "^CONFIG_${sym}=y" "${KSRC}/.config" \
       || die "kernel config: CONFIG_${sym} did not resolve to =y (scx_lavd would not run — check the dependency olddefconfig dropped it for)"
   done
