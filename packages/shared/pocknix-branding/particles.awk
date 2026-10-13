@@ -77,24 +77,25 @@ BEGIN {
         close(file)
     }
 }
-# logo.svg's handheld under <transform>. The D-pad and the left stick trade centres when
-# stick_top is set; the face buttons and the right stick never move.
+# logo.svg's handheld under <transform>. Each side's controls share a column centred between the
+# body's edge and the screen; the D-pad and the left stick trade rows when stick_top is set, and
+# the face buttons and the right stick never move.
 function handheld(transform, stick_top, file,    dx, dy, sx, sy) {
-    dx = 346.8; dy = 475; sx = 373.7; sy = 557.5
-    if (stick_top) { dx = 373.7; dy = 557.5; sx = 346.8; sy = 475 }
+    dx = 346; dy = 475; sx = 346; sy = 557.5
+    if (stick_top) { dy = 557.5; sy = 475 }
     printf "  <g transform=\"%s\">\n", transform > file
     print "    <rect class=\"hand\" x=\"286.5\" y=\"410.5\" width=\"452\" height=\"205\" rx=\"78.5\" stroke-width=\"7\"/>" > file
     print "    <rect class=\"hand\" x=\"404.5\" y=\"449.5\" width=\"217\" height=\"127\" rx=\"10.5\" stroke-width=\"5\" fill=\"#fff\" fill-opacity=\"0.05\"/>" > file
     printf "    <rect class=\"key\" x=\"%.1f\" y=\"%.1f\" width=\"46\" height=\"14\" rx=\"2.5\"/>\n", dx - 23, dy - 7 > file
     printf "    <rect class=\"key\" x=\"%.1f\" y=\"%.1f\" width=\"14\" height=\"46\" rx=\"2.5\"/>\n", dx - 7, dy - 23 > file
-    print "    <circle class=\"key\" cx=\"678\" cy=\"456.5\" r=\"7\"/>" > file
-    print "    <circle class=\"key\" cx=\"659.9\" cy=\"474.7\" r=\"7\"/>" > file
-    print "    <circle class=\"key\" cx=\"696.1\" cy=\"474.6\" r=\"7\"/>" > file
-    print "    <circle class=\"key\" cx=\"678.1\" cy=\"492.7\" r=\"7\"/>" > file
+    print "    <circle class=\"key\" cx=\"679\" cy=\"456.5\" r=\"7\"/>" > file
+    print "    <circle class=\"key\" cx=\"660.9\" cy=\"474.7\" r=\"7\"/>" > file
+    print "    <circle class=\"key\" cx=\"697.1\" cy=\"474.6\" r=\"7\"/>" > file
+    print "    <circle class=\"key\" cx=\"679.1\" cy=\"492.7\" r=\"7\"/>" > file
     printf "    <circle class=\"hand\" cx=\"%.1f\" cy=\"%.1f\" r=\"18.7\" stroke-width=\"5\"/>\n", sx, sy > file
-    print "    <circle class=\"hand\" cx=\"650.9\" cy=\"557.5\" r=\"18.7\" stroke-width=\"5\"/>" > file
+    print "    <circle class=\"hand\" cx=\"679\" cy=\"557.5\" r=\"18.7\" stroke-width=\"5\"/>" > file
     printf "    <circle class=\"key\" cx=\"%.1f\" cy=\"%.1f\" r=\"5\"/>\n", sx, sy > file
-    print "    <circle class=\"key\" cx=\"650.9\" cy=\"557.5\" r=\"5\"/>" > file
+    print "    <circle class=\"key\" cx=\"679\" cy=\"557.5\" r=\"5\"/>" > file
     print "  </g>" > file
 }
 function px(t, r) { return cx + a * cos(t) * cos(r) - b * sin(t) * sin(r) }
