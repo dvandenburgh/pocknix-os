@@ -57,7 +57,7 @@ progress_pkgs_init() {
   # qemu, minutes for the lot), so the bar counts them too.
   PKG_DIRS="$(local_artifacts | cut -d'|' -f2 | sort -u | wc -l)"
   while IFS='|' read -r _ d _ _ a; do
-    n="${d##*/}"
+    n="$(pkg_name "${d}")"   # the name progress_pkg and the history key on
     [ "${a}" = any ] && [ "${kind[${n}]:-}" != native ] && kind[${n}]=any || kind[${n}]=native
   done < <(pending_artifacts)
   for n in "${!kind[@]}"; do

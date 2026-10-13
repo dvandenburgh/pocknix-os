@@ -173,16 +173,18 @@ seed_has_work() {  # a package missing from build/localrepo, or older than its d
 # packages with uncommitted changes, and the kernel package (never published).
 estimate_packages() {
   local -A kind=()
-  local d p a n e g base seed_ahead=0 changed="" i
+  local d p v a n e g base seed_ahead=0 changed="" i
   for ((i = 0; i < ${#STEPS[@]}; i++)); do
     if [ "${STEPS[i]}" = seed ] && [ "${DONE_ARR[i]:-0}" != 1 ]; then seed_ahead=1; fi
   done
   [ "${seed_ahead}" = 0 ] \
     || changed="$(git -c safe.directory='*' -C "${POCKNIX_ROOT}" status --porcelain -- packages devices 2>/dev/null || true)"
-  while IFS='|' read -r _ d p _ a; do
-    if [ "${seed_ahead}" = 1 ] && [ "${p}" != "${KERNEL_PKG}" ] \
+  while IFS='|' read -r _ d p v a; do
+    # Seed only replaces what is published at this exact version: never the kernel, a dir with
+    # uncommitted changes, or a fork's own release (pkgrel N.M on top of upstream's N).
+    if [ "${seed_ahead}" = 1 ] && [ "${p}" != "${KERNEL_PKG}" ] && [[ "${v##*-}" != *.* ]] \
        && ! grep -qF " ${d#"${POCKNIX_ROOT}"/}/" <<< "${changed}"; then continue; fi
-    n="${d##*/}"
+    n="$(pkg_name "${d}")"   # the history keys on it (the kernel recipe's dir is not its name)
     if [ "${a}" = any ] && [ "${kind[${n}]:-}" != native ]; then kind[${n}]=any; else kind[${n}]=native; fi
   done < <(pending_artifacts)
   # The steady cost of the step: chroot upgrade and a skip check per package (more the first
