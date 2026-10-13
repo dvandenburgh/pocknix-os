@@ -182,6 +182,11 @@ setup_chroot() {
   fi
 }
 
+# Packages that also build from the SoC's profile (build_one stages ./staged/kernel-cmdline
+# into them), so a profile edit must rebuild them like an edit to their own dir. pocknix.conf
+# counts too: sm8250's root= is its SD_ROOT_PARTUUID.
+profile_pkg() { case "$1" in "${DEVICE_BSP_PKG}"|"pocknix-bootloader-${SOC}") return 0 ;; esac; return 1; }
+
 build_one() {
   local pkgdir="$1" force="${2:-0}" name; name="$(basename "${pkgdir}")"
   local repo_dir repo_db repo_mount
@@ -207,6 +212,10 @@ build_one() {
       # Matched without the extension: seeded and older builds are .xz, new ones .zst.
       f="$(artifact_file "${repo_dir}" "$(basename "${p%.pkg.tar.*}")")" || f=""
       if [ -z "${f}" ] || [ -n "$(find "${pkgdir}" -newer "${f}" -print -quit)" ]; then
+        uptodate=0; break
+      fi
+      if profile_pkg "${name}" && { [ "${DEVICE_DIR}/profile.conf" -nt "${f}" ] ||
+           [ "${CONFIG_DIR}/pocknix.conf" -nt "${f}" ]; }; then
         uptodate=0; break
       fi
       case "${name}" in linux-pocknix-*)
@@ -250,39 +259,12 @@ build_one() {
     fi
     cp -a "${kout}" "${BROOT}/build/${name}/staged"
   ;; esac
-  # Drift guard: a device BSP's committed kernel-cmdline must byte-match its own device
-  # profile's KERNEL_CMDLINE (the boot image is built from the profile; the BSP file feeds
-  # the on-device /flash/KERNEL rebuild — they must agree). The device is derived from the
-  # package's path (devices/<dev>/packages/<pkg>).
-  if [ -f "${pkgdir}/root/usr/lib/pocknix/kernel-cmdline" ]; then
-    local devdir want_cmdline
-    devdir="$(dirname "$(dirname "${pkgdir%/}")")"
-    if [ -f "${devdir}/profile.conf" ]; then
-      want_cmdline="$(profile_get "${devdir}" KERNEL_CMDLINE)"
-      if [ "$(cat "${pkgdir}/root/usr/lib/pocknix/kernel-cmdline")" != "${want_cmdline}" ]; then
-        die "${name}: kernel-cmdline drifted from ${devdir}/profile.conf KERNEL_CMDLINE —
-  profile: ${want_cmdline}
-  package: $(cat "${pkgdir}/root/usr/lib/pocknix/kernel-cmdline")
-Update one to match the other."
-      fi
-    fi
+  # The cmdline is written once, in the profile: the qcom-abl BSP installs it for the on-device
+  # boot image rebuild, the arm-efi bootloader renders it into grub.cfg.
+  if profile_pkg "${name}"; then
+    mkdir -p "${BROOT}/build/${name}/staged"
+    printf '%s\n' "${KERNEL_CMDLINE}" > "${BROOT}/build/${name}/staged/kernel-cmdline"
   fi
-  # Drift guard (arm-efi): the SoC bootloader package's grub.cfg carries the RUNTIME kernel
-  # cmdline (its "linux /KERNEL <cmdline>" line); the profile's KERNEL_CMDLINE is what the
-  # build records and docs promise. They must byte-match, same contract as kernel-cmdline
-  # above. Only checked when building the current SoC's own bootloader package.
-  case "${name}" in pocknix-bootloader-*)
-    if [ "${name#pocknix-bootloader-}" = "${SOC}" ] && [ -f "${pkgdir}/grub.cfg" ]; then
-      local grub_cmdline
-      grub_cmdline="$(sed -n 's|^[[:space:]]*linux /KERNEL ||p' "${pkgdir}/grub.cfg" | head -1)"
-      if [ "${grub_cmdline}" != "${KERNEL_CMDLINE}" ]; then
-        die "${name}: grub.cfg cmdline drifted from the ${SOC} profile's KERNEL_CMDLINE —
-  profile: ${KERNEL_CMDLINE}
-  grub.cfg: ${grub_cmdline}
-Update one to match the other."
-      fi
-    fi
-  ;; esac
   # Persistent source cache: SRCDEST lives OUTSIDE the per-package build dir (which is wiped
   # every run), so makepkg downloads each source ONCE and reuses it. File sources (e.g.
   # fex-emu's pinned x86 sysroot .pkg.tar.zst, ~70 MB) are kept by name; the git source becomes

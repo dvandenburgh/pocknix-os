@@ -267,6 +267,10 @@ check it, which is the single biggest reason a PR stalls.
   a row with its reason in `scripts/shared-conflicts.allow`
   (`<package dir> :: <field>=<entry> :: <reason>`). `make check` fails on an entry without a row
   and on a row whose entry is gone.
+- **A device.conf consumer's fallback** (`${POCKNIX_<key>:-<value>}`) is the RP6 value for a
+  key devices/README.md marks required and 0 or empty for an optional one; an exception gets a
+  row with its reason in `scripts/fallbacks.allow` (`<key> :: <reason>`). `make check` fails on
+  a fallback that breaks the rule without a row and on a row that matches no fallback.
 - **Shared code does not name a chip.** A code line outside `devices/`, `kernel/`, the family
   docs and `packages/soc/<name>-<soc>/` that names an SoC (`sm8550`) handles today's chips and
   mishandles the next one. Make it chip-neutral (read device.conf or the build's `SOC`); a
@@ -310,8 +314,8 @@ works against the locked base.
   whose number or path IS the mechanism goes in `scripts/check-comments.allow`
   (`<glob> :: <regex>` or `<glob> :: <kind> :: <regex>`, one per line).
 - **CI must be green.** The `lint` job runs `bash -n` over every script and `PKGBUILD`,
-  resolves each device profile chain, checks that every `kernel-cmdline` file still
-  matches its `profile.conf`, and checks the docs against the tree (`scripts/check-docs.sh`:
+  resolves each device profile chain, checks that the kernel cmdline lives only in
+  `profile.conf`, and checks the docs against the tree (`scripts/check-docs.sh`:
   every path and `make` target they name exists, layout blocks match their dirs, structural
   READMEs carry no versions or counts; a line that must keep one carries
   `docs-check: allow`) and the code comments against the tree (`scripts/check-comments.py`,

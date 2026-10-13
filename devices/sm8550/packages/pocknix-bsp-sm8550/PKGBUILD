@@ -51,6 +51,8 @@ package() {
   # root/ is the install tree. makepkg's umask 022 turns git's exec bit into 755/644, and
   # files created under fakeroot are root-owned; -d keeps the UCM symlinks as links.
   cp -dr "${startdir}/root/." "${pkgdir}/"
+  # The on-device boot image rebuild bakes this in; build-packages.sh stages it from the profile.
+  install -Dm644 "${startdir}/staged/kernel-cmdline" "${pkgdir}/usr/lib/pocknix/kernel-cmdline"
   # boards/ also comes from startdir (build-packages.sh copies the whole package dir);
   # models is not installed, family.conf is.
   local b

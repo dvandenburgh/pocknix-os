@@ -106,7 +106,7 @@ fi
 # clients are offered the formats gamescope can sample as well as those a plane scans out,
 # which HDR swapchains rely on, and the Steam client (which inherits gamescope's environment)
 # is told the session supports HDR, so its display settings offer the HDR switch.
-GS_ENV=(GAMESCOPE_INTERNAL_DEVICE_ID="${POCKNIX_DEVICE:-}")
+GS_ENV=(GAMESCOPE_INTERNAL_DEVICE_ID="${POCKNIX_DEVICE:-rp6}")
 GS_HDR=()
 case "${POCKNIX_PANEL_HDR_NITS:-0}" in
   ''|0|*[!0-9]*) ;;

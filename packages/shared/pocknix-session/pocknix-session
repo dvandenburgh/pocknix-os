@@ -75,12 +75,37 @@ run() {  # <launcher>
   sweep TERM
 }
 
+# Plasma 6 runs kwin as a user service, outside our scope, and it outlives its launcher by
+# seconds: the next compositor would start without DRM master and modeset into a black panel.
+# kwin is PartOf graphical-session.target, but stopping the target only queues kwin's stop.
+release_display() {
+  local holder i
+  timeout 15 systemctl --user stop graphical-session.target \
+    || echo "pocknix-session: stopping graphical-session.target failed (rc $?)" >&2
+  for i in $(seq 1 50); do
+    # kwin's file caps make its fds root-owned, invisible to the card scan: for a service
+    # compositor the user manager's pending jobs and deactivating units are the signal.
+    holder="$(systemctl --user list-jobs --no-legend --plain 2>/dev/null | head -1)"
+    [ -n "${holder}" ] || holder="$(systemctl --user list-units --state=deactivating \
+      --no-legend --plain 2>/dev/null | head -1)"
+    [ -n "${holder}" ] || holder="$(find /proc/[0-9]*/fd -lname '/dev/dri/card*' -print -quit 2>/dev/null)"
+    if [ -z "${holder}" ]; then
+      [ "${i}" -gt 1 ] && echo "pocknix-session: display released after $(( (i - 1) * 200 ))ms" >&2
+      return 0
+    fi
+    sleep 0.2
+  done
+  echo "pocknix-session: ${holder} still holds the display after 10s, starting anyway" >&2
+}
+
 fastfails=0
 while true; do
   session="$(cat "${STATE}" 2>/dev/null || echo gamescope)"
-  start="$(date +%s)"
   rm -f "${SWITCH}"
   blank
+  # Before the clock starts: time spent waiting here is no evidence the session works.
+  release_display
+  start="$(date +%s)"
   case "${session}" in
     plasma|desktop) command -v pocknix-desktop >/dev/null 2>&1 && run pocknix-desktop
                     rm -f "${PIDFILE}" ;;  # a recycled PID must never be signalled as the session
