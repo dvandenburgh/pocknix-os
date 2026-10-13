@@ -4,7 +4,7 @@
 # SteamOS boot (game mode boots like a Deck); the Plasma splash and wallpaper keep the #202126 desktop field.
 pkgname=pocknix-branding
 pkgver=0.1.0
-pkgrel=2.1
+pkgrel=2.2
 pkgdesc="Pocknix OS branding: plymouth boot theme, Plasma splash, wallpaper"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -49,7 +49,7 @@ package() {
   cp -a "${_spinner}/." "${theme}/"
   mv "${theme}/spinner.plymouth" "${theme}/pocknix.plymouth"
   # the logo replaces the Arch watermark (sized in logical px, see watermark.svg), and the
-  # orbiting particles replace the spinner's throbber frames
+  # orbiting particles and turning handheld replace the spinner's throbber frames
   install -Dm644 "${srcdir}/render/watermark.png" "${theme}/watermark.png"
   rm -f "${theme}"/throbber-*.png
   install -m644 "${srcdir}"/render/throbber-*.png "${theme}/"
@@ -63,7 +63,7 @@ package() {
   # pocknix-steam-splash reads the field and alignment back.
   sed -i -e '/^Name\[[^]]*\]=/d' \
          -e 's|^Name=.*|Name=Pocknix|' \
-         -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo, its protons and electrons orbiting while it boots.|' \
+         -e 's|^Description=.*|Description=Pocknix OS boot splash: the Pocknix logo, its protons and electrons orbiting and the handheld turning over while it boots.|' \
          -e "s|^ImageDir=.*|ImageDir=/usr/share/plymouth/themes/pocknix|" \
          -e 's|^BackgroundStartColor=.*|BackgroundStartColor=0x000000|' \
          -e 's|^BackgroundEndColor=.*|BackgroundEndColor=0x000000|' \
