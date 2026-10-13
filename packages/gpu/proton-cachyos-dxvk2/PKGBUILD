@@ -2,9 +2,9 @@
 # storageBuffer8BitAccess and so are rejected by every DXVK 3 tool. proton-cachyos's header
 # carries the shared packaging rules.
 #
-# Publish to the sm8250 repo ONLY: on sm8550 the replaces= would downgrade DXVK for a GPU
-# that supports 3.x. The donor must stay SAME-VENDOR — arm64ec dxvk dlls do not transplant
-# across wine trees. _srctag tracks proton-cachyos in lockstep; _dxvktag stays pinned.
+# Publish to a6xx repos ONLY (./gpus): on any newer GPU the replaces= would downgrade DXVK
+# for a GPU that supports 3.x. The donor must stay SAME-VENDOR — arm64ec dxvk dlls do not
+# transplant across wine trees. _srctag tracks proton-cachyos in lockstep; _dxvktag stays pinned.
 pkgname=proton-cachyos-dxvk2
 _srctag=11.0-20261005
 _dxvktag=11.0-20260602

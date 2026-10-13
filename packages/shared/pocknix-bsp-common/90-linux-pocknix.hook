@@ -1,5 +1,5 @@
 # Makes a kernel pacman transaction on the device a complete deploy; no-ops in the image-build
-# chroot, where pocknix-update-boot finds no mounted /flash.
+# chroot, where the deploy script finds no mounted /flash.
 [Trigger]
 Operation = Install
 Operation = Upgrade
@@ -9,6 +9,6 @@ Target = boot/dtbs/*
 Target = usr/lib/modules/*
 
 [Action]
-Description = pocknix: refreshing /flash KERNEL + dtbs (arm-efi)...
+Description = pocknix: deploying the kernel to /flash...
 When = PostTransaction
-Exec = /usr/bin/pocknix-update-boot
+Exec = /usr/lib/pocknix/pocknix-boot-deploy

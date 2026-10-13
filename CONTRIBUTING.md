@@ -50,13 +50,13 @@ Especially welcome:
 |---|---|
 | `packages/shared/<pkg>/` | SoC-neutral packages, built once for every device. Most contributions land here. |
 | `packages/soc/<pkg>/` | Packages built per SoC family (GPU stack, emulators, kernels); a `socs` file names the families or says `all`. |
-| `packages/attic/<pkg>/` | Retired recipes, kept for reference and never built. |
-| `devices/<soc>/` | Per-SoC-family and per-board facts: `profile.conf`, the device metapackage, BSP package, InputPlumber configs. See `devices/README.md`. |
+| `packages/gpu/<pkg>/` | Packages built per Adreno generation; a `gpus` file names the generations, matched against each profile's `GPU_GEN`. |
+| `devices/<soc>/` | Per-SoC-family and per-board facts: `profile.conf`, compiler tuning, the device metapackage, BSP package, InputPlumber configs. `devices/README.md` says where a new file goes. |
 | `kernel/<soc>/` | Committed kernel inputs: pinned version, patch series, config, dts. See `kernel/README.md`. |
 | `kernel/common/patches/` | Our SoC-neutral kernel patches, applied to every SoC. |
 | `scripts/` | The build harness (`build-*.sh`, `lib.sh`, `stage-repo.sh`, ...). |
 | `overlay/` | Files baked into the image rootfs at build time. |
-| `config/` | Global build config: `pocknix.conf`, base package lists (`config/packages/`), per-SoC tuning (`config/tuning/`). |
+| `config/` | Global build config: `pocknix.conf`, base package lists (`config/packages/`). |
 | `docs/` | User-facing guides. |
 | `.github/` | Issue and PR templates, the CI workflow. |
 | `.githooks/` | Git hooks; `pre-commit` runs the doc check. |

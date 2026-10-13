@@ -1,6 +1,6 @@
 # DXVK 2.7 donor plus the swap that puts it into a downloaded Valve ARM Proton whose DXVK needs
-# 8-bit storage (a6xx has none). Publish to the sm8250 repo ONLY; it reaches devices via the
-# pocknix-device-sm8250 dep edge, and the swap ships and leaves with the dlls it needs.
+# 8-bit storage (a6xx has none). Publish to a6xx repos ONLY (./gpus); it reaches devices via
+# the a6xx device metas' dep edge, and the swap ships and leaves with the dlls it needs.
 pkgname=pocknix-dxvk2-donor
 _donor=dxvk-arm64-2.7.1-498-valve-proton11
 pkgver=2.7.1.498

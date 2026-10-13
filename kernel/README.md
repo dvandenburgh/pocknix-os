@@ -17,13 +17,12 @@ that way: a list or a version copied into this file goes stale at the next sync.
 kernel/
   common/patches/        ours, SoC-neutral, applied to every SoC after its own stack
   <soc>/                 one per SoC family (devices/README.md lists them)
-    kernel.conf          stock source pin (version + sha256), ROCKNIX dirs to sync from
+    kernel.conf          source pin (version + sha256), package release, ROCKNIX dirs to sync from
     patches/10-mainline/ ROCKNIX generic backports              <- make sync
     patches/20-version/  ROCKNIX patches for the kernel version <- make sync
     patches/30-<soc>/    ROCKNIX device patches + our 1000+     <- make sync, plus ours
     dts/                 device trees for every board on the SoC  <- make sync
     config/              ROCKNIX kernel config + firmware list  <- make sync (overwritten)
-    bootloader/          ROCKNIX boot packaging, reference only <- make sync
     sync-keep            our local delta inside the synced dirs
     config-delta         scripts/config arguments on top of the synced config (optional)
     config-assert        symbols that must end up =y (optional)
@@ -38,6 +37,12 @@ config deltas, and packages the result for the SoC's `BOOTLOADER` (`qcom-abl`: A
 image; `arm-efi`: raw Image + dtbs for GRUB). The numbered dirs follow ROCKNIX's own apply
 order (mainline, then the version dir, then the device dir): device patches can depend on
 version-dir context.
+
+The `linux-pocknix-<soc>` package ships only that output (plus `mkbootimg` on qcom-abl). One
+recipe, `packages/soc/linux-pocknix/`, builds it for every SoC: `kernel.conf` sets its version
+(`KERNEL_VERSION`), its release (`KERNEL_PKGREL`) and any names the SoC's kernel shipped under
+before (`KERNEL_LEGACY_NAMES`). The on-device /flash deploy belongs to pocknix-bsp-common, which
+picks it by the board's `POCKNIX_BOOT_STYLE`, so a new SoC adds no boot scripts.
 
 ## Where a patch goes
 

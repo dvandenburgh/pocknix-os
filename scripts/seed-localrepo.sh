@@ -31,11 +31,10 @@ log "seeding build/localrepo from ${POCKNIX_REPO_URL}"
 while IFS='|' read -r repo d p v a; do
   # sd-image boots this host's `make kernel` and syncs its modules: never a published kernel.
   [ "${p}" = "${KERNEL_PKG}" ] && continue
-  # A local copy at this version counts only while it is newer than its package dir, the rule
-  # build-packages.sh applies. A pull rewrites files (and their mtimes) without a pkgrel bump, so
-  # an older copy would be compiled again although the published one is this version.
-  if f="$(artifact_file "${repo}" "${p}-${v}-${a}")" \
-     && [ -z "$(find "${d}" -newer "${f}" -print -quit)" ]; then
+  # A local copy at this version counts only while build-packages.sh would skip it. A pull
+  # rewrites files (and their mtimes) without a pkgrel bump, so an older copy would be compiled
+  # again although the published one is this version.
+  if f="$(artifact_file "${repo}" "${p}-${v}-${a}")" && artifact_current "${f}" "${d}" "${p}"; then
     have=$((have + 1)); continue
   fi
   src="${pub["${repo}|${p}"]:-}"

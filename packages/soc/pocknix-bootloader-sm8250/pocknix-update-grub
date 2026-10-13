@@ -1,7 +1,7 @@
 #!/bin/bash
 # pocknix-update-grub — refresh the arm-efi bootloader files on /flash from the installed
 # pocknix-bootloader-<soc> tree. GRUB and grub.cfg are replaced; grubenv only if missing, since it
-# holds the user's saved menu choice. dtbs belong to the kernel package (pocknix-update-boot).
+# holds the user's saved menu choice. dtbs belong to the kernel package, deployed by pocknix-update-boot.
 set -euo pipefail
 
 FLASH="${FLASH:-/flash}"

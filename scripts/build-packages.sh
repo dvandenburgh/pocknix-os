@@ -13,8 +13,8 @@ need_linux
 need_root build-packages
 for t in curl tar rsync; do need_tool "$t"; done
 
-# Two repo trees: packages/soc/* are PER-SoC (tuned packages share pkgnames
-# across SoCs with different binaries; each SoC gets its own repo, and the
+# Two repo trees: packages/soc/* and packages/gpu/* are PER-SoC (tuned packages share
+# pkgnames across SoCs with different binaries; each SoC gets its own repo, and the
 # chroot is split too so one SoC's tuned makedepends can never leak into
 # another SoC's builds). packages/shared/* are byte-identical across SoCs:
 # built ONCE into the shared localrepo ([pocknix-shared]) — whichever SoC runs
@@ -40,7 +40,7 @@ wipe_chroot() {
 }
 
 # Which repo a package dir builds into: shared packages target the shared
-# localrepo, everything else (packages/soc + device packages) the per-SoC one.
+# localrepo, everything else (packages/soc, packages/gpu + device packages) the per-SoC one.
 pkg_repo_dir()   { case "$1" in */packages/shared/*) printf '%s' "${LOCALREPO_SHARED}" ;; *) printf '%s' "${LOCALREPO}" ;; esac; }
 pkg_repo_db()    { case "$1" in */packages/shared/*) printf '%s' "${SHARED_REPO_DB}" ;; *) printf '%s' "${REPO_DB}" ;; esac; }
 pkg_repo_mount() { case "$1" in */packages/shared/*) printf '/localrepo-shared' ;; *) printf '/localrepo' ;; esac; }
@@ -182,13 +182,8 @@ setup_chroot() {
   fi
 }
 
-# Packages that also build from the SoC's profile (build_one stages ./staged/kernel-cmdline
-# into them), so a profile edit must rebuild them like an edit to their own dir. pocknix.conf
-# counts too: sm8250's root= is its SD_ROOT_PARTUUID.
-profile_pkg() { case "$1" in "${DEVICE_BSP_PKG}"|"pocknix-bootloader-${SOC}") return 0 ;; esac; return 1; }
-
 build_one() {
-  local pkgdir="$1" force="${2:-0}" name; name="$(basename "${pkgdir}")"
+  local pkgdir="$1" force="${2:-0}" name env; name="$(pkg_name "${pkgdir}")"; env="$(pkg_env "${pkgdir}")"
   local repo_dir repo_db repo_mount
   repo_dir="$(pkg_repo_dir "${pkgdir}")"
   repo_db="$(pkg_repo_db "${pkgdir}")"
@@ -206,7 +201,7 @@ build_one() {
   # POCKNIX_FORCE_REBUILD=1 rebuilds everything. The kernel package also rebuilds whenever
   # `make kernel` produced a newer Image than the packaged one.
   if [ "${force}" -eq 0 ]; then
-    local uptodate=1 nlist=0 p f
+    local uptodate=1 nlist=0 p f s
     while IFS= read -r p; do
       nlist=$((nlist+1))
       # Matched without the extension: seeded and older builds are .xz, new ones .zst.
@@ -214,17 +209,15 @@ build_one() {
       if [ -z "${f}" ] || [ -n "$(find "${pkgdir}" -newer "${f}" -print -quit)" ]; then
         uptodate=0; break
       fi
-      if profile_pkg "${name}" && { [ "${DEVICE_DIR}/profile.conf" -nt "${f}" ] ||
-           [ "${CONFIG_DIR}/pocknix.conf" -nt "${f}" ]; }; then
+      for s in $(pkg_extra_srcs "${name}"); do
+        [ "${s}" -nt "${f}" ] && { uptodate=0; break 2; }
+      done
+      if [ "${name}" = "${KERNEL_PKG}" ] && [ -f "${KERNEL_BUILD_DIR}/out/Image" ] &&
+         [ "${KERNEL_BUILD_DIR}/out/Image" -nt "${f}" ]; then
         uptodate=0; break
       fi
-      case "${name}" in linux-pocknix-*)
-        if [ -f "${KERNEL_BUILD_DIR}/out/Image" ] && [ "${KERNEL_BUILD_DIR}/out/Image" -nt "${f}" ]; then
-          uptodate=0; break
-        fi
-      ;; esac
     done < <(chroot "${BROOT}" runuser -u builder -- \
-               bash -lc "cd /build/${name} && LC_ALL=C makepkg --packagelist" 2>/dev/null)
+               bash -lc "cd /build/${name} && LC_ALL=C ${env} makepkg --packagelist" 2>/dev/null)
     if [ "${nlist}" -gt 0 ] && [ "${uptodate}" -eq 1 ]; then
       log "skip: ${name} (already in localrepo, sources unchanged — force with PKG=${name})"
       return 0
@@ -237,16 +230,11 @@ build_one() {
   # earlier this run) — only here, when actually building; skipped packages must not
   # each pay a network DB refresh.
   chroot "${BROOT}" pacman -Sy --noconfirm >/dev/null 2>&1 || true
-  # linux-pocknix-<soc> is a THIN package: it doesn't compile the kernel (no makepkg/toolchain
-  # in the chroot for that), it just packages `make kernel`'s output. Stage ${KERNEL_BUILD_DIR}/out
+  # The kernel package is THIN: it doesn't compile the kernel (no makepkg/toolchain in the
+  # chroot for that), it just packages `make kernel`'s output. Stage ${KERNEL_BUILD_DIR}/out
   # into the package build dir as ./staged so its package() can lay it out as /boot +
-  # /usr/lib/modules. NB: only the CURRENT device's SoC kernel can be staged (make kernel
-  # builds one SoC at a time); other SoCs' kernel packages skip with a warning.
-  case "${name}" in linux-pocknix-*)
-    if [ "${name}" != "${KERNEL_PKG}" ]; then
-      warn "${name}: not the current SoC's kernel (${KERNEL_PKG}) — skipping (build with the right DEVICE)"
-      return 1
-    fi
+  # /usr/lib/modules.
+  if [ "${name}" = "${KERNEL_PKG}" ]; then
     local kout="${KERNEL_BUILD_DIR}/out"
     if [ ! -f "${kout}/Image" ] || [ ! -f "${kout}/kernelrelease" ]; then
       warn "${name}: no kernel build at ${kout} — run 'make kernel' first; skipping"
@@ -258,12 +246,16 @@ build_one() {
       return 1
     fi
     cp -a "${kout}" "${BROOT}/build/${name}/staged"
-  ;; esac
+  fi
   # The cmdline is written once, in the profile: the qcom-abl BSP installs it for the on-device
   # boot image rebuild, the arm-efi bootloader renders it into grub.cfg.
-  if profile_pkg "${name}"; then
+  if [ "${name}" = "${DEVICE_BSP_PKG}" ] || [ "${name}" = "pocknix-bootloader-${SOC}" ]; then
     mkdir -p "${BROOT}/build/${name}/staged"
     printf '%s\n' "${KERNEL_CMDLINE}" > "${BROOT}/build/${name}/staged/kernel-cmdline"
+  fi
+  if [ "${name}" = "${DEVICE_BSP_PKG}" ]; then
+    BOOTLOADER="${BOOTLOADER}" SD_FAT_LABEL="${SD_FAT_LABEL}" ROOT_LABEL="${ROOT_LABEL}" \
+      "${POCKNIX_ROOT}/scripts/render-bsp.sh" "${pkgdir}/boards" "${BROOT}/build/${name}/staged"
   fi
   # Persistent source cache: SRCDEST lives OUTSIDE the per-package build dir (which is wiped
   # every run), so makepkg downloads each source ONCE and reuses it. File sources (e.g.
@@ -279,24 +271,14 @@ build_one() {
   # (the kernel package, the Steam stack, fex-rootfs) just to lay out a few files. Their
   # depends= still ships in the .pkg metadata; -d only skips build-time resolution. A
   # ./nodeps marker opts in other packages whose runtime deps would drag a layer in.
-  # Per-SoC tuning (config/tuning/${SOC}.conf via lib.sh) rides the makepkg
-  # environment: the tuned PKGBUILDs read POCKNIX_TUNE_CFLAGS/POCKNIX_FEX_TUNE_CPU
+  # Per-SoC tuning (devices/<soc>/tuning.conf via lib.sh) rides the makepkg environment
+  # (pkg_env): the tuned PKGBUILDs read POCKNIX_TUNE_CFLAGS/POCKNIX_FEX_TUNE_CPU
   # (falling back to their sm8550 strings when unset, e.g. standalone makepkg).
-  local mkflags="-s" tune_env
+  local mkflags="-s"
   case "${pkgdir}" in */devices/*/packages/*) mkflags="-d" ;; esac
   [ -f "${pkgdir}/nodeps" ] && mkflags="-d"
-  # POCKNIX_BASE_*: pocknix-lock-migrate stamps the target snapshot URL into its
-  # script at build time, so snapshot bumps re-target the migrator on rebuild.
-  # Shared packages get NO SoC/tuning env: they must be byte-stable regardless of
-  # which SoC's run builds them (a tuned shared build would silently fork bytes).
-  case "${pkgdir}" in
-    */packages/shared/*)
-      tune_env="POCKNIX_BASE_URL=$(printf %q "${POCKNIX_BASE_URL}") POCKNIX_BASE_SNAPSHOT=$(printf %q "${POCKNIX_BASE_SNAPSHOT}")" ;;
-    *)
-      tune_env="POCKNIX_SOC=$(printf %q "${SOC}") POCKNIX_TUNE_CFLAGS=$(printf %q "${POCKNIX_TUNE_CFLAGS}") POCKNIX_FEX_TUNE_CPU=$(printf %q "${POCKNIX_FEX_TUNE_CPU}") POCKNIX_GPU_HWMON=$(printf %q "${GPU_HWMON:-}") POCKNIX_BASE_URL=$(printf %q "${POCKNIX_BASE_URL}") POCKNIX_BASE_SNAPSHOT=$(printf %q "${POCKNIX_BASE_SNAPSHOT}")" ;;
-  esac
   if ! chroot "${BROOT}" runuser -u builder -- \
-      bash -lc "cd /build/${name} && LC_ALL=C SRCDEST=/build/srccache ${tune_env} makepkg ${mkflags} -f --noconfirm --nocheck --skippgpcheck"; then
+      bash -lc "cd /build/${name} && LC_ALL=C SRCDEST=/build/srccache ${env} makepkg ${mkflags} -f --noconfirm --nocheck --skippgpcheck"; then
     warn "makepkg failed for ${name} — keeping any previous build in ${repo_dir##*/}"
     return 1
   fi
@@ -311,7 +293,7 @@ build_one() {
     p="${BROOT}/build/${name}/$(basename "${p}")"
     [ -e "${p}" ] && built_pkgs+=("${p}")
   done < <(chroot "${BROOT}" runuser -u builder -- \
-             bash -lc "cd /build/${name} && LC_ALL=C makepkg --packagelist" 2>/dev/null)
+             bash -lc "cd /build/${name} && LC_ALL=C ${env} makepkg --packagelist" 2>/dev/null)
   if [ "${#built_pkgs[@]}" -eq 0 ]; then
     warn "no .pkg.tar.* produced for ${name} — keeping any previous build"
     return 1
@@ -377,29 +359,33 @@ main() {
     return 1
   }
 
-  local built=0 name force devdir devsoc pkgsocs
+  local built=0 name force devdir devsoc pkgsocs pkggpus
   local -a failed=()
-  # Shared packages (packages/shared/*/ — built once, into [pocknix-shared]) +
-  # per-SoC packages (packages/soc/*/ — each declares its SoCs in ./socs) +
-  # device packages (devices/*/packages/*/ — the arch=any BSPs/metapackages
-  # build in seconds). Per-SoC/device packages are scoped to the CURRENT SoC's
-  # repo: device packages via their profile's SOC, packages/soc via the socs
-  # file (which also keeps the sm8250-only dxvk2 protons — replaces= hazard —
-  # out of the sm8550 repo entirely). Up-to-date packages are skipped (see
-  # build_one); PKG= names and POCKNIX_FORCE_REBUILD=1 force.
-  for pkgdir in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
+  # Per-SoC and device packages build only into the CURRENT SoC's repo: device packages by
+  # their profile's SOC, packages/soc by ./socs, packages/gpu by ./gpus against GPU_GEN. The
+  # gpus gate keeps the a6xx dxvk2 protons out of every other GPU's repo, where their replaces=
+  # would downgrade DXVK. PKG= names and POCKNIX_FORCE_REBUILD=1 force past the up-to-date skip.
+  for pkgdir in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${PACKAGES_DIR}"/gpu/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
     [ -f "${pkgdir}/PKGBUILD" ] || continue
-    name="$(basename "${pkgdir}")"
+    name="$(pkg_name "${pkgdir}")"
     case "${pkgdir}" in */devices/*/packages/*)
       devdir="$(dirname "$(dirname "${pkgdir%/}")")"
-      devsoc="$(unset SOC; . "${devdir}/profile.conf" >/dev/null 2>&1; printf '%s' "${SOC}")"
+      devsoc="$(profile_get "${devdir}" SOC)"
       [ "${devsoc}" = "${SOC}" ] || continue
     ;; esac
-    case "${pkgdir}" in */packages/soc/*)
-      [ -f "${pkgdir}/socs" ] || die "${name}: packages/soc/ package with no socs file — declare its SoC(s), one space-separated line, or all"
-      read -r pkgsocs < "${pkgdir}/socs"
-      case " ${pkgsocs} " in " all "|*" ${SOC} "*) ;; *) continue ;; esac
-    ;; esac
+    case "${pkgdir}" in
+      */packages/soc/*)
+        [ -f "${pkgdir}/socs" ] || die "${name}: packages/soc/ package with no socs file: declare its SoC(s), or all, on one space-separated line"
+        read -r pkgsocs < "${pkgdir}/socs" || true   # a 0-byte file fails read; the next line names it
+        [ -n "${pkgsocs}" ] || die "${name}: empty socs file"
+        case " ${pkgsocs} " in " all "|*" ${SOC} "*) ;; *) continue ;; esac ;;
+      */packages/gpu/*)
+        [ -f "${pkgdir}/gpus" ] || die "${name}: packages/gpu/ package with no gpus file: declare its Adreno generation(s) on one space-separated line"
+        [ -n "${GPU_GEN:-}" ] || die "${name}: gated on ./gpus but devices/${DEVICE}/profile.conf sets no GPU_GEN"
+        read -r pkggpus < "${pkgdir}/gpus" || true
+        [ -n "${pkggpus}" ] || die "${name}: empty gpus file"
+        case " ${pkggpus} " in *" ${GPU_GEN} "*) ;; *) continue ;; esac ;;
+    esac
     force=0
     [ "${POCKNIX_FORCE_REBUILD:-0}" = "1" ] && force=1
     if [ "${#want[@]}" -gt 0 ]; then
@@ -426,10 +412,10 @@ main() {
   # failures into "stale artifact still present" (dangerous, loud) vs "no artifact" (build-image
   # errors at install, not silent).
   if [ "${#failed[@]}" -gt 0 ]; then
-    local -a stale=() gone=()
+    local -a stale=() gone=() fnames=()
     local fp fname base p af had line frepo
     for fp in "${failed[@]}"; do
-      fname="$(basename "${fp}")"; had=0
+      fname="$(pkg_name "${fp}")"; had=0; fnames+=("${fname}")
       frepo="$(pkg_repo_dir "${fp}")"
       # artifact base name(s) this PKGBUILD produces (split pkgs -> several); --packagelist only
       # reads the PKGBUILD so it works even though the build failed.
@@ -441,11 +427,11 @@ main() {
           stale+=("${base}  (localrepo still has $(basename "${af}"))"); had=1
         done
       done < <(chroot "${BROOT}" runuser -u builder -- \
-                 bash -lc "cd /build/${fname} 2>/dev/null && LC_ALL=C makepkg --packagelist" 2>/dev/null)
+                 bash -lc "cd /build/${fname} 2>/dev/null && LC_ALL=C $(pkg_env "${fp}") makepkg --packagelist" 2>/dev/null)
       [ "${had}" -eq 0 ] && gone+=("${fname}")
     done
     echo >&2
-    warn "PACKAGE BUILD FAILURES (${#failed[@]}): ${failed[*]##*/}"
+    warn "PACKAGE BUILD FAILURES (${#failed[@]}): ${fnames[*]}"
     if [ "${#stale[@]}" -gt 0 ]; then
       warn "  STALE ARTIFACT WILL SHIP: the rebuild failed but an OLD version stays in localrepo,"
       warn "  so 'make build' installs the stale one with no error. Rebuild before building an image:"

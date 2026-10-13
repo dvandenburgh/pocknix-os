@@ -48,38 +48,53 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 # --- project layout --------------------------------------------------------
-for d in config config/packages scripts packages/shared packages/soc "devices/${DEVICE}"; do
+for d in config config/packages scripts packages/shared packages/soc packages/gpu "devices/${DEVICE}"; do
   [ -d "${POCKNIX_ROOT}/${d}" ] && note "dir: ${d}/" "ok" || { note "dir: ${d}/" "MISSING"; fail=1; }
 done
 
-# --- package placement: shared/ vs soc/ -------------------------------------
-# The split is load-bearing: shared/ builds once into [pocknix-shared], soc/
-# builds per SoC gated by ./socs. A PKGBUILD directly under packages/ is
-# invisible to the build; a soc/ package without socs (or with an unknown SoC)
-# would silently vanish from every repo; a socs file under shared/ is a
-# misplacement (shared builds must be SoC-blind).
+# --- package placement: shared/ vs soc/ vs gpu/ ----------------------------
+# The dir names the build scope: shared/ builds once into [pocknix-shared], soc/ per SoC
+# gated by ./socs, gpu/ per SoC gated by ./gpus against its profile's GPU_GEN. A PKGBUILD
+# elsewhere is invisible to the build, a missing or unknown gate silently drops a package
+# from every repo, and another dir's gate file means the package sits in the wrong dir.
 while IFS= read -r p; do
-  note "package: ${p#"${POCKNIX_ROOT}"/}" "OUTSIDE shared/ and soc/ — never built"; fail=1
-done < <(find "${POCKNIX_ROOT}/packages" -maxdepth 2 -name PKGBUILD \
-           ! -path "*/packages/shared/*" ! -path "*/packages/soc/*" 2>/dev/null)
+  note "package: ${p#"${POCKNIX_ROOT}"/}" "OUTSIDE shared/, soc/ and gpu/: never built"; fail=1
+done < <(find "${POCKNIX_ROOT}/packages" -maxdepth 3 -name PKGBUILD \
+           ! -path "*/packages/shared/*" ! -path "*/packages/soc/*" ! -path "*/packages/gpu/*" 2>/dev/null)
+_gens=" $(for _d in "${POCKNIX_ROOT}"/devices/*/profile.conf; do profile_get "${_d%/profile.conf}" GPU_GEN; echo; done | sort -u | paste -sd ' ' -) "
+for p in "${POCKNIX_ROOT}"/packages/gpu/*/; do
+  [ -d "${p}" ] || continue
+  n="$(basename "${p}")"
+  [ ! -f "${p}/socs" ] || { note "gpu pkg: ${n}" "has a socs file (per-SoC packages live in packages/soc/)"; fail=1; continue; }
+  [ -f "${p}/gpus" ] || { note "gpu pkg: ${n}" "MISSING gpus file"; fail=1; continue; }
+  read -r _gpus < "${p}/gpus" || true   # a 0-byte file fails read; the empty check reports it
+  bad=0
+  for g in ${_gpus}; do
+    case "${_gens}" in *" ${g} "*) ;; *) note "gpu pkg: ${n}" "gpus names '${g}', which no profile's GPU_GEN is"; fail=1; bad=1 ;; esac
+  done
+  [ -n "${_gpus}" ] || { note "gpu pkg: ${n}" "empty gpus file"; fail=1; bad=1; }
+  [ "${bad}" -eq 0 ] && note "gpu pkg: ${n}" "gpus: ${_gpus}"
+done
 for p in "${POCKNIX_ROOT}"/packages/soc/*/; do
   [ -d "${p}" ] || continue
   n="$(basename "${p}")"
+  [ ! -f "${p}/gpus" ] || { note "soc pkg: ${n}" "has a gpus file (GPU-gated packages live in packages/gpu/)"; fail=1; continue; }
   if [ ! -f "${p}/socs" ]; then
     note "soc pkg: ${n}" "MISSING socs file"; fail=1; continue
   fi
-  read -r _socs < "${p}/socs"
+  read -r _socs < "${p}/socs" || true
+  [ -n "${_socs}" ] || { note "soc pkg: ${n}" "empty socs file"; fail=1; continue; }
   bad=0
   # "all" = every kernel/<soc>, so a new SoC needs no socs edits; it never mixes with names.
   if [ "${_socs}" = all ]; then note "soc pkg: ${n}" "socs: all"; continue; fi
   for s in ${_socs}; do
     [ -f "${POCKNIX_ROOT}/kernel/${s}/kernel.conf" ] || { note "soc pkg: ${n}" "unknown SoC '${s}' in socs"; fail=1; bad=1; }
   done
-  [ "${bad}" -eq 0 ] && [ -n "${_socs}" ] && note "soc pkg: ${n}" "socs: ${_socs}"
+  [ "${bad}" -eq 0 ] && note "soc pkg: ${n}" "socs: ${_socs}"
 done
-for p in "${POCKNIX_ROOT}"/packages/shared/*/socs; do
+for p in "${POCKNIX_ROOT}"/packages/shared/*/socs "${POCKNIX_ROOT}"/packages/shared/*/gpus; do
   [ -e "${p}" ] || continue
-  note "shared pkg: $(basename "$(dirname "${p}")")" "has a socs file (shared builds are SoC-blind — move it to packages/soc/ or delete the file)"; fail=1
+  note "shared pkg: $(basename "$(dirname "${p}")")" "has a ${p##*/} file (shared builds are SoC-blind: move it to packages/soc/ or packages/gpu/, or delete the file)"; fail=1
 done
 
 # A package we author ships under the repo's license; repackaged third-party content keeps
@@ -90,7 +105,7 @@ while IFS= read -r _f; do
   case "${_l#*:}" in "license=('GPL-2.0-or-later')"|*"#"*) continue ;; esac
   _lic="${_lic} ${_f}:${_l%%:*}"
 done < <(git -C "${POCKNIX_ROOT}" grep -l -F 'url="https://github.com/shuuri-labs/pocknix-os"' \
-           -- 'packages/shared/*/PKGBUILD' 'packages/soc/*/PKGBUILD' 'devices/*/PKGBUILD')
+           -- 'packages/shared/*/PKGBUILD' 'packages/soc/*/PKGBUILD' 'packages/gpu/*/PKGBUILD' 'devices/*/PKGBUILD')
 if [ -z "${_lic}" ]; then note "package licenses" "ok"
 else note "package licenses" "not GPL-2.0-or-later and no '# <third-party>' note:${_lic}"; fail=1; fi
 for f in config/pocknix.conf config/pacman.conf.in config/packages/base.list \
@@ -144,7 +159,7 @@ rm -rf "${_t}"
 
 # --- scripts executable ----------------------------------------------------
 for s in build-all.sh build-status.sh sync.sh bootstrap.sh build-image.sh build-kernel.sh build-packages.sh \
-         build-sd-image.sh stage-repo.sh stage-check.sh publish-repo.sh install.sh check.sh check-docs.sh; do
+         build-sd-image.sh stage-repo.sh stage-check.sh publish-repo.sh install.sh check.sh check-docs.sh render-bsp.sh; do
   [ -x "${POCKNIX_ROOT}/scripts/${s}" ] && note "exec: scripts/${s}" "ok" || { note "exec: scripts/${s}" "not +x"; fail=1; }
 done
 
@@ -207,20 +222,27 @@ if printf '%s\n' "${_out}" | grep -q 'reads POCKNIX_BOGUS, which' && ! printf '%
 else note "device.conf keys self-test" "a consumer reading an undocumented key went unflagged"; fail=1; fi
 rm -rf "${_t}"
 
-# Copies boards dir $1 to a scratch dir (printed) with the installed paths pointing into it, so
-# nested sources (variant -> base -> family.conf) resolve against the tree.
-stage_boards() {  # $1 = boards dir
-  local t f
-  t="$(mktemp -d)"
-  for f in "$1"/*.conf; do sed "s|/usr/lib/pocknix/boards/|${t}/|g" "${f}" > "${t}/${f##*/}"; done
+# Lays out boards dir $1 as family $2's BSP installs it (with what scripts/render-bsp.sh renders:
+# device.conf and family.conf) in a scratch dir (printed). Installed paths point into it, so
+# nested sources (variant -> base -> family.conf) and the dispatcher resolve against the tree.
+stage_boards() {  # $1 = boards dir, $2 = SoC
+  local t r f dev="${POCKNIX_ROOT}/devices/$2"
+  t="$(mktemp -d)"; r="$(mktemp -d)"
+  BOOTLOADER="$(profile_get "${dev}" BOOTLOADER)" SD_FAT_LABEL="$(profile_get "${dev}" SD_FAT_LABEL)" \
+    ROOT_LABEL="$(profile_get "${dev}" ROOT_LABEL)" "${POCKNIX_ROOT}/scripts/render-bsp.sh" "$1" "${r}" ||
+    { rm -rf "${t}" "${r}"; return 1; }
+  for f in "$1"/*.conf "${r}"/*.conf; do
+    sed -e "s|/usr/lib/pocknix/boards/|${t}/|g" -e "s|/proc/device-tree/model|${t}/model|g" "${f}" > "${t}/${f##*/}"
+  done
+  rm -rf "${r}"
   printf '%s' "${t}"
 }
 
-# Prints "<key>=<value>" for each POCKNIX_* key board $2 resolves from BSP boards dir $1.
-board_values() {  # $1 = boards dir, $2 = board
+# Prints "<key>=<value>" for each POCKNIX_* key board $3 of family $2 resolves from boards dir $1.
+board_values() {  # $1 = boards dir, $2 = SoC, $3 = board
   local t rc=0
-  t="$(stage_boards "$1")"
-  env -i bash -c '. "$1" >/dev/null || exit 1; for k in ${!POCKNIX_@}; do printf "%s=%s\n" "${k}" "${!k}"; done' sh "${t}/$2.conf" || rc=1
+  t="$(stage_boards "$1" "$2")" || return 1
+  env -i bash -c '. "$1" >/dev/null || exit 1; for k in ${!POCKNIX_@}; do printf "%s=%s\n" "${k}" "${!k}"; done' sh "${t}/$3.conf" || rc=1
   rm -rf "${t}"
   return "${rc}"
 }
@@ -256,7 +278,7 @@ _ref_boards="${POCKNIX_ROOT}/devices/${_ref_soc}/packages/pocknix-bsp-${_ref_soc
 _ref_board="$(awk '!/^[[:space:]]*(#|$)/ { print $1; exit }' "${_ref_boards}/models" 2>/dev/null || true)"
 _fb_allow="${POCKNIX_ROOT}/scripts/fallbacks.allow"
 if [ -z "${_ref_board}" ]; then _bad="no reference board (config/pocknix.conf DEVICE default -> boards/models)"
-elif ! _ref="$(board_values "${_ref_boards}" "${_ref_board}")"; then _bad="reference board ${_ref_board} fails to source"
+elif ! _ref="$(board_values "${_ref_boards}" "${_ref_soc}" "${_ref_board}")"; then _bad="reference board ${_ref_board} fails to source"
 else _bad="$(check_fallbacks "${_keys}" "${_ref}" "${_fb_allow}" "${_consumers[@]}" | paste -sd ';' -)"; fi
 if [ -z "${_bad}" ]; then note "device.conf fallbacks" "ok (reference ${_ref_board})"
 else note "device.conf fallbacks" "${_bad}"; fail=1; fi
@@ -274,7 +296,7 @@ rm -rf "${_t}"
 # resolve each key the table marks required from the two (the consumers fall back to RP6 values
 # without one, which is wrong on any other panel or disk).
 REQUIRED_FAMILY_KEYS="POCKNIX_SOC POCKNIX_INTERNAL_DISK POCKNIX_BOOT_GPT_NAME
-  POCKNIX_BOOT_FAT_LABEL POCKNIX_ROOT_LABEL"
+  POCKNIX_BOOT_STYLE POCKNIX_BOOT_FAT_LABEL POCKNIX_ROOT_LABEL"
 REQUIRED_KEYS="$(printf '%s\n' "${_keys}" | awk '$2 == "required" { print $1 }' | paste -sd ' ' -)"
 for _k in ${REQUIRED_FAMILY_KEYS} POCKNIX_DEVICE; do
   case " ${REQUIRED_KEYS} " in *" ${_k} "*) ;;
@@ -298,14 +320,14 @@ probe_model() {  # $1 = scratch dir, $2 = model, $3 = expected
   [ ! -s "$1/device.conf.out" ] || echo "device.conf: model '$2' prints to stdout"
 }
 
-# Prints one problem per line for a BSP's boards/; nothing means it is fine. $3 lets the
+# Prints one problem per line for a BSP's boards/; nothing means it is fine. $2 lets the
 # self-test below point it at a doctored copy.
-check_boards() {  # $1 = BSP dir, $2 = SoC, $3 = boards dir
-  local bsp="$1" soc="$2" boards="$3" t f n b m r rows="" first="" firstm="" got want
+check_boards() {  # $1 = SoC, $2 = boards dir
+  local soc="$1" boards="$2" t f n b m r rows="" first="" firstm="" got want
   for f in family.conf models; do
     [ -f "${boards}/${f}" ] || { echo "missing boards/${f}"; return; }
   done
-  t="$(stage_boards "${boards}")"
+  t="$(stage_boards "${boards}" "${soc}")" || { echo "scripts/render-bsp.sh fails for ${soc}"; return; }
   r="$(resolve_keys "${REQUIRED_FAMILY_KEYS}" "${t}/family.conf")" || echo "family.conf fails to source"
   m="${r%%|*}"; [ -z "${m}" ] || echo "family.conf lacks ${m% }"
 
@@ -343,8 +365,6 @@ check_boards() {  # $1 = BSP dir, $2 = SoC, $3 = boards dir
 
   # The rendered dispatcher: each row picks its board, anything else the first board flagged
   # unknown, and nothing reaches stdout (cores.sh sources it inside $(...)).
-  ( cd "${bsp}" && . ./PKGBUILD && _device_conf "${boards}/models" ) 2>/dev/null |
-    sed -e "s|/usr/lib/pocknix/boards/|${t}/|g" -e "s|/proc/device-tree/model|${t}/model|g" > "${t}/device.conf"
   if sh -n "${t}/device.conf" 2>/dev/null; then
     while IFS='|' read -r b m; do
       probe_model "${t}" "${m}" "${b}|"
@@ -357,19 +377,55 @@ check_boards() {  # $1 = BSP dir, $2 = SoC, $3 = boards dir
   rm -rf "${t}"
 }
 
+# Prints one problem per line: meta PKGBUILD $1 must depend on every $3/*/gpus package listing
+# GPU_GEN $2 and on none that omits it, so a meta carrying another generation's packages fails.
+# Metas run nothing at top level, so sourcing reads depends= exactly.
+check_meta_gpus() {  # $1 = meta PKGBUILD, $2 = GPU_GEN, $3 = packages/gpu dir
+  local deps g n
+  deps=" $( (set +eu; . "$1" >/dev/null 2>&1; printf '%s ' "${depends[@]}") ) "
+  for g in "$3"/*/gpus; do
+    [ -f "${g}" ] || continue
+    n="${g%/gpus}"; n="${n##*/}"
+    if grep -qw -- "$2" "${g}"; then
+      case "${deps}" in *" ${n} "*) ;; *) echo "${1##*/devices/} lacks ${n} (its gpus lists $2)" ;; esac
+    else
+      case "${deps}" in *" ${n} "*) echo "${1##*/devices/} depends on ${n}, whose gpus omits $2" ;; esac
+    fi
+  done
+}
+
+# A variable as kernel/<soc>/kernel.conf resolves it, in a clean environment like profile_get.
+kernel_get() {  # $1 = SoC, $2 = variable name
+  env -i bash -c '. "$1" && printf "%s" "${!2:-}"' sh "${POCKNIX_ROOT}/kernel/$1/kernel.conf" "$2"
+}
+
 # Prints one problem per line for a SoC family; nothing means it is fine.
 check_family() {  # $1 = SoC
   local soc="$1" dev="${POCKNIX_ROOT}/devices/$1" bsp="${POCKNIX_ROOT}/devices/$1/packages/pocknix-bsp-$1"
-  local f p grub ids sel b m pb pm ok
-  for f in "devices/${soc}/profile.conf" "config/tuning/${soc}.conf" "kernel/${soc}/kernel.conf"; do
+  local f p grub ids sel b m pb pm ok gen meta rel
+  for f in "devices/${soc}/profile.conf" "devices/${soc}/tuning.conf" "kernel/${soc}/kernel.conf"; do
     [ -f "${POCKNIX_ROOT}/${f}" ] || echo "missing ${f}"
   done
+  # The shared kernel recipe takes its pkgrel from here; makepkg dies on a missing one.
+  if [ -f "${POCKNIX_ROOT}/kernel/${soc}/kernel.conf" ]; then
+    rel="$(kernel_get "${soc}" KERNEL_PKGREL)"
+    case "${rel}" in
+      # a positive integer, or one with a minor release (a fork's 3.1 over upstream's 3)
+      ''|*[!0-9.]*|0*|.*|*.|*.*.*) echo "kernel/${soc}/kernel.conf KERNEL_PKGREL='${rel}' is not a positive integer or N.M" ;;
+    esac
+  fi
   [ -f "${dev}/profile.conf" ] || return
   grep -q "^| kernel (${soc}" "${POCKNIX_ROOT}/PATCHES.md" || echo "no PATCHES.md kernel row"
   for p in DEVICE_BSP_PKG DEVICE_META_PKG; do
     [ -f "${dev}/packages/$(profile_get "${dev}" "${p}")/PKGBUILD" ] || echo "${p} has no package under devices/${soc}/packages/"
   done
-  check_boards "${bsp}" "${soc}" "${bsp}/boards"
+  check_boards "${soc}" "${bsp}/boards"
+  gen="$(profile_get "${dev}" GPU_GEN)"
+  meta="${dev}/packages/$(profile_get "${dev}" DEVICE_META_PKG)/PKGBUILD"
+  case "${gen}" in
+    a[0-9]xx) [ ! -f "${meta}" ] || check_meta_gpus "${meta}" "${gen}" "${POCKNIX_ROOT}/packages/gpu" ;;
+    *) echo "profile GPU_GEN '${gen}' is not an Adreno generation (a6xx, a7xx, ...)" ;;
+  esac
   # The build renders the cmdline from the profile; a committed copy would be a second source.
   [ ! -e "${bsp}/root/usr/lib/pocknix/kernel-cmdline" ] ||
     echo "BSP commits root/usr/lib/pocknix/kernel-cmdline, which the build renders from the profile"
@@ -421,24 +477,34 @@ _t="$(mktemp -d)"
 _bsp="${POCKNIX_ROOT}/devices/${SOC}/packages/pocknix-bsp-${SOC}"
 cp -R "${_bsp}/boards" "${_t}/"
 printf '. /usr/lib/pocknix/boards/family.conf\nPOCKNIX_DEVICE=stray\n' > "${_t}/boards/stray.conf"
-_out="$(check_boards "${_bsp}" "${SOC}" "${_t}/boards")"
+_out="$(check_boards "${SOC}" "${_t}/boards")"
 if printf '%s\n' "${_out}" | grep -q '^stray.conf is in no models row'; then
   note "board check self-test" "ok"
 else note "board check self-test" "a board in no models row went unflagged"; fail=1; fi
 rm -rf "${_t}"
 
-# makepkg sees only the package dir, so each BSP carries its own _device_conf; a fix landed in
-# one copy would leave the other families rendering the old dispatcher.
-device_conf_body() { sed -n '/^_device_conf()/,/^}/p' "$1"; }
-_ref="$(device_conf_body "${_bsp}/PKGBUILD")"; _drift=""
-for _f in "${POCKNIX_ROOT}"/devices/*/packages/pocknix-bsp-*/PKGBUILD; do
-  [ "$(device_conf_body "${_f}")" = "${_ref}" ] || _drift="${_drift} ${_f#"${POCKNIX_ROOT}"/}"
+# The meta rule must catch a missing gpus package: a meta listing all of one generation's
+# gpus packages but the first has to be flagged for exactly that one.
+_t="$(mktemp -d)"; _gen=""; _n=""; _deps=""
+for _g in "${POCKNIX_ROOT}"/packages/gpu/*/gpus; do
+  [ -f "${_g}" ] || continue
+  [ -n "${_gen}" ] || read -r _gen _ < "${_g}" || true
+  grep -qw -- "${_gen}" "${_g}" || continue
+  _p="${_g%/gpus}"; _p="${_p##*/}"
+  if [ -z "${_n}" ]; then _n="${_p}"; else _deps="${_deps} '${_p}'"; fi
 done
-if [ -z "${_drift}" ]; then note "BSP _device_conf copies" "identical"
-else note "BSP _device_conf copies" "differ from ${SOC}'s:${_drift}"; fail=1; fi
+if [ -z "${_n}" ]; then note "device meta GPU rule self-test" "skipped (no gpus packages)"
+else
+  printf 'depends=(%s)\n' "${_deps}" > "${_t}/PKGBUILD"
+  if [ "$(check_meta_gpus "${_t}/PKGBUILD" "${_gen}" "${POCKNIX_ROOT}/packages/gpu")" = \
+       "${_t}/PKGBUILD lacks ${_n} (its gpus lists ${_gen})" ]; then
+    note "device meta GPU rule self-test" "ok"
+  else note "device meta GPU rule self-test" "a ${_gen} meta without ${_n} went unflagged (or flagged more)"; fail=1; fi
+fi
+rm -rf "${_t}"
 
-# The AppImage packages each carry _appimage_icon for the same reason; a fix to one copy (the
-# binfmt marker, a new runtime) has to reach every AppImage package.
+# makepkg sees only the package dir, so each AppImage package carries its own _appimage_icon;
+# a fix to one copy (the binfmt marker, a new runtime) has to reach every AppImage package.
 appimage_icon_body() { sed -n '/^_appimage_icon()/,/^}/p' "$1"; }
 _ref=""; _drift=""
 for _f in $(grep -l '^_appimage_icon()' "${POCKNIX_ROOT}"/packages/*/*/PKGBUILD); do
@@ -448,10 +514,6 @@ done
 _raw="$(grep -l -- '--appimage-extract' "${POCKNIX_ROOT}"/packages/*/*/PKGBUILD | xargs -r grep -L '^_appimage_icon()' || true)"
 if [ -z "${_drift}${_raw}" ]; then note "AppImage _appimage_icon copies" "identical"
 else note "AppImage _appimage_icon copies" "differ:${_drift}${_raw:+ (runs --appimage-extract without it: ${_raw//${POCKNIX_ROOT}\//})}"; fail=1; fi
-# Self-test: a line added inside the body must change what the comparison sees.
-if [ "$(awk '{ print } /^_device_conf\(\)/ { print "  : drifted" }' "${_bsp}/PKGBUILD" |
-        device_conf_body /dev/stdin)" != "${_ref}" ]; then note "BSP _device_conf self-test" "ok"
-else note "BSP _device_conf self-test" "a drifted _device_conf body compared equal"; fail=1; fi
 
 # A device package's root/ is copied as is, so the git mode is the installed mode: a script
 # committed 644 installs 644 and never runs.

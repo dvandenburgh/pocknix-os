@@ -80,10 +80,31 @@ def holds(have, op, want):
 pkgs = []  # (pkgbuild, names, version, deps, conflicts)
 offers = {}  # name -> [(version, pkgbuild)]; pkgname and versioned provides= only, as pacman
 errors = []
+def kernel_envs():
+    # packages/soc/linux-pocknix is one recipe for every SoC: build-packages.sh names and versions
+    # it from kernel/<soc>/kernel.conf, so it is read once per SoC with that SoC's values.
+    for kc in sorted(glob.glob(os.path.join(ROOT, "kernel/*/kernel.conf"))):
+        soc = os.path.basename(os.path.dirname(kc))
+        out = subprocess.run(["bash", "-c", '. "$1" >/dev/null 2>&1; printf "%s\\n%s\\n%s" '
+                              '"${KERNEL_VERSION:-}" "${KERNEL_PKGREL:-}" "${KERNEL_LEGACY_NAMES:-}"',
+                              "_", kc], capture_output=True, text=True).stdout.split("\n")
+        yield {"POCKNIX_SOC": soc, "POCKNIX_KERNEL_PKG": f"linux-pocknix-{soc}",
+               "POCKNIX_KERNEL_VERSION": out[0], "POCKNIX_KERNEL_PKGREL": out[1],
+               "POCKNIX_KERNEL_LEGACY_NAMES": out[2] if len(out) > 2 else "",
+               "POCKNIX_BOOTLOADER": "none"}
+
+
+runs = []
 for pb in sorted(glob.glob(os.path.join(ROOT, "packages/*/*/PKGBUILD"))
                  + glob.glob(os.path.join(ROOT, "devices/*/packages/*/PKGBUILD"))):
+    if os.path.relpath(pb, ROOT) == "packages/soc/linux-pocknix/PKGBUILD":
+        runs += [(pb, env) for env in kernel_envs()]
+    else:
+        runs.append((pb, {}))
+for pb, extra in runs:
     rel = os.path.relpath(pb, ROOT)
-    r = subprocess.run(["bash", "-c", DUMP, "_", pb], capture_output=True, text=True)
+    r = subprocess.run(["bash", "-c", DUMP, "_", pb], capture_output=True, text=True,
+                       env={**os.environ, **extra})
     if r.returncode != 0:
         errors.append(f"{rel}: could not be sourced")
         continue

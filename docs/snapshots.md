@@ -37,8 +37,8 @@ Both tunables live in `/etc/pocknix/snapshots.conf`.
 
 **The kernel gap.** Boot files live on the FAT partition (`/flash`), outside btrfs. When the
 rollback target's kernel differs from the running one, `pocknix-rollback` regenerates
-`/flash/KERNEL` (and dtbs on arm-efi) **from the snapshot's own tree** (via the kernel
-package deploy script in `SRCROOT`/staging mode), staged as `*.new` before the commit and
+`/flash/KERNEL` (and dtbs on arm-efi) **from the snapshot's own tree** (via
+`pocknix-boot-deploy`, bsp-common's /flash deploy, in `SRCROOT`/staging mode), staged as `*.new` before the commit and
 renamed after - so the kernel and its modules always match after the reboot. A crash inside
 that tiny window is healed on the next boot by `pocknix-rollback-repair.service`.
 

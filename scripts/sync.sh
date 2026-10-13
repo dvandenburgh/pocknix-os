@@ -3,8 +3,8 @@
 # (kernel/${SOC}/, chosen by the device profile) into two destinations:
 #
 #   kernel/${SOC}/ (COMMITTED) — the full kernel input set: patch stack, DTS,
-#             kernel config, firmware list, bootloader packaging. A PINNED SNAPSHOT
-#             of ROCKNIX `next` (nightly) + our delta (lineage: kernel/README.md);
+#             kernel config, firmware list. A PINNED SNAPSHOT of ROCKNIX `next`
+#             (nightly) + our delta (lineage: kernel/README.md);
 #             committing it makes pocknix-os self-contained and reproducible.
 #             `make sync` advances the pin from your distribution/ checkout:
 #             review the git diff and commit the result.
@@ -71,16 +71,15 @@ if [ "${SCOPE}" = all ]; then
   mkdir -p "${KERNEL_DIR}/patches/10-mainline" \
            "${KERNEL_DIR}/patches/20-version" \
            "${KERNEL_DIR}/patches/30-${SOC}" \
-           "${KERNEL_DIR}/dts" "${KERNEL_DIR}/config" "${KERNEL_DIR}/bootloader"
+           "${KERNEL_DIR}/dts" "${KERNEL_DIR}/config"
   rsync -ac --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/mainline/" "${KERNEL_DIR}/patches/10-mainline/"
   # version dir name set in kernel.conf: it has lagged KERNEL_VERSION before
   rsync -ac --delete "${ROCKNIX_PROJECT_DIR}/packages/linux/patches/${ROCKNIX_VERSION_PATCH_DIR:-${KERNEL_VERSION%.*}}/" "${KERNEL_DIR}/patches/20-version/"
   rsync -ac --delete "${ROCKNIX_DEVICE_DIR}/patches/linux/"                     "${KERNEL_DIR}/patches/30-${SOC}/"
-  # dts / config / bootloader packaging
+  # dts / config
   rsync -ac --delete "${ROCKNIX_DEVICE_DIR}/linux/dts/"                 "${KERNEL_DIR}/dts/"
   rsync -ac          "${ROCKNIX_DEVICE_DIR}/linux/linux.aarch64.conf"   "${KERNEL_DIR}/config/"
   rsync -ac          "${ROCKNIX_DEVICE_DIR}/config/kernel-firmware.dat" "${KERNEL_DIR}/config/"
-  rsync -ac --delete "${ROCKNIX_DEVICE_DIR}/bootloader/"               "${KERNEL_DIR}/bootloader/"
 else
   log "  kernel/${SOC}/ left as committed (POCKNIX_SYNC_SCOPE=all moves it)"
 fi

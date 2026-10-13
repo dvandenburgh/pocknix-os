@@ -2,7 +2,7 @@
 # model and the input maps are model-gated, so a new board needs no new package.
 pkgname=pocknix-bsp-sm8250
 pkgver=0.1.0
-pkgrel=22.1
+pkgrel=23.1
 pkgdesc="pocknix board support: SM8250 family (RP5, RP Flip 2) — runtime board dispatch, input maps, audio UCM, wake quirks"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -16,47 +16,18 @@ conflicts=('pocknix-bsp')
 optdepends=('inputplumber: gamepad -> Steam Input mapping (01-retroid-*.yaml)'
             'alsa-ucm-conf: base UCM (codec include sequences for the RetroidPocket UCM)')
 
-# device.conf is rendered from boards/models. Consumers source it (some under set -e, cores.sh
-# inside $(...)), so it stays POSIX sh, prints nothing and always returns 0.
-_device_conf() {  # $1 = boards/models
-  awk -v q="'" '
-    /^[[:space:]]*(#|$)/ { next }
-    {
-      b = $1; m = $0
-      sub(/^[[:space:]]*[^[:space:]]+[[:space:]]+/, "", m); sub(/[[:space:]]+$/, "", m)
-      if (fb == "") fb = b
-      arms = arms "  \"" m "\")\n    . /usr/lib/pocknix/boards/" b ".conf\n    ;;\n"
-    }
-    END {
-      print "# /usr/lib/pocknix/device.conf, generated from the BSP" q "s boards/models: picks the board"
-      print "# file by devicetree model. An unknown or absent model (the image-build chroot) gets"
-      print "# the first board and POCKNIX_BOARD_UNKNOWN=1. /etc/pocknix/device.conf overrides."
-      print "_pocknix_model=\"$(cat /proc/device-tree/model 2>/dev/null | tr -d " q "\\0" q ")\""
-      print "case \"${_pocknix_model}\" in"
-      printf "%s", arms
-      print "  *)"
-      print "    POCKNIX_BOARD_UNKNOWN=1"
-      print "    . /usr/lib/pocknix/boards/" fb ".conf"
-      print "    [ -n \"${_pocknix_model}\" ] && \\"
-      print "      logger -t pocknix \"device.conf: unknown DT model " q "${_pocknix_model}" q " - using " fb " board defaults\" 2>/dev/null || true"
-      print "    ;;"
-      print "esac"
-      print "unset _pocknix_model"
-    }' "$1"
-}
-
 package() {
-  install -d "${pkgdir}/usr/lib/pocknix"
-  _device_conf "${startdir}/boards/models" > "${pkgdir}/usr/lib/pocknix/device.conf"
+  # scripts/render-bsp.sh renders device.conf and family.conf into ./staged (build-packages.sh).
+  install -Dm644 "${startdir}/staged/device.conf" "${pkgdir}/usr/lib/pocknix/device.conf"
   # root/ is the install tree. makepkg's umask 022 turns git's exec bit into 755/644, and
   # files created under fakeroot are root-owned; -d keeps the symlinks as links. The units
   # ship enabled through their wants links so a plain pacman -U activates them, and the
   # extra UCM conf.d names are inert: only the card's own longname is looked up.
   cp -dr "${startdir}/root/." "${pkgdir}/"
   # boards/ also comes from startdir (build-packages.sh copies the whole package dir);
-  # models is not installed, family.conf is.
+  # models is not installed, and the rendered family.conf replaces the committed one.
   local b
-  for b in "${startdir}/boards/"*.conf; do
+  for b in "${startdir}/boards/"*.conf "${startdir}/staged/family.conf"; do
     install -Dm644 "${b}" "${pkgdir}/usr/lib/pocknix/boards/$(basename "${b}")"
   done
 }

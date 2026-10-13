@@ -23,7 +23,7 @@ EXCLUDE = re.compile(
     r"(\.(md|patch|diff|png|svg|jpg|ico|lock|txt|dts|dtsi|gpg|efi|dat|map|json|qml|policy|desktop"
     r"|template|cmake|slangp|opt)$)"
     r"|^(\.github|docs|vendor|build)/|/patches/|/dist/|/dts/|README|provenance|rocknix-reference"
-    r"|linux\.aarch64\.conf$|kernel-firmware\.dat$|/bootloader/update\.sh$|package-lock|LICENSE"
+    r"|linux\.aarch64\.conf$|kernel-firmware\.dat$|package-lock|LICENSE"
 )
 SLASH = re.compile(r"\.(ts|tsx|js|vdf)$|polkit-1/rules\.d/")
 XML = re.compile(r"\.xml$")

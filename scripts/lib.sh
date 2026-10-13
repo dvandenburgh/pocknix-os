@@ -13,29 +13,35 @@ export POCKNIX_ROOT="$(cd "${_lib_dir}/.." && pwd)"
 source "${POCKNIX_ROOT}/config/pocknix.conf"
 
 # --- device profile + per-SoC kernel pins -----------------------------------
-# The device profile (devices/<name>/profile.conf) declares everything device-
-# specific: SoC, partition labels/names, kernel cmdline, firmware source,
-# device packages. It sets SOC, which selects the per-SoC kernel tree and its
-# source pins (kernel/<soc>/kernel.conf).
+# The device profile (devices/<name>/profile.conf) declares what differs per family: SoC,
+# boot style, kernel cmdline, GPU sensor. It sets SOC, which selects the per-SoC kernel tree
+# and its source pins (kernel/<soc>/kernel.conf).
 if [ ! -f "${POCKNIX_ROOT}/devices/${DEVICE}/profile.conf" ]; then
   printf 'error: unknown DEVICE=%s — available: %s\n' \
     "${DEVICE}" "$(ls "${POCKNIX_ROOT}/devices" 2>/dev/null | tr '\n' ' ')" >&2
   exit 1
 fi
+# Profile defaults that derive from the profile's own keys, so they run after it; a profile
+# sets any of them to override. The SoC-neutral ones live in config/pocknix.conf instead,
+# because a profile expands them (ROOT_LABEL in its cmdline) while it is being sourced, so a
+# profile overrides those with a plain X=value.
+profile_defaults() {
+  : "${KERNEL_CMDLINE:=${KERNEL_CMDLINE_ROOT} ${KERNEL_CMDLINE_EXTRA}}"
+  : "${DEVICE_BSP_PKG:=pocknix-bsp-${SOC}}"
+  : "${DEVICE_META_PKG:=pocknix-device-${SOC}}"
+  : "${KERNEL_PKG:=linux-pocknix-${SOC}}"
+}
 source "${POCKNIX_ROOT}/devices/${DEVICE}/profile.conf"
+profile_defaults
 source "${POCKNIX_ROOT}/kernel/${SOC}/kernel.conf"
 # Per-SoC userspace compiler tuning: the tuned packages/soc PKGBUILDs read these
-# (build-packages.sh injects them into makepkg's environment).
-source "${POCKNIX_ROOT}/config/tuning/${SOC}.conf"
+# (build-packages.sh injects them into every packages/soc and packages/gpu makepkg environment).
+source "${POCKNIX_ROOT}/devices/${DEVICE}/tuning.conf"
 
 # Paths derived from the profile (must come after it):
 : "${DEVICE_DIR:=${POCKNIX_ROOT}/devices/${DEVICE}}"
 : "${KERNEL_DIR:=${POCKNIX_ROOT}/kernel/${SOC}}"
 : "${ROCKNIX_DEVICE_DIR:=${ROCKNIX_PROJECT_DIR}/devices/${ROCKNIX_SOC}}"
-# Boot-image style for the SoC's bootloader: qcom-abl (ABL boots an Android
-# boot image, sm8550) or arm-efi (ABL chainloads GRUB, raw Image, sm8250).
-# Set per profile; default qcom-abl.
-: "${BOOTLOADER:=qcom-abl}"
 # Per-SoC pacman repo: tuned packages (mesa etc.) share pkgnames across SoCs
 # with different binaries, so each SoC gets its own localrepo/published tree.
 # packages/shared/* are byte-identical across SoCs: built once into the shared
@@ -106,16 +112,11 @@ esac
 # --- package lists ---------------------------------------------------------
 # awk $1, not sed 's/#.*//': sed keeps the whitespace before an inline comment and
 # pacman then can't match the name.
-# A variable as one family's profile alone sets it: the profile assigns with ":=" defaults, so
-# the selected DEVICE's values (already loaded) are cleared first, by the names it assigns.
+# A variable as one family's build resolves it (pocknix.conf, its profile, the defaults), in a
+# clean environment: everything assigns with ":=", so the selected DEVICE's values would win.
 profile_get() {  # $1 = devices/<soc> dir, $2 = variable name
-  (
-    for _v in $(sed -nE 's/^: "\$\{([A-Z0-9_]+):=.*/\1/p; s/^([A-Z0-9_]+)=.*/\1/p' "$1/profile.conf"); do
-      unset "${_v}"
-    done
-    . "$1/profile.conf"
-    eval "printf '%s' \"\${$2:-}\""
-  )
+  env -i POCKNIX_ROOT="${POCKNIX_ROOT}" bash -c "$(declare -f profile_defaults)"'
+    . "${POCKNIX_ROOT}/config/pocknix.conf" && . "$1/profile.conf" && profile_defaults && printf "%s" "${!2:-}"' sh "$1" "$2"
 }
 
 read_pkglist() {
@@ -273,26 +274,71 @@ EOF
   fi
 }
 
+# Files outside a package's dir that it is also built from (build_one stages what they render
+# into ./staged), so editing one rebuilds it like an edit to its own dir. pocknix.conf holds the
+# SD labels and sm8250's root= PARTUUID; kernel.conf the kernel package's version and release.
+pkg_extra_srcs() {  # $1 = package name
+  case "$1" in
+    "${DEVICE_BSP_PKG}") echo "${DEVICE_DIR}/profile.conf ${CONFIG_DIR}/pocknix.conf ${POCKNIX_ROOT}/scripts/render-bsp.sh" ;;
+    "pocknix-bootloader-${SOC}") echo "${DEVICE_DIR}/profile.conf ${CONFIG_DIR}/pocknix.conf" ;;
+    "${KERNEL_PKG}") echo "${KERNEL_DIR}/kernel.conf" ;;
+  esac
+}
+
+# The name a package dir builds as, which PKG= selects and the skip and staging key on. The
+# kernel recipe is one dir for every SoC, so it takes the current SoC's package name.
+pkg_name() {  # $1 = package dir
+  case "${1%/}" in
+    */packages/soc/linux-pocknix) printf '%s' "${KERNEL_PKG}" ;;
+    *) basename "$1" ;;
+  esac
+}
+
+# makepkg's environment for a package dir. Every makepkg call needs it, --packagelist included:
+# the kernel recipe's name and version come from it. Shared packages get NO SoC/tuning env: they
+# must be byte-stable whichever SoC's run builds them. POCKNIX_BASE_*: pocknix-lock-migrate stamps
+# the target snapshot URL into its script, so snapshot bumps re-target the migrator on rebuild.
+pkg_env() {  # $1 = package dir
+  printf ' %s=%q' POCKNIX_BASE_URL "${POCKNIX_BASE_URL}" POCKNIX_BASE_SNAPSHOT "${POCKNIX_BASE_SNAPSHOT}"
+  case "$1" in */packages/shared/*) return ;; esac
+  printf ' %s=%q' \
+    POCKNIX_SOC "${SOC}" \
+    POCKNIX_TUNE_CFLAGS "${POCKNIX_TUNE_CFLAGS}" \
+    POCKNIX_FEX_TUNE_CPU "${POCKNIX_FEX_TUNE_CPU}" \
+    POCKNIX_GPU_HWMON "${GPU_HWMON:-}" \
+    POCKNIX_BOOTLOADER "${BOOTLOADER}" \
+    POCKNIX_KERNEL_PKG "${KERNEL_PKG}" \
+    POCKNIX_KERNEL_VERSION "${KERNEL_VERSION}" \
+    POCKNIX_KERNEL_PKGREL "${KERNEL_PKGREL:-}" \
+    POCKNIX_KERNEL_LEGACY_NAMES "${KERNEL_LEGACY_NAMES:-}"
+}
+
 # Every artifact `make build` wants for this SOC, one "repo-dir|pkg-dir|pkgname|version|arch"
 # line each: build-packages.sh's dirs, socs gating and makepkg --packagelist naming, read from
 # the PKGBUILDs alone so pending.sh and seed-localrepo.sh need no build chroot.
 local_artifacts() {
-  local d devsoc socs repo
-  for d in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
+  local d devsoc socs gpus repo
+  for d in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${PACKAGES_DIR}"/gpu/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
     [ -f "${d}PKGBUILD" ] || continue
     case "${d}" in */devices/*/packages/*)
       devsoc="$(unset SOC; . "${d%/packages/*}/profile.conf" >/dev/null 2>&1; printf '%s' "${SOC}")"
       [ "${devsoc}" = "${SOC}" ] || continue
     ;; esac
-    case "${d}" in */packages/soc/*)
-      socs=""; read -r socs 2>/dev/null < "${d}socs" || true
-      case " ${socs} " in " all "|*" ${SOC} "*) ;; *) continue ;; esac
-    ;; esac
+    case "${d}" in
+      */packages/soc/*)
+        socs=""; read -r socs 2>/dev/null < "${d}socs" || true
+        case " ${socs} " in " all "|*" ${SOC} "*) ;; *) continue ;; esac ;;
+      */packages/gpu/*)
+        gpus=""; read -r gpus 2>/dev/null < "${d}gpus" || true
+        case " ${gpus} " in *" ${GPU_GEN:-} "*) [ -n "${GPU_GEN:-}" ] ;; *) false ;; esac || continue ;;
+    esac
     repo="${LOCALREPO_DIR}"
     case "${d}" in */packages/shared/*) repo="${LOCALREPO_SHARED_DIR}" ;; esac
-    # PKGBUILDs are not written for set -eu, and some read ${startdir} like makepkg sets it.
+    # PKGBUILDs are not written for set -eu, and some read ${startdir} like makepkg sets it; the
+    # kernel recipe takes its name and version from pkg_env, as makepkg gets them.
     # shellcheck disable=SC2034,SC2154  # the sourced PKGBUILD sets arch, pkgname, pkgver, pkgrel
     (
+      eval "export $(pkg_env "${d}")"
       cd "${d}" && set +eu && startdir="${PWD}" && source ./PKGBUILD >/dev/null 2>&1
       a=aarch64; [[ " ${arch[*]} " == *" any "* ]] && a=any
       for p in "${pkgname[@]}"; do
@@ -316,6 +362,15 @@ artifact_file() {  # <repo-dir> <name-version-arch>
 # skip rule, read from the PKGBUILDs alone: a dir is up to date only when every artifact it names
 # is in build/localrepo, newer than every file in the dir (and, for the kernel package, than
 # `make kernel`'s Image). POCKNIX_FORCE_REBUILD=1 compiles everything, as it does there.
+# build_one's skip rule for one built artifact: newer than every file in its package dir and
+# every extra source (pkg_extra_srcs), and for the kernel package newer than `make kernel`'s Image.
+artifact_current() {  # <artifact file> <package dir> <package name>
+  local s
+  [ -z "$(find "$2" -newer "$1" -print -quit)" ] || return 1
+  for s in $(pkg_extra_srcs "$3"); do [ "${s}" -nt "$1" ] && return 1; done
+  ! { [ "$3" = "${KERNEL_PKG}" ] && [ "${KERNEL_BUILD_DIR}/out/Image" -nt "$1" ]; }
+}
+
 pending_artifacts() {
   local -A stale=()
   local -a want=()
@@ -326,8 +381,7 @@ pending_artifacts() {
     [ -z "${stale[${d}]:-}" ] || continue
     [ "${POCKNIX_FORCE_REBUILD:-0}" != 1 ] \
       && f="$(artifact_file "${repo}" "${p}-${v}-${a}")" \
-      && [ -z "$(find "${d}" -newer "${f}" -print -quit)" ] \
-      && ! { [ "${p}" = "${KERNEL_PKG}" ] && [ "${KERNEL_BUILD_DIR}/out/Image" -nt "${f}" ]; } \
+      && artifact_current "${f}" "${d}" "${p}" \
       || stale[${d}]=1
   done
   for line in "${want[@]}"; do

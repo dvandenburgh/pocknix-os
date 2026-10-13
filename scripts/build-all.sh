@@ -164,7 +164,7 @@ seed_has_work() {  # a package missing from build/localrepo, or older than its d
   while IFS='|' read -r repo d p v a; do
     [ "${p}" != "${KERNEL_PKG}" ] || continue
     f="$(artifact_file "${repo}" "${p}-${v}-${a}")" || return 0
-    [ -z "$(find "${d}" -newer "${f}" -print -quit)" ] || return 0
+    artifact_current "${f}" "${d}" "${p}" || return 0
   done < <(local_artifacts)
   return 1
 }

@@ -1,4 +1,3 @@
 # Exceptions to scripts/check.sh's device.conf fallback rule: "<key> :: <reason>". A row no
 # fallback matches fails, so fixing one deletes its row.
 POCKNIX_BIG_CORES :: by design: cores.sh leaves an unset key unpinned, since pinning to the wrong cluster is worse than not pinning
-POCKNIX_BOOT_STYLE :: by design: qcom-abl families leave it unset, so absent means qcom-abl

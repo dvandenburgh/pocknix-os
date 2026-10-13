@@ -1,5 +1,5 @@
 # dxvk-arm64-2.7.1-498-valve-proton11.tar.xz (pocknix mirror)
 
 The same Valve Proton 11 DXVK donor tarball as pocknix-dxvk2-donor; its provenance is in
-packages/soc/pocknix-dxvk2-donor/README.provenance. Why Valve dlls and not a GE release: see the
+packages/gpu/pocknix-dxvk2-donor/README.provenance. Why Valve dlls and not a GE release: see the
 PKGBUILD header.

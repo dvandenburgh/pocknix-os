@@ -3,14 +3,17 @@
 # live in devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
-pkgrel=25.1
-pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, second-screen touch policy, power profiles daemon, realtime priority ladder, deck session limits"
+pkgrel=26.1
+pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, second-screen touch policy, power profiles daemon, realtime priority ladder, deck session limits, kernel /flash deploy"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL-2.0-or-later')
 # pocknix-core rides along so a plain -Syu delivers the mandatory layer to devices that
 # predate it: a new package name only reaches installed devices via a dep edge.
-depends=('bash' 'sudo' 'pocknix-core' 'python' 'python-gobject')
+depends=('bash' 'sudo' 'pocknix-core' 'python' 'python-gobject' 'cpio')
+# Older kernels own the /flash deploy files: the versioned conflict makes pacman upgrade the
+# kernel in the same transaction instead of failing on file conflicts.
+conflicts=('linux-pocknix-sm8550<7.2.10-3' 'linux-pocknix-sm8250<7.2.10-4')
 optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target'
             'scx-scheds: scx_lavd for pocknix-lavd.service (unit self-skips without it)')
 install=pocknix-bsp-common.install
@@ -34,12 +37,14 @@ source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         '60-pocknix-sdl-xb360.conf' 'pocknix-sdl-xb360.sh'
         'pocknix-rt-ladder' 'pocknix-rt-ladder.service' 'rtkit-limits.conf'
         '60-pocknix-deck.conf'
-        'pocknix-cmdline-sync' '91-pocknix-cmdline.hook' 'cores.sh')
+        'pocknix-cmdline-sync' '91-pocknix-cmdline.hook' 'cores.sh'
+        'pocknix-boot-deploy' 'pocknix-build-bootimg' 'pocknix-update-boot' '90-linux-pocknix.hook')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
             'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+            'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-sleep" \
@@ -129,7 +134,12 @@ package() {
     "${pkgdir}/usr/lib/systemd/system/rtkit-daemon.service.d/10-pocknix-limits.conf"
   install -Dm644 "${srcdir}/60-pocknix-deck.conf" "${pkgdir}/etc/security/limits.d/60-pocknix-deck.conf"
 
-  # qcom-abl boot images bake the cmdline in; inert where there is no pocknix-build-bootimg.
+  install -Dm755 "${srcdir}/pocknix-boot-deploy" "${pkgdir}/usr/lib/pocknix/pocknix-boot-deploy"
+  install -Dm755 "${srcdir}/pocknix-build-bootimg" "${pkgdir}/usr/bin/pocknix-build-bootimg"
+  install -Dm755 "${srcdir}/pocknix-update-boot" "${pkgdir}/usr/bin/pocknix-update-boot"
+  install -Dm644 "${srcdir}/90-linux-pocknix.hook" \
+    "${pkgdir}/usr/share/libalpm/hooks/90-linux-pocknix.hook"
+  # qcom-abl boot images bake the cmdline in; inert on other boot styles.
   install -Dm755 "${srcdir}/pocknix-cmdline-sync" "${pkgdir}/usr/lib/pocknix/pocknix-cmdline-sync"
   install -Dm644 "${srcdir}/91-pocknix-cmdline.hook" \
     "${pkgdir}/usr/share/libalpm/hooks/91-pocknix-cmdline.hook"

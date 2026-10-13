@@ -1,0 +1,47 @@
+# The selected SoC's kernel as a pacman package. Per SoC, not per device: /boot/dtbs carries every
+# board under kernel/<soc>/dts and the boot menu lists what it finds. THIN by design: it compiles
+# nothing; build-packages.sh stages `make kernel` output into ./staged. Packaging it at all is what
+# keeps Image and modules versioned together atomically and makes a bad kernel rollback-able.
+pkgname="${POCKNIX_KERNEL_PKG:?set by build-packages.sh}"
+pkgver="${POCKNIX_KERNEL_VERSION:?set by build-packages.sh}"
+pkgrel="${POCKNIX_KERNEL_PKGREL:?set by build-packages.sh}"
+pkgdesc="${POCKNIX_SOC^^} kernel (stock ${pkgver} + ROCKNIX patch stack, SoC board dtbs) — packaged from 'make kernel' output"
+arch=('aarch64')
+url="https://github.com/shuuri-labs/pocknix-os"
+license=('GPL-2.0-only')   # the Linux kernel
+# ALARM's generic linux-aarch64 is pre-installed in the base tarball and must go. KERNEL_LEGACY_NAMES
+# (kernel.conf) lists names this SoC's kernel shipped under before, so those installs migrate.
+provides=("linux=${pkgver}" ${POCKNIX_KERNEL_LEGACY_NAMES})
+conflicts=('linux-aarch64' ${POCKNIX_KERNEL_LEGACY_NAMES})
+replaces=('linux-aarch64' ${POCKNIX_KERNEL_LEGACY_NAMES})
+# qcom-abl: python runs the shipped mkbootimg in pocknix-bsp-common's on-device /flash/KERNEL
+# rebuild. arm-efi has no boot image: GRUB loads the raw Image plus a separate dtb and the
+# cmdline lives in grub.cfg, so the /flash deploy only copies Image + dtbs.
+case "${POCKNIX_BOOTLOADER:?set by build-packages.sh}" in qcom-abl) depends=('python') ;; esac
+install=linux-pocknix.install
+options=('!strip')          # the kernel Image and DTBs must not be stripped
+
+package() {
+  local out="${startdir}/staged"     # = build/kernel/<soc>/out, copied in by scripts/build-packages.sh
+  if [ ! -f "${out}/Image" ] || [ ! -f "${out}/kernelrelease" ]; then
+    echo "${pkgname}: no staged kernel at ${out}." >&2
+    echo "  Run 'make kernel DEVICE=${POCKNIX_SOC}' first (it produces build/kernel/${POCKNIX_SOC}/out), then rebuild this package." >&2
+    return 1
+  fi
+  local kver; kver="$(cat "${out}/kernelrelease")"
+
+  install -Dm644 "${out}/Image" "${pkgdir}/boot/Image"
+  install -d "${pkgdir}/boot/dtbs"
+  cp "${out}/dtbs/"*.dtb "${pkgdir}/boot/dtbs/"
+
+  install -d "${pkgdir}/usr/lib/modules"
+  cp -a "${out}/modroot/lib/modules/${kver}" "${pkgdir}/usr/lib/modules/${kver}"
+
+  # the install scriptlet and the /flash deploy read this to find the modules dir
+  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/pocknix/kernelrelease" <<<"${kver}"
+
+  [ "${POCKNIX_BOOTLOADER}" = qcom-abl ] || return 0
+  # On-device /flash/KERNEL rebuild path; the cmdline it reads comes from the device's BSP.
+  [ -d "${out}/mkbootimg" ] || { echo "${pkgname}: ${out}/mkbootimg missing, re-run 'make kernel DEVICE=${POCKNIX_SOC}'" >&2; return 1; }
+  cp -r "${out}/mkbootimg" "${pkgdir}/usr/lib/pocknix/mkbootimg"
+}

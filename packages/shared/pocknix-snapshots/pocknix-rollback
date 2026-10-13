@@ -136,11 +136,9 @@ jq -n --arg from "${target}" --arg prev "$(btrfs subvolume get-default "${TOP}" 
 # cmp, not the transaction flag: a rollback can span several kernel bumps.
 staged=""
 if ! cmp -s "${KERNEL_REF}" "${TOP}/${new}/boot/Image"; then
-  regen=""
-  command -v pocknix-build-bootimg >/dev/null 2>&1 && regen=pocknix-build-bootimg   # qcom-abl (sm8550)
-  [ -z "${regen}" ] && command -v pocknix-update-boot >/dev/null 2>&1 && regen=pocknix-update-boot  # arm-efi (sm8250)
-  [ -n "${regen}" ] || die "kernel differs but no boot-deploy script found (linux-pocknix not installed?)"
-  echo "pocknix-rollback: target kernel differs — staging boot files from the snapshot (${regen})"
+  regen=/usr/lib/pocknix/pocknix-boot-deploy
+  [ -x "${regen}" ] || die "kernel differs but ${regen} is missing (pocknix-bsp-common not installed?)"
+  echo "pocknix-rollback: target kernel differs — staging boot files from the snapshot ($("${regen}" --style))"
   FLASH="${FLASH}" SRCROOT="${TOP}/${new}" OUT_SUFFIX=".new" "${regen}" \
     || die "boot-file staging failed — NOTHING was committed, system unchanged"
   [ -f "${FLASH}/KERNEL.new" ] || die "staging produced no ${FLASH}/KERNEL.new — aborting before commit"
