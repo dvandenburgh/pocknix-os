@@ -114,9 +114,34 @@ case "${POCKNIX_PANEL_HDR_NITS:-0}" in
      GS_ENV+=(GAMESCOPE_EXPOSE_CLIENT_SAMPLEABLE_FORMATS=1 STEAM_GAMESCOPE_HDR_SUPPORTED=1) ;;
 esac
 
+# Session flags a Steam Deck sets in game mode, limited to what holds on every board: two
+# Xwaylands (Steam on its own, games on the other), mangoapp as the performance overlay with its
+# presets and horizontal layout, gamescope colour management and its scaling filters offered in
+# the quick-access menu, the on-screen keyboard as input method for Qt and GTK apps, links opened
+# in the Steam browser, Steam not taking over audio routing (WirePlumber and the BSP own it),
+# and removable drives offered for unmount. VRR, tearing, the dynamic frame limiter and the
+# volume handler stay off until a board proves them.
+GS_ENV+=(STEAM_MULTIPLE_XWAYLANDS=1
+         STEAM_USE_MANGOAPP=1 STEAM_MANGOAPP_PRESETS_SUPPORTED=1
+         STEAM_DISABLE_MANGOAPP_ATOM_WORKAROUND=1 STEAM_MANGOAPP_HORIZONTAL_SUPPORTED=1
+         STEAM_GAMESCOPE_COLOR_MANAGED=1 STEAM_GAMESCOPE_VIRTUAL_WHITE=1
+         STEAM_GAMESCOPE_NIS_SUPPORTED=1 STEAM_GAMESCOPE_FANCY_SCALING_SUPPORT=1
+         QT_IM_MODULE=steam GTK_IM_MODULE=Steam
+         SRT_URLOPEN_PREFER_STEAM=1 STEAM_DISABLE_AUDIO_DEVICE_SWITCHING=1 STEAM_ALLOW_DRIVE_UNMOUNT=1)
+
 # Do NOT pin the client itself: scx_lavd places the bursty threads itself and needs the littles free
 # for batch work. Game launches get the big cores through steam-launch-wrapper instead.
 . /usr/lib/pocknix/pocknix-steam-env
+
+# The power button belongs to Steam while game mode runs: the inhibitor stops logind acting on
+# it, and dies with the helper, so a helper that finds no key (or this launcher exiting) hands
+# the key straight back. Desktop mode never starts it.
+systemd-inhibit --what=handle-power-key --mode=block --who=pocknix-powerbuttond \
+  --why="Steam handles the power button in game mode" \
+  /usr/lib/pocknix/pocknix-powerbuttond >>"${HOME}/pocknix-powerbuttond.log" 2>&1 &
+PBD=$!
+# systemd-inhibit does not pass a TERM on to its child, so stop the helper itself first.
+trap 'pkill -TERM -P "${PBD}" 2>/dev/null; kill "${PBD}" 2>/dev/null' EXIT
 
 # Log to a file, never the tty: tty1 is what shows between compositors on a session switch and
 # must stay blank. Do NOT exec gamescope either, since the session switch pkills it by name.

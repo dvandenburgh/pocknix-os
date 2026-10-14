@@ -2,7 +2,7 @@
 # gamescope launcher, and the ARM-Proton compat-tool plumbing.
 pkgname=pocknix-steam
 pkgver=0.1.0
-pkgrel=69.1
+pkgrel=69.2
 pkgdesc="Native ARM64 Steam Big Picture (gamescope) for the RP6 — installer + launcher"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -10,22 +10,23 @@ license=('GPL-2.0-or-later')
 # wget/unzip/curl/tar/xorg-server-xvfb serve pocknix-steam-install, which runs in the image bake
 # and again at first launch if the client is missing, so they stay depends. The rest are dlopen
 # deps the ARM client needs and nothing on a from-scratch ALARM base pulls in.
-# ffmpeg (ffplay) + xorg-xprop: pocknix-steam-splash.
+# ffmpeg (ffplay) + xorg-xprop: pocknix-steam-splash. python: pocknix-powerbuttond.
 # Depends on pocknix-steam-full (a cycle pacman accepts): devices fielded before the metas
 # have this package but not the meta, and -Syu only installs a new name something requires.
 # Build with ./nodeps so makepkg -s does not drag the layer into the chroot.
 depends=('pocknix-steam-full' 'pocknix-bsp-common>=0.1.0-24'
          'gamescope' 'wget' 'unzip' 'curl' 'tar' 'gtk2' 'gdk-pixbuf2' 'openal' 'libcups' 'lsof'
          'noto-fonts' 'noto-fonts-cjk' 'noto-fonts-emoji' 'networkmanager' 'mangohud'
-         'pocknix-steamos-shim' 'xorg-server-xvfb' 'ffmpeg' 'xorg-xprop')
+         'pocknix-steamos-shim' 'xorg-server-xvfb' 'ffmpeg' 'xorg-xprop' 'python')
 install=pocknix-steam.install
 source=('pocknix-steam-install' 'pocknix-steam' 'pocknix-steam-splash' 'pocknix-steam-sync' 'steam' 'steam.desktop'
         'steam-256.png' 'steam-512.png' 'registry.vdf'
         'pocknix-proton-prep' 'pocknix-proton-prep.service'
         'pocknix-game-launch' 'pocknix-steam-env' 'pocknix-proton-wrapper' 'fex-profiles.json'
-        'pocknix-guestos-mount' 'pocknix-guestos.service' 'graphics_provider.json')
+        'pocknix-guestos-mount' 'pocknix-guestos.service' 'graphics_provider.json'
+        'pocknix-powerbuttond')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-steam-install" "${pkgdir}/usr/bin/pocknix-steam-install"
@@ -53,4 +54,5 @@ package() {
   install -Dm755 "${srcdir}/pocknix-guestos-mount"         "${pkgdir}/usr/lib/pocknix/pocknix-guestos-mount"
   install -Dm644 "${srcdir}/pocknix-guestos.service"       "${pkgdir}/usr/lib/systemd/system/pocknix-guestos.service"
   install -Dm644 "${srcdir}/graphics_provider.json"        "${pkgdir}/usr/share/pocknix-steam/graphics_provider.json"
+  install -Dm755 "${srcdir}/pocknix-powerbuttond"          "${pkgdir}/usr/lib/pocknix/pocknix-powerbuttond"
 }

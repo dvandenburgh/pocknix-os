@@ -1,0 +1,152 @@
+#!/usr/bin/python3
+# pocknix-powerbuttond — game mode hands the power button to Steam, as on a Deck: a tap asks
+# Steam to suspend (it pauses the game and shows its own suspend screen first), a hold opens
+# Steam's power menu. pocknix-steam runs this under a logind handle-power-key inhibitor for the
+# life of the game-mode session; desktop mode keeps logind or the desktop's power manager.
+# Exits 0 with no power key, which releases the inhibitor and hands the key back to logind.
+import ctypes
+import fcntl
+import os
+import select
+import signal
+import struct
+import subprocess
+import time
+
+EV_KEY = 0x01
+KEY_POWER = 116
+KEY_MAX = 0x2FF
+EVENT = struct.Struct("llHHi")  # struct input_event on a 64-bit kernel
+
+# A hold past LONG_S opens the power menu without waiting for the release. The failsafe keeps
+# the promise logind makes outside game mode (a 5 s hold powers off) for a hung Steam.
+LONG_S = 1.0
+FAILSAFE_S = 5.0
+
+
+def eviocgbit(ev, length):
+    return (2 << 30) | (length << 16) | (ord("E") << 8) | (0x20 + ev)
+
+
+def power_keys():
+    """Event nodes of real hardware that can send KEY_POWER. Virtual devices (InputPlumber
+    targets, uinput) are skipped: they re-emit, so reading them would act on one press twice."""
+    fds = []
+    for name in sorted(os.listdir("/dev/input")):
+        if not name.startswith("event"):
+            continue
+        if "/virtual/" in os.path.realpath(f"/sys/class/input/{name}/device"):
+            continue
+        try:
+            fd = os.open(f"/dev/input/{name}", os.O_RDONLY | os.O_NONBLOCK)
+        except OSError:
+            continue
+        bits = bytearray(KEY_MAX // 8 + 1)
+        try:
+            fcntl.ioctl(fd, eviocgbit(EV_KEY, len(bits)), bits)
+        except OSError:
+            bits = bytearray(len(bits))
+        if bits[KEY_POWER // 8] & (1 << (KEY_POWER % 8)):
+            fds.append(fd)
+        else:
+            os.close(fd)
+    return fds
+
+
+def steam_running():
+    uid = os.getuid()
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        try:
+            if os.stat(f"/proc/{pid}").st_uid != uid:
+                continue
+            with open(f"/proc/{pid}/comm") as f:
+                if f.read().strip() == "steam":
+                    return True
+        except OSError:
+            continue
+    return False
+
+
+CHILDREN = []
+
+
+def run(*cmd):
+    # Never waits: a slow Steam must not delay reading the next press. Reaped on later passes,
+    # not by ignoring SIGCHLD: that disposition survives exec and breaks the shell in `steam`.
+    CHILDREN[:] = [c for c in CHILDREN if c.poll() is None]
+    try:
+        CHILDREN.append(subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                         start_new_session=True))
+    except OSError as exc:
+        print(f"pocknix-powerbuttond: {cmd[0]}: {exc}", flush=True)
+
+
+def to_steam(url, fallback=None):
+    # With no Steam to ask, do what logind would have done.
+    if steam_running():
+        run("steam", "-ifrunning", url)
+    elif fallback:
+        run("systemctl", fallback)
+
+
+def main():
+    # Outliving the inhibitor would have logind and Steam both act on every press.
+    PR_SET_PDEATHSIG = 1
+    ctypes.CDLL(None, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+    if os.getppid() == 1:
+        return 0
+
+    fds = power_keys()
+    if not fds:
+        print("pocknix-powerbuttond: no power key, leaving it to logind", flush=True)
+        return 0
+
+    pressed_at = None
+    long_sent = False
+    while True:
+        timeout = None
+        if pressed_at is not None:
+            deadline = pressed_at + (FAILSAFE_S if long_sent else LONG_S)
+            timeout = max(0.0, deadline - time.monotonic())
+        ready, _, _ = select.select(fds, [], [], timeout)
+
+        if pressed_at is not None and not ready:
+            if not long_sent:
+                long_sent = True
+                to_steam("steam://longpowerpress")  # no Steam: the failsafe powers off
+            else:
+                pressed_at = None
+                run("systemctl", "poweroff")
+            continue
+
+        for fd in ready:
+            try:
+                data = os.read(fd, EVENT.size * 64)
+            except BlockingIOError:
+                continue
+            except OSError:
+                fds.remove(fd)
+                os.close(fd)
+                continue
+            for off in range(0, len(data) - EVENT.size + 1, EVENT.size):
+                _, _, etype, code, value = EVENT.unpack_from(data, off)
+                if etype != EV_KEY or code != KEY_POWER:
+                    continue
+                if value == 1 and pressed_at is None:
+                    pressed_at = time.monotonic()
+                    long_sent = False
+                elif value == 0 and pressed_at is not None:
+                    # A release with no press seen is the tail of a wake and is ignored.
+                    if not long_sent:
+                        to_steam("steam://shortpowerpress", "suspend")
+                    pressed_at = None
+        if not fds:
+            print("pocknix-powerbuttond: power key gone, leaving it to logind", flush=True)
+            return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
