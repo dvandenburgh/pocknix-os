@@ -3,13 +3,6 @@
 # -path = deleted locally. Our 1000+ patches the sync deletes come back without a line here.
 -patches/20-version/9999-fix-rust-build-error.patch
 -patches/20-version/0011-thermal-adc-tm5-drop-iio-val-int-check.patch
-+dts/qcom/qcs8550-ayn-odin2-sd.dtsi
-+patches/30-sm8550/0210-mmc-add-qcom-downstream-sdhci-msm-driver.patch
-+patches/30-sm8550/0211-mmc-sdhci-msm-downstream-drop-sdhci_pltfm_free.patch
-+patches/30-sm8550/0212-Revert-clk-qcom-gcc-sm8550-Use-floor-ops-for-SDCC-RCGs.patch
 dts/qcom/qcs8550-ayn-common.dtsi
 dts/qcom/qcs8550-ayn-odin2.dts
-dts/qcom/qcs8550-ayn-odin2mini.dts
-dts/qcom/qcs8550-ayn-odin2portal.dts
 dts/qcom/qcs8550-ayn-thor.dts
-dts/qcom/qcs8550-retroidpocket-rp6.dts

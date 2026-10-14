@@ -74,12 +74,7 @@ users. Importing overwrites that game's settings.
 
 ![Add Non-Steam Game in Pocknix Control](images/pocknix-control-add-game.jpeg)
 
-On a normal desktop you would add non-Steam games through the Steam client's own
-**Games → Add a Non-Steam Game to My Library** dialog. **On pocknix-os that route does not
-work**: Steam's desktop client is an X11 application, and Plasma Mobile cannot summon new
-windows for it - the file-browser dialog never appears on screen.
-
-Pocknix Control provides the same feature natively in game mode instead:
+Steam's own **Add a Non-Steam Game** dialog does not work on pocknix-os, so add them here:
 
 1. In the **Library** tab, press **Add Non-Steam Game**.
 2. A file picker opens in your home directory. Navigate to the executable you want
@@ -91,26 +86,14 @@ Pocknix Control provides the same feature natively in game mode instead:
 
 ### File sharing
 
-The same tab can also turn the device into a network share, so you can drag ROMs, BIOS files
-and emulator firmware onto it from another computer instead of moving a card back and forth.
-It needs no extra software on either end: macOS Finder, Windows Explorer and Linux file
-managers all speak SMB out of the box.
+**Share my home folder** turns the device into a network share, so you can drag ROMs, BIOS files
+and emulator firmware onto it from another computer. The first time, it offers a small download.
+The same toggle is in **Pocknix Tools** on the desktop side.
 
-Samba is not shipped in the image (74.5 MB installed), so the first time you use this the
-section offers a 7.4 MB download. After that, **Share my home folder** flips it on and off, and
-the setting survives reboots.
-
-Two shares appear on the network, both as **Guest** with no password: `deck` (your home folder,
-including `Emulation/` and every emulator's own firmware directory) and `sdcard` (the card
-slot). macOS and Linux find the device by name in their file manager's network view, or open
-`smb://pocknix.local`; on Windows type `\\pocknix.local` into Explorer's address bar.
-
-> **There is no password.** Anyone on the same network can read and write everything in your
-> home folder, Steam login and SSH keys included. Sharing only answers on private home-network
-> address ranges, so public wifi cannot reach it, but turn it off when you are done.
-
-The same toggle exists in **Pocknix Tools** on the desktop side, and both drive the same
-`pocknix-share` command - flipping it in one place is reflected in the other.
+> **There is no password.** Anyone on the same network can read and write your home folder, so
+> turn it off when you are done. See
+> [copying files over the network](emulation-setup.md#copying-files-over-the-network) for how to
+> connect.
 
 ### SD card
 
@@ -157,26 +140,7 @@ on progress. If you prefer, the same update is just `sudo pacman -Syu` in a term
 
 ### Rolling back an update
 
-Every update automatically takes a **snapshot** of the system first - so if an update breaks
-something, you can undo it from the same tab.
-
-The **Rollback** section shows the last snapshot: when it was taken and which packages it
-would undo. To use it:
-
-1. Press **Roll Back Last Update**. The confirmation tells you exactly what gets restored -
-   and what is kept: **your games, saves and settings are never touched** by a rollback. If
-   the update included a kernel, the previous kernel comes back too.
-2. Confirm. It takes a few seconds, then press **Reboot Now**.
-3. The device boots straight back into the system as it was before the update.
-
-After a rollback the tab shows a *"System was rolled back"* notice and the rollback button
-disappears - the system already **is** the restored state, so there is nothing to undo. It
-all comes back the next time you install an update.
-
-Notes:
-
-- The section also shows free storage. If the card is nearly full, snapshots are skipped
-  (updates still install - you just would not be able to undo that one).
-- The QAM always rolls back the **last** update only. To go further back, or if game mode
-  itself is broken, use **Pocknix Tools** in desktop mode (*Roll back the last update...*) or the terminal -
-  see [snapshots.md](snapshots.md) for those and for how it all works underneath.
+Every update takes a snapshot first. If one breaks something, press **Roll Back Last Update**,
+confirm, and **Reboot Now**: the system comes back as it was before the update, and your games,
+saves and settings are untouched. To go back further, or when game mode itself is broken, see
+[snapshots and rollback](snapshots.md).

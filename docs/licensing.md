@@ -37,7 +37,7 @@ not and cannot relicense them. The main ones:
 | ROCKNIX ABL (fetched, pinned) | `packages/soc/pocknix-bootloader-*` | BSD-3-Clause (Qualcomm edk2 LinuxLoader) |
 | gamescope + patch set | `packages/soc/gamescope` | BSD-2-Clause (the patch set: GPL-2.0; origins in PATCHES.md) |
 | Mesa | `packages/soc/mesa` | MIT |
-| MangoHud | `packages/soc/mangohud` | MIT |
+| MangoHud | `packages/shared/mangohud` | MIT |
 | FEX-Emu | `packages/soc/fex-emu` | MIT |
 | SteamOS Vapor desktop theme (Valve) | `packages/shared/steamos-vapor-theme` | GPL-2.0-or-later, GPL-3.0 (per its metadata) |
 | alsa-ucm-conf material | `devices/*` BSPs | BSD-3-Clause |

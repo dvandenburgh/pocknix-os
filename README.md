@@ -1,28 +1,29 @@
-# pocknix-os
+<h1 align="center">pocknix-os</h1>
 
-> Questions, bug reports, or just want to hang out? Join the [pocknix Discord](https://discord.gg/jEpwudj4Fx)!
+<h3 align="center">Arch Linux for Snapdragon handhelds, with SteamOS gaming mode</h3>
 
-**pocknix-os is an Arch Linux ARM (ALARM) based distro for Retroid and AYN Snapdragon handhelds.** Using the Steam ARM client, it turns these handhelds into devices that feel like a Steam Deck - power on, land in SteamOS gaming mode, pick a game, and play - but it does so on a fully mutable and performance-tuned Arch Linux base, so it's closer to something like CachyOS Handheld Edition than to real SteamOS, Bazzite, or armada.
+<p align="center">Power on, land in Steam, pick a game, play. On a fully mutable, performance-tuned Arch base.</p>
 
-Pocknix balances mutability and flexibility with stability and ease of operation. It runs on a fully mutable ALARM base, but by default enforces a **locked** mode: `pacman` is pointed at our own version-controlled mirror of ALARM's package repo, containing a snapshot of just the subset of packages Pocknix needs, plus our own custom packages - similar to SteamOS's model. Unlike SteamOS, though, advanced Linux users and developers can easily switch to **rolling** mode, which repoints the `pacman` conf at the full ALARM repo (for everything other than Pocknix's own packages) and turns Pocknix into a true rolling Arch distro.
+<p align="center">
+  <a href="LICENSE.md"><img alt="license: GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue"></a>
+  <a href="https://discord.gg/jEpwudj4Fx"><img alt="chat on Discord" src="https://img.shields.io/badge/chat-Discord-5865F2?logo=discord&logoColor=white"></a>
+</p>
 
-As any Arch user knows, rolling updates can mean unexpected breakage, so staying in the default locked mode is the supported flow and recommended for most users. Extra applications can be installed via the included **Discover** Flatpak store.
+<p align="center">
+  <a href="docs/install.md"><b>Install pocknix</b></a> ·
+  <a href="docs/README.md"><b>Documentation</b></a> ·
+  <a href="docs/known-issues.md"><b>Known issues</b></a>
+</p>
 
 > [!WARNING]
-> pocknix-os is **experimental** software. Install and use it at your own risk.
->
-> **The default password (`pocknix`) is publicly known**, so it is strongly recommended you change it: run `passwd` (and `sudo passwd root`) after first boot. From v0.3 onwards, SSH is disabled by default.
+> pocknix-os is experimental software. Install it at your own risk.
 
-## Key features
+## What you get
 
-- **Performance tuned.** Almost all of the graphics and display stack is recompiled with SoC-specific tuning, and Pocknix runs the ROCKNIX kernel with some key additions:
-  - **The gaming-focused `scx_lavd` CPU scheduler**, enabled by default, for smooth, consistent frame pacing.
-  - **UHS-I SDR104 microSD support** ported from Armbian's downstream `sdhci-msm` driver, lifting microSD reads from ~13 MB/s to ~85 MB/s on SM8550 devices.
-- **Real sleep and wake.** Suspend/resume works, but is still **experimental on SM8550 devices**.
-- **Plasma Mobile rather than regular Plasma**, for a touch-optimized desktop experience that suits these small screens better than Plasma Desktop. For those who want it, the ability to switch desktop mode to a full Plasma Desktop session will be added in a coming update.
-- **Mutable.** The root filesystem is writeable, and advanced users can switch to rolling mode for a full rolling Arch experience.
-- **Per-game performance settings**, including the ability to swap in different Turnip driver versions per game. Per-game configs can be exported as JSON files and shared with other Pocknix users.
-- **Package-based updates for fast iteration.** SteamOS on ARM is still very young and iterating quickly. Pocknix is built with this in mind: rather than full images, updates are delivered through `pacman`, so components can be updated or swapped out at bleeding-edge cadence.
+- **SteamOS gaming mode** on the Steam ARM client, with Proton picked for you.
+- **Performance tuning that just works.** pocknix builds its own kernel, based on the [ROCKNIX](https://github.com/ROCKNIX/distribution) kernel, and tunes it, the CPU scheduler and the graphics stack for smooth frame times out of the box. All you do is set a frame cap.
+- **A full, mutable Arch system underneath**: a touch-friendly desktop mode, Flatpak apps via Discover, and updates through `pacman`, no reflashing.
+- **Locked by default, rolling if you want it.** Out of the box `pacman` points at our own tested snapshot of the Arch Linux ARM packages pocknix needs, so updates arrive together and stay stable, like SteamOS. Advanced users can switch to **rolling** mode, which points `pacman` at the full Arch Linux ARM repo and makes pocknix a true rolling Arch distro, with the occasional breakage that comes with it.
 
 ## Supported devices
 
@@ -38,156 +39,29 @@ As any Arch user knows, rolling updates can mean unexpected breakage, so staying
 | Retroid Pocket Nova | SM8550 | 🧪 Beta |
 | AYN Odin 3 | SM8750 | 🚧 In progress |
 
-## How to install
+## Get started
 
-Grab the image for your device from the [latest release](https://github.com/shuuri-labs/pocknix-os/releases/latest), decompress it (`zstd -d`, 7-Zip, or let your flasher handle it), and flash it to a microSD card (Balena Etcher, `dd`, etc.). Then follow the steps below.
+1. **Install**: flash the image for your device from the [latest release](https://github.com/shuuri-labs/pocknix-os/releases/latest) and follow the [install guide](docs/install.md).
+2. **Play**: download a game, launch it, then open the Quick Access Menu → **Performance** and set a **Framerate Limit**. That's it.
+   - *Optional*: if it doesn't feel smooth, try toggling the game's own vsync setting.
+3. **Update**: Quick Access Menu → **Pocknix Control** → **Updater** → **Check for Updates** → **Install Updates**.
 
-> **Minimum SD card size**: 64 GB works but gets tight fast once games are installed; 128 GB or larger is recommended.
+## Docs
 
-The flashed SD card carries ROCKNIX's install kit in its `rocknix_abl` folder (visible from Android when the card is inserted). To install it:
+- [Install guide](docs/install.md): flashing, the bootloader, first boot
+- [Install to internal storage](docs/install-to-internal.md): faster loads, uninstalling, restoring the stock bootloader
+- [Pocknix Control](docs/pocknix-control.md): per-game settings, fan curve, updates, controller calibration
+- [Emulation](docs/emulation-setup.md): ES-DE, supported systems, ROMs and BIOS
+- [Android apps](docs/waydroid.md): Waydroid
+- [Snapshots and rollback](docs/snapshots.md): recovering from a bad update
+- [Known issues](docs/known-issues.md)
+- [Contributing and building from source](CONTRIBUTING.md)
+- [Building an image](docs/building/README.md): `./build.sh`, host setup for Linux and WSL2, troubleshooting
 
-1. Copy the `rocknix_abl` folder from the SD card to the root of Android's internal storage.
-2. Open **Settings → Handheld Settings → Advanced → Run Script as Root**, navigate to the `rocknix_abl` folder you just copied, and run `backup_abl.sh` (saves your stock bootloader next to the scripts) followed by `flash_abl.sh`.
-3. **(Optional, but recommended)** copy the `abl_a.img`/`abl_b.img` backups from inside the `rocknix_abl` folder to somewhere safe off the device - if you later install Pocknix to internal storage, the Android partition is factory-reset, ABL backups included. They are the only way back to the factory bootloader; see [restoring the stock bootloader](docs/install-to-internal.md#restoring-the-stock-bootloader).
-4. Boot into the ABL menu: hold **Volume −** while powering on or rebooting - volume keys move through the entries, the power key selects. Set **Boot mode** to **Linux** and **Boot source** to **SD Card**. **SM8550 users must also set the device model to match their device**; SM8250 users can skip this.
-5. Insert the flashed microSD and boot. pocknix-os comes up from the SD card.
+## Thanks
 
-> **Although installing the ROCKNIX ABL is recommended, SM8250 users can boot Pocknix without it**: flash a Pocknix SD, insert it, boot while holding **Volume −**, switch the boot mode, and boot.
-
-> **Newer Retroid Pocket 5 / Flip 2 units (2026 batches, sold as 12 GB) have a different display panel** (Visionox). Support for it is included. Pocknix cannot tell the two panels apart before the screen driver runs, so on those units the first boot stays black (you can hear Steam start). To try it: with the SD card in a PC, create an empty file named `visionox` (or `visionox.txt`) in the top folder of the small `POCKNIX` partition, next to `KERNEL`, then boot again.
-
-## How to update
-
-Updates ship through the Pocknix pacman repo - kernel included, no reflashing. Three ways to get them:
-
-- **Pocknix Control (recommended)**: open the Quick Access Menu in game mode, go to the **Pocknix Control** plugin's **Updater** tab, and tap **Update** - checks for and applies updates without leaving game mode.
-- **Pocknix Tools**: switch to desktop mode and launch the **Pocknix Tools** app, then select the update option.
-- **pacman**: run `sudo pacman -Syu` in a terminal, like any Arch system.
-
-Note that the Steam client updates independently - Steam will notify you when an update is available.
-
-## Installing to internal storage
-
-Running from the SD card works, but the OS and your games load much faster from internal storage. Installing there requires resizing Android's `userdata` partition, which **essentially factory-resets the Android side** (Android itself stays bootable; only user data is wiped). Two ways, both from a system booted off the SD:
-
-- **Pocknix Tools**: switch to desktop mode, launch **Pocknix Tools**, and pick *Install or remove internal Pocknix…*.
-- **Terminal**: run `pocknix-install-internal` (do a `--dry-run` first and read the plan).
-
-Everything on the SD card's Pocknix partition (games and ROMs included) is copied and must fit in the internal space left after Android's share; the installer checks this up front and says how much to free if it does not.
-
-Installing does not change what boots. Afterwards, power off and hold **Volume −** to open the ABL menu, then set **Boot source** to **Internal** - switch it back to **SD Card** any time you want to boot the SD card again.
-
-See [Install to internal storage](docs/install-to-internal.md) for the full walkthrough, including how to uninstall, how to give the space back to Android, and how to restore the factory bootloader.
-
-## How to play games
-
-### Picking a Proton
-
-The Steam client now ships Valve's ARM Protons itself, and **Proton 11 (ARM64)** is downloaded and selected automatically the first time you launch a game.
-
-If a game misbehaves or runs poorly, **Proton Experimental (ARM64)** is worth trying. It's Valve's rolling preview build, so the newest fixes land there first, and given how new Proton for ARM is it's often the better option for compatibility and performance - though being a moving target, a Steam update can also change how it behaves. To switch, open the game's **Properties → Compatibility**, tick **"Force the use of a specific Steam Play compatibility tool"**, and pick it. This is a per-game setting.
-
-Additional options worth trying are **Proton-GE (ARM64)** and **Proton-CachyOS (ARM64)** - both are included with Pocknix. If a game will not boot on any ARM Proton, the normal (x86) Protons should "just work" too, but performance will be worse than the native ARM builds - only reach for one as a last resort.
-
-> **Note for SM8250 users** (Retroid Pocket 5, Flip 2): Proton Experimental has moved to DXVK 3, and DXVK 3+ depends on 8-bit storage, which Mesa (the GPU driver) does not support on the Adreno a6xx GPUs in these devices. Pocknix bundles a hook that swaps an older DXVK 2.x into **Proton Experimental (ARM64)** after it is installed, so it works anyway. The hook is also armed for **Proton 11 (ARM64)**, in case it ever gets bumped to DXVK 3+, and Pocknix's own SM8250 builds of the GE and Cachy Protons already ship DXVK 2.x. The hook does *not* cover the x86 Protons, so **Proton Experimental** (x86) likely will not work on these devices; Proton 11 (x86) still ships an older DXVK and is unaffected for now.
-
-## Emulation
-
-pocknix-os offers **ES-DE** (EmulationStation Desktop Edition) with a set of preconfigured emulators. It is not installed out of the box: open **Pocknix Tools** in desktop mode and pick *Install the emulation layer*, and everything below is downloaded and set up. Drop your ROMs into `~/Emulation` and they show up ready to play, no per-emulator setup needed. The same entry removes it again, keeping your ROMs, saves and settings.
-
-**Star a game as a favorite in ES-DE and it appears in your Steam library**, so you can launch it straight from Big Picture / game mode alongside your Steam titles.
-
-**Copying files over the network:** turn on file sharing (Pocknix Control → Library, or Pocknix Tools) and the device appears in Finder / Explorer / your Linux file manager, so you can drag ROMs, BIOS files and emulator firmware straight onto it. See [copying files over the network](docs/emulation-setup.md#copying-files-over-the-network).
-
-See the [emulation docs](docs/emulation-setup.md) for where ROMs and BIOS files go, and how to tweak per-emulator settings.
-
-Supported systems:
-
-| System | Emulator |
-|---|---|
-| NES / Famicom | RetroArch (FCEUmm) |
-| SNES / Super Famicom | RetroArch (Snes9x) |
-| Nintendo 64 | RetroArch (Mupen64Plus-Next) |
-| Game Boy / Game Boy Color | RetroArch (Gambatte) |
-| Game Boy Advance | RetroArch (mGBA) |
-| Nintendo DS | RetroArch (melonDS) |
-| Nintendo 3DS | Azahar |
-| GameCube / Wii | Dolphin |
-| Nintendo Switch | Eden or Ryujinx (bring your own build, see below) |
-| Sega Master System / Genesis / Game Gear / Sega CD | RetroArch (Genesis Plus GX) |
-| Sega Saturn | RetroArch (YabaSanshiro) |
-| Sega Dreamcast | RetroArch (Flycast) |
-| PlayStation | RetroArch (DuckStation) |
-| PlayStation 2 | ARMSX2 |
-| PlayStation Portable | PPSSPP |
-| Arcade / Neo Geo | RetroArch (FBNeo) |
-
-**Bring your own emulator build.** Every standalone emulator has a folder under
-`~/Emulation/emulators/` (`eden`, `ryujinx`, `armsx2`, `rpcs3`, `vita3k`, `xemu`, `dolphin`,
-`cemu`, `azahar`, `ppsspp`). Put one file in it, an AppImage or a binary, and Pocknix launches
-that instead of its own build, from ES-DE and from Steam alike, with the same pre-made
-settings. Remove the file to go back. Pocknix ships no Switch emulator: drop an Eden or
-Ryujinx build into its folder and it comes pre-configured; with both present, pick one in ES-DE
-under Other Settings, Alternative Emulators.
-
-## Pocknix Control
-
-**Pocknix Control** is a Decky plugin in the Steam session (open the Quick Access Menu): a control panel for tuning the handheld and managing the system without leaving the couch. Four tabs:
-
-- **Games**: performance (fan curve, CPU scheduler) and per-game (or global) tweaks such as **FEX Preset**, **Audio Buffer** and Proton / Mesa version; per-game configs export and import as JSON.
-- **Library**: add a non-Steam game (Steam's own "Add a Non-Steam Game" dialog does not work on pocknix-os, since Steam is an X11 app and Plasma Mobile cannot summon new windows for it), toggle network file sharing, and format a microSD card for Steam.
-- **Controller**: stick and trigger calibration, and the stick RGB lights.
-- **Updater**: check for and install system updates, and roll back the last one.
-
-See the [Pocknix Control docs](docs/pocknix-control.md) for the full tour.
-
-
-## Known issues
-
-- **The Steam session can take a while to come up** - on first boot or after a Steam client update, entering game mode can take a *long* while, especially when running off an SD card. The Pocknix logo stays on screen while Steam gets ready; a short black gap before it appears is normal. Be patient and leave the device to do its thing - it will come up.
-- **Gyro does not work yet.** The motion sensors are not wired up, so games and emulators that use gyro aim or tilt controls will not see any input. Getting them working is on the list.
-- **MangoHud incurs a slight performance penalty.** It is fine for dialing in settings, but turn it off during real gameplay. I consider this a feature, not a bug - instead of staring at performance metrics (we're all guilty), just enjoy your games! 😃
-
-## Building from source
-
-pocknix-os builds a full image (kernel included) from this repo. The build needs a **Linux host with root** (it chroots): aarch64 natively (an Arch/Fedora VM on Apple Silicon or an ARM cloud box), or an x86_64 PC or WSL2 on Windows, which run the ARM steps under qemu-user. [docs/building/](docs/building/README.md) covers host setup for each. Quick start:
-
-```bash
-./build.sh          # host packages, kernel, packages, rootfs -> flashable SD image in build/image/<soc>/
-./build.sh --ssh    # the same, with SSH on in the image (make image SSH=1 works too)
-```
-
-`./build.sh` (or `make image`) runs every step in order, installs missing host packages first, and asks `sudo` once. A status bar at the bottom of the terminal shows the current step and an estimate of the time left; `make status` shows the same from another shell. `./build.sh --no-sd-image` stops at the rootfs, and `./build.sh --help` lists every option.
-
-The SoC family defaults to `sm8550`; pass `DEVICE=sm8250` to any target for the RP5 / Flip 2. Images ship with SSH off unless built with `--ssh` (`SD_SSH=on` for the make targets), and `POCKNIX_EMULATION=1` bakes the emulation layer into the image.
-
-`make help` lists every target. Kernel enablement is committed under `kernel/`; only stock Linux source and firmware are fetched at build time.
-
-## Contributing
-
-Contributions are welcome - emulator configs, testing on devices I do not own, and docs fixes are especially useful. [CONTRIBUTING.md](CONTRIBUTING.md) covers where changes go, how to build and test just the part you touched, what your testing should cover, what a PR needs to include (notably: steps I can follow to re-test it on my own devices), and what it takes for a package to be hosted in the repos.
-
-## Thanks and references
-
-pocknix-os stands on the work of others:
-
-- [**ROCKNIX**](https://github.com/ROCKNIX/distribution) - the kernels, drivers, and device enablement pocknix builds on. This project simply would not exist without it.
-- [**armada**](https://github.com/armada-os/armada) - a sibling RP6 project (Fedora bootc), used as a reference for the session wiring and install-to-internal flow.
-- [**thorch-os**](https://github.com/thorch-os/thorch) - the model for the self-contained, reproducible build harness this repo is shaped after. The SM8550 suspend/resume patches are also lifted from here.
-
-And on the wider ecosystem pocknix ships on top of, with thanks to all who build it:
-
-- [**Valve**](https://www.valvesoftware.com/) - Steam, gamescope, Proton, and the whole SteamOS handheld stack that makes this kind of device possible.
-- [**FEX-Emu**](https://github.com/FEX-Emu/FEX) - the x86-on-ARM emulation that lets x86 games run at all.
-- [**Mesa**](https://www.mesa3d.org/) and the **Turnip** driver - the open-source graphics stack driving the Adreno GPU.
-- [**Arch Linux ARM**](https://archlinuxarm.org/) - the aarch64 base and package repositories.
-- [**KDE**](https://kde.org/) and the **Plasma Mobile** team - the touch-friendly desktop session.
-- The **Linux kernel**, **Armbian**, and the many upstream projects whose work this builds on.
-
-## A note on AI
-
-In the interest of transparency: I do use AI as a tool - debugging and performance work, comparing against upstream, research, boilerplate, and drafting docs like this one. The architecture and every design decision are mine, and nothing lands without me understanding and verifying it. I would consider myself an "AI sceptic"; however, I'll admit it's been a real force multiplier for a lone developer working on this project.
+Built on [ROCKNIX](https://github.com/ROCKNIX/distribution), [Arch Linux ARM](https://archlinuxarm.org/), Valve's SteamOS stack, [FEX-Emu](https://github.com/FEX-Emu/FEX), [Mesa](https://www.mesa3d.org/) and [KDE Plasma Mobile](https://plasma-mobile.org/), with reference from [armada](https://github.com/armada-os/armada) and [thorch-os](https://github.com/thorch-os/thorch).
 
 ## License
 
-pocknix-os is licensed [GPL-2.0-or-later](LICENSE.md). Vendored third-party components keep their upstream licenses - see [docs/licensing.md](docs/licensing.md) for the breakdown.
+[GPL-2.0-or-later](LICENSE.md). Third-party components keep their own licenses: see [docs/licensing.md](docs/licensing.md).

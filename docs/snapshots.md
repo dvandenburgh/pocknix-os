@@ -1,54 +1,20 @@
 # Snapshots, rollback and the update safety net
 
-pocknix stays a fully **mutable** Arch system - `pacman -Syu` is still the update - but every
-package transaction is wrapped in a btrfs snapshot, and rolling back is one QAM button (or one
-command) plus a reboot. No bootloader menu is involved, so it works identically on the
-sm8550 devices (ROCKNIX ABL, no menu at all) and the sm8250 devices (GRUB).
+Every update takes a snapshot of the system first, so if one breaks something you can undo it
+with one button (or one command) and a reboot. **A rollback never touches your games, saves or
+settings**: only the system itself goes back. If the update included a new kernel, the previous
+kernel comes back too.
 
-## How it works
-
-**Root layout.** The root partition is btrfs with five subvolumes:
-
-| Subvol | Mounted at | Rolls back? |
-|---|---|---|
-| `@` | `/` (as the filesystem **default**) | yes - the OS, including pacman's database |
-| `@home` | `/home` | no - games, saves, settings survive |
-| `@snapshots` | `/.snapshots` | no - the snapshots themselves |
-| `@pacman-cache` | `/var/cache/pacman` | no - downloaded packages aren't duplicated per snapshot |
-| `@var-log` | `/var/log` | no - logs survive for post-mortem |
-
-Neither the kernel cmdline nor the fstab root line names a subvolume: the kernel mounts
-whatever the filesystem's *default subvolume* is. That is the whole rollback mechanism -
-`pocknix-rollback` points the default at a restored root, and the next boot comes up in it. Zero boot-config
-changes, one atomic btrfs operation as the commit point.
-
-**Snapshots.** Two alpm hooks (package `pocknix-snapshots`) fire inside *every* pacman
-transaction - the QAM updater, `pocknix-update`, or a plain `pacman -Syu` over ssh:
-
-- `05-pocknix-snapshot` (PreTransaction): read-only snapshot of `/` into
-  `/.snapshots/<id>/snapshot` + metadata in `info.json` (date, targets, whether a kernel
-  was in the transaction). Skipped when free space is below
-  `POCKNIX_SNAPSHOT_MIN_FREE_MIB` (1 GiB by default) - **never blocks the update**.
-- `99-pocknix-snapshot-post` (PostTransaction): marks the transaction committed, touches
-  `/run/pocknix/reboot-required` when a kernel changed, prunes old snapshots.
-
-Retention: the newest `POCKNIX_SNAPSHOT_KEEP` snapshots (5 by default) + **1** abandoned root.
-Both tunables live in `/etc/pocknix/snapshots.conf`.
-
-**The kernel gap.** Boot files live on the FAT partition (`/flash`), outside btrfs. When the
-rollback target's kernel differs from the running one, `pocknix-rollback` regenerates
-`/flash/KERNEL` (and dtbs on arm-efi) **from the snapshot's own tree** (via
-`pocknix-boot-deploy`, bsp-common's /flash deploy, in `SRCROOT`/staging mode), staged as `*.new` before the commit and
-renamed after - so the kernel and its modules always match after the reboot. A crash inside
-that tiny window is healed on the next boot by `pocknix-rollback-repair.service`.
+Snapshots are skipped when storage is nearly full. The update still installs; you just cannot
+undo that one.
 
 ## Using it
 
 Three front-ends, one mechanism - pick whichever still works when things go wrong:
 
-- **Game mode (QAM):** Pocknix Control → Updater tab → **Roll Back Last Update** → confirm →
-  **Reboot Now**. See [pocknix-control.md](pocknix-control.md#rolling-back-an-update) for the
-  full walkthrough.
+- **Game mode (QAM):** Pocknix Control → Updater tab → **Roll Back Last Update**. The
+  confirmation lists what gets restored; confirm, then **Reboot Now**. It only ever offers the
+  last update.
 - **Desktop mode:** **Pocknix Tools** → *Roll back the last update...* lists every snapshot,
   newest first; pick one, confirm, and it offers the reboot. Use this when Steam or the
   plugin is what broke. Booted from the SD with Pocknix also on internal storage, *Roll back
@@ -80,7 +46,7 @@ takes a fresh snapshot, and brings the button back.
 
 ## Manual recovery (device won't boot after a kernel update)
 
-Both kernel deploy paths keep the previous boot image as `/flash/KERNEL.bak`. If the device
+Every kernel update keeps the previous boot image as `/flash/KERNEL.bak`. If the device
 no longer boots and you can't get a shell:
 
 1. Power off. Put the SD in a card reader (internal installs: boot a pocknix SD instead and

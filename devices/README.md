@@ -55,7 +55,6 @@ devices/<soc>/
                                   #   BOOTLOADER (qcom-abl | arm-efi),
                                   #   KERNEL_CMDLINE_ROOT / KERNEL_CMDLINE_EXTRA (ONE cmdline
                                   #   for the family), DEVICE_PRETTY,
-                                  #   GPU_HWMON (the GPU thermal zone's hwmon name, for mangohud),
                                   #   GPU_GEN (Adreno generation, a6xx/a7xx/a8xx: selects the
                                   #   packages/gpu packages whose ./gpus file lists it).
                                   #   Defaults a profile may override: config/pocknix.conf
@@ -106,7 +105,7 @@ plus `mkbootimg` on qcom-abl; the /flash deploy is bsp-common's and needs nothin
 + a grub.cfg.in template (see pocknix-bootloader-sm8250), on both styles the ROCKNIX ABL install kit
 copied to the SD boot FAT. Each SoC gets its own pacman repo tree
 (`build/localrepo/<soc>`, published at `POCKNIX_REPO_URL/<soc>`): the tuned packages
-(mesa, gamescope, mangohud, fex-emu) share pkgnames across SoCs with different
+(mesa, gamescope, fex-emu) share pkgnames across SoCs with different
 binaries, so the repos must not mix. They build for every SoC already (`socs` = `all`), and
 packages gated by GPU generation (`packages/gpu/`, e.g. the a6xx `-dxvk2` protons) follow the
 profile's `GPU_GEN`: a new SoC on a known Adreno generation sets it and lists them in its meta;

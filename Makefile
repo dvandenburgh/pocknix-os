@@ -1,5 +1,5 @@
 # pocknix-os: Arch-ARM dual-session distro for Qualcomm handhelds (DEVICE=<soc> picks the SoC family)
-# See "Building from source" in README.md for the build quick start.
+# See "Building" in CONTRIBUTING.md for the build quick start.
 #
 # Most targets build an aarch64 Linux image and must run on a Linux host as root
 # (chroot/mount). Override config in config/pocknix.conf or via the environment.

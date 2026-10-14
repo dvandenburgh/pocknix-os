@@ -34,31 +34,10 @@ needed) and adds a launcher shortcut automatically.
 
 ## Google Play Store (optional)
 
-Aurora is simpler and reaches the same catalog, but if you want the official Play Store it
-works too. It needs a GApps Android image **plus a one-time Google device certification** -
-until the device is certified, Google sign-in fails with "device is not Play Protect
-certified".
-
-1. Switch to the GApps image (**this wipes existing Android data** - see the warning below):
-   ```bash
-   sudo waydroid init -s GAPPS -f
-   ```
-2. Start a Waydroid session, then grab Waydroid's Android ID:
-   ```bash
-   sudo waydroid shell
-   ANDROID_RUNTIME_ROOT=/apex/com.android.runtime ANDROID_DATA=/data \
-   ANDROID_TZDATA_ROOT=/apex/com.android.tzdata ANDROID_I18N_ROOT=/apex/com.android.i18n \
-   sqlite3 /data/data/com.google.android.gsf/databases/gservices.db \
-     "select * from main where name = \"android_id\";"
-   ```
-3. Signed in to your Google account, visit
-   [google.com/android/uncertified](https://www.google.com/android/uncertified/), paste the
-   number, and register it.
-4. Give Google 10-20 minutes to process, then restart the Waydroid session and sign in to the
-   Play Store normally.
-
-Full details in the official
-[Waydroid Google Play certification guide](https://docs.waydro.id/faq/google-play-certification).
+Aurora reaches the same catalog more simply, but the official Play Store works too. It needs the
+GApps image (`sudo waydroid init -s GAPPS -f`, which **wipes existing Android data**) and a one-time
+Google device certification: follow Waydroid's
+[Google Play certification guide](https://docs.waydro.id/faq/google-play-certification).
 
 ## App shortcuts appear automatically
 

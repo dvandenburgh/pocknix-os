@@ -3,8 +3,8 @@
 # from meson wraps, so the build chroot needs network. Patch files stay flat in the package
 # dir: makepkg strips local source entries to their basename.
 pkgname=mangohud
-pkgver=0.8.3
-pkgrel=6
+pkgver=0.8.4
+pkgrel=1
 pkgdesc="Vulkan/OpenGL FPS/frametime/CPU/GPU overlay + mangoapp for the gamescope Steam session"
 arch=('aarch64')
 url="https://github.com/flightlessmango/MangoHud"
@@ -16,34 +16,31 @@ makedepends=('meson' 'ninja' 'git' 'glslang' 'vulkan-headers' 'libglvnd' 'libdrm
              'python-mako' 'mesa')
 source=("git+https://github.com/flightlessmango/MangoHud.git#tag=v${pkgver}"
         '0001-Qualcomm-GPU-support.patch'
-        '0002-GPU-hwmon.patch'
+        '0002-GPU-devfreq.patch'
         '0003-Battery-name.patch'
         '0004-Qualcomm-battery-power-now.patch'
         '0005-RAM-name.patch'
-        '0006-mangoapp-pace-redraw-to-frame-messages.patch')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        '0006-mangoapp-pace-redraw-to-frame-messages.patch'
+        '0007-msm-hottest-gpu-zone.patch'
+        '0008-gpu_fdinfo-skip-unreadable-fdinfo.patch')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd MangoHud
-  # Order matters: 0001 must precede 0002. No default zone: a guessed one builds fine and
-  # reads the wrong sensor, or none, on the next chip.
-  [ -n "${POCKNIX_GPU_HWMON:-}" ] || { echo "POCKNIX_GPU_HWMON unset (devices/<soc>/profile.conf GPU_HWMON)" >&2; return 1; }
-  for p in 0001-Qualcomm-GPU-support 0002-GPU-hwmon 0003-Battery-name \
+  # Order matters: 0002 and 0007 edit code 0001 adds.
+  for p in 0001-Qualcomm-GPU-support 0002-GPU-devfreq 0003-Battery-name \
            0004-Qualcomm-battery-power-now 0005-RAM-name \
-           0006-mangoapp-pace-redraw-to-frame-messages; do
+           0006-mangoapp-pace-redraw-to-frame-messages 0007-msm-hottest-gpu-zone \
+           0008-gpu_fdinfo-skip-unreadable-fdinfo; do
     echo "  applying ${p}.patch"
     git apply -p1 "${srcdir}/${p}.patch"
   done
-  sed -i "s|@GPU_HWMON@|${POCKNIX_GPU_HWMON}|" src/gpu_fdinfo.cpp
 }
 
 build() {
   cd MangoHud
-  # Appended after ALARM's defaults so -march/-mtune override; buildtype=plain below is
-  # what makes meson honour them. Fallback = sm8550, as in packages/soc/mesa.
-  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
-  export CFLAGS="${CFLAGS} ${_rocknix_tune}"
-  export CXXFLAGS="${CXXFLAGS} ${_rocknix_tune}"
+  # buildtype=plain: meson adds no flags over makepkg's. A -march above the base ISA
+  # would SIGILL on the other SoC, since this one binary serves every chip.
   meson setup build --prefix=/usr --buildtype=plain \
     -Dmangoapp=true \
     -Dwith_nvml=disabled \

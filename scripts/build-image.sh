@@ -91,11 +91,12 @@ install_local_packages() {
   # Same-name replacements FIRST, explicitly qualified: mesa + vulkan-freedreno
   # (our epoch-2 trimmed/tuned freedreno/turnip builds), gamescope (ROCKNIX-
   # patched; vanilla black-screens the rotated panel) and mangohud (Adreno
-  # reader) REPLACE the ALARM copies base.list installed for bootstrap. They are
-  # depends of the metas below, but a dep already satisfied by ALARM's installed
-  # copy would never be upgraded by a meta install — so force ours here, loudly.
+  # reader, from [pocknix-shared]) REPLACE the ALARM copies base.list installed
+  # for bootstrap. They are depends of the metas below, but a dep already
+  # satisfied by ALARM's installed copy would never be upgraded by a meta
+  # install — so force ours here, loudly.
   chroot "${root}" pacman -S --noconfirm --needed \
-    pocknix/mesa pocknix/vulkan-freedreno pocknix/gamescope pocknix/mangohud
+    pocknix/mesa pocknix/vulkan-freedreno pocknix/gamescope pocknix-shared/mangohud
   # The layer metas (POCKNIX_EMULATION=1 adds emulation). Their unqualified depends
   # resolve by repo order: [pocknix] + [pocknix-shared] sit ABOVE the base repos
   # (append_local_repo), so pocknix names resolve to our builds, ALARM names to base.

@@ -2,6 +2,9 @@
 
 User guides for pocknix-os. New here? Start with the [project README](../README.md).
 
+- [install.md](install.md) - flashing the SD card, installing the ROCKNIX bootloader, first boot,
+  and updating
+- [known-issues.md](known-issues.md) - what does not work, or not well, yet
 - [pocknix-control.md](pocknix-control.md) - the in-game control panel: per-game tweaks, fan/CPU
   modes, adding non-Steam games, file sharing, SD card formatting, controller calibration and
   stick lights, and system updates
@@ -19,8 +22,7 @@ User guides for pocknix-os. New here? Start with the [project README](../README.
 
 ## For developers
 
-See "Building from source" in the [project README](../README.md) and
-[CONTRIBUTING.md](../CONTRIBUTING.md) for how to build, test, and submit a change.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for how to build, test, and submit a change.
 [building/](building/README.md) has the full build setup for aarch64 and x86_64 Linux hosts and
 for Windows with WSL2.
 Maintainer procedures and infrastructure notes live in the maintainer's private notes repo.

@@ -4,7 +4,26 @@ pocknix-os offers **ES-DE** as the frontend, with RetroArch and a few standalone
 the work. It is "drop your files in and play": no per-emulator setup, and games you favorite in
 ES-DE show up in your Steam library automatically.
 
-For the full list of supported systems, see the [README](../README.md#emulation).
+## Supported systems
+
+| System | Emulator |
+|---|---|
+| NES / Famicom | RetroArch (FCEUmm) |
+| SNES / Super Famicom | RetroArch (Snes9x) |
+| Nintendo 64 | RetroArch (Mupen64Plus-Next) |
+| Game Boy / Game Boy Color | RetroArch (Gambatte) |
+| Game Boy Advance | RetroArch (mGBA) |
+| Nintendo DS | RetroArch (melonDS) |
+| Nintendo 3DS | Azahar |
+| GameCube / Wii | Dolphin |
+| Nintendo Switch | Eden or Ryujinx (bring your own build, see [below](#using-your-own-emulator-build)) |
+| Sega Master System / Genesis / Game Gear / Sega CD | RetroArch (Genesis Plus GX) |
+| Sega Saturn | RetroArch (YabaSanshiro) |
+| Sega Dreamcast | RetroArch (Flycast) |
+| PlayStation | RetroArch (DuckStation) |
+| PlayStation 2 | ARMSX2 |
+| PlayStation Portable | PPSSPP |
+| Arcade / Neo Geo | RetroArch (FBNeo) |
 
 ## Installing it
 

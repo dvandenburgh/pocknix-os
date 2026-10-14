@@ -1,11 +1,8 @@
 # Install pocknix-os to internal storage (and uninstall)
 
-> **Install the ROCKNIX ABL first** if you have not already - see
-> [How to install](../README.md#how-to-install) in the README. It is what makes switching between
-> the internal install and the SD card a menu choice, and it can remove an internal install on its
-> own. On **SM8550** devices (RP6, Nova, Odin 2 family, Thor) it is **REQUIRED, not optional**: Pocknix cannot boot
-> without it. Only **SM8250** devices (RP5, Flip 2) can run Pocknix on the stock bootloader, and the
-> ROCKNIX ABL is still recommended there.
+> **Install the ROCKNIX ABL first** if you have not already: see the [install guide](install.md).
+> pocknix needs it to boot, and it is what makes switching between the internal install and the
+> SD card a menu choice.
 
 ## The ROCKNIX boot menu
 
@@ -35,14 +32,10 @@ in a terminal.
 
 You must be **booted from a Pocknix SD** (the installer clones the *running* system to internal).
 
-**Everything on the SD's Pocknix partition has to fit on internal storage.** The installer copies
-the whole running system - Steam games, ROMs, home directory included - into the space left after
-the Android userdata reservation (internal storage minus Android minus the system partitions). It
-measures the SD's used space up front and only offers Android sizes that leave room for it, with a
-small margin; if the SD holds more than internal storage can take even with Android at its minimum,
-it refuses before touching anything and tells you how much to free. A 512 GB card full of games will
-not clone onto a 128 GB device: uninstall games or move ROMs off the card first, then reinstall
-them onto internal storage afterwards (that also gives Android more room).
+**Everything on the SD's Pocknix partition has to fit on internal storage**, Steam games and ROMs
+included, in the space Android does not keep. The installer checks this before touching anything
+and tells you how much to free if it does not fit: uninstall games or move ROMs off the card first,
+and reinstall them onto internal storage afterwards.
 
 Desktop mode: **Pocknix Tools → Install or remove internal Pocknix…**, pick how much internal
 storage Android keeps, and let it run. Or from a terminal:
@@ -75,10 +68,6 @@ hold **Volume −** to open the boot menu and set **Switch boot source** to **In
 Switch it back to **SD Card** whenever you want to boot the SD again; nothing on either disk
 changes.
 
-**On a stock SM8250 bootloader there is nothing to switch** - it has no boot-source setting and
-always prefers the SD card. To boot the internal install, power off, take the SD card out, and power
-back on; put it back in to boot the SD again.
-
 ---
 
 ## Uninstall from internal
@@ -89,8 +78,8 @@ back on; put it back in to boot the SD again.
 
 ### From the ROCKNIX ABL (recommended)
 
-This needs the **ROCKNIX ABL** (v1.1.7 or newer, where the entry is named *Uninstall CFW*). A device
-still on its stock bootloader has no such menu - use the SD-card path below instead.
+This needs the **ROCKNIX ABL** (v1.1.7 or newer, where the entry is named *Uninstall CFW*). On an
+older ABL, use the SD-card path below instead.
 
 Hold **Volume −** at power-on and select **Uninstall CFW**. It deletes the internal Linux install
 and grows Android's partition back to its full size in one step - no SD card, no second boot.
@@ -100,9 +89,8 @@ and grows Android's partition back to its full size in one step - no SD card, no
 ### From a running pocknix SD
 
 You **can't repartition the disk you're booted from**, so this has to run from the SD. Set **Switch
-boot source** to **SD Card** in the boot menu (or, on a stock SM8250 bootloader, just insert the
-SD), boot it, then use **Pocknix Tools → Install or remove internal Pocknix… → Remove, restore
-Android**, or a terminal:
+boot source** to **SD Card** in the boot menu, boot it, then use **Pocknix Tools → Install or
+remove internal Pocknix… → Remove, restore Android**, or a terminal:
 
 ```bash
 pocknix-uninstall-internal --dry-run     # review the plan
@@ -126,9 +114,6 @@ boot menu -> Switch boot source: SD Card, and boot the SD carrying your new buil
 **Pocknix Tools → *Install or remove internal Pocknix…* → Reinstall Pocknix** does the two middle
 steps in one go.
 
-For just iterating on packages/scripts you usually don't need to reinstall - deploy onto the running
-internal system via pocknix package updates.
-
 ---
 
 ## Restoring the stock bootloader
@@ -140,7 +125,7 @@ told to make (and copy off the device) when you first flashed the ROCKNIX ABL.
 
 Where your backup is, depending on how you flashed:
 
-- **Android's `backup_abl.sh`** (the [README](../README.md#how-to-install) steps): it wrote
+- **Android's `backup_abl.sh`** (the [install guide](install.md#2-install-the-rocknix-bootloader) steps): it wrote
   `abl_a.img` + `abl_b.img` into `rocknix_abl/` on Android internal storage - gone if you have since
   installed to internal, so use the copy you were told to keep off the device.
 - **`pocknix-update-abl` / Pocknix Tools**: it saved the bootloader it replaced to
@@ -164,5 +149,5 @@ Then, from Android:
 > ⚠️ Keep the device plugged in while doing ABL writes: an interrupted or wrong bootloader write
 > leaves a device that needs a PC to recover.
 
-After this, an SM8550 device (RP6, Odin 2) can no longer boot pocknix at all - the stock bootloader
-has no Linux boot path. Flash the ROCKNIX ABL again (README step 2) to bring it back.
+After this, the device can no longer boot pocknix: pocknix needs the ROCKNIX ABL. Flash it again
+([install guide](install.md#2-install-the-rocknix-bootloader)) to bring it back.
