@@ -82,14 +82,10 @@ case "${ORIENT}" in
   *)          GS_W="${W}"; GS_H="${H}" ;;
 esac
 
-# --prefer-output pins the main panel; gamescope's modeset disables every other CRTC, which is
-# what blanks the second one. Stop pocknix-second-screen so the bottom touchscreen stays off libinput.
+# --prefer-output pins the panel when a board names its output.
 GS_OUTPUT=()
 if [ -n "${POCKNIX_PANEL_OUTPUT:-}" ]; then
   GS_OUTPUT=(--prefer-output "${POCKNIX_PANEL_OUTPUT}")
-fi
-if [ -n "${POCKNIX_TOUCH2_NAME:-}" ]; then
-  systemctl stop pocknix-second-screen.service 2>/dev/null || true
 fi
 
 # Rotation autodetects (scanout when the plane can, else composited).

@@ -33,7 +33,6 @@ not and cannot relicense them. The main ones:
 |---|---|---|
 | Linux kernel + patch series | `kernel/`, `packages/soc/linux-pocknix/` | GPL-2.0-only |
 | ROCKNIX patches, scripts, BSP material | `kernel/*/patches`, various packages | GPL-2.0 |
-| ROCKNIX-built GRUB binary | `packages/soc/pocknix-bootloader-sm8250` | GPL-3.0-or-later (GRUB) |
 | ROCKNIX ABL (fetched, pinned) | `packages/soc/pocknix-bootloader-*` | BSD-3-Clause (Qualcomm edk2 LinuxLoader) |
 | gamescope + patch set | `packages/soc/gamescope` | BSD-2-Clause (the patch set: GPL-2.0; origins in PATCHES.md) |
 | Mesa | `packages/soc/mesa` | MIT |
@@ -41,14 +40,12 @@ not and cannot relicense them. The main ones:
 | FEX-Emu | `packages/soc/fex-emu` | MIT |
 | SteamOS Vapor desktop theme (Valve) | `packages/shared/steamos-vapor-theme` | GPL-2.0-or-later, GPL-3.0 (per its metadata) |
 | alsa-ucm-conf material | `devices/*` BSPs | BSD-3-Clause |
-| Valve DXVK build (fetched, pinned) | `packages/gpu/pocknix-dxvk2-donor` | zlib |
-| Proton-GE, Proton-CachyOS | `packages/gpu/proton-*-dxvk2` | BSD-3-Clause (Proton) plus each bundled component's own |
 | Packaged emulators, tools, and libraries | `packages/*` | each project's own license |
 
 PKGBUILDs in `packages/` fetch pinned upstream sources; the resulting binary packages and
 OS images contain those projects under their own licenses. Provenance for vendored
 binaries is recorded next to them (for example
-`packages/soc/pocknix-bootloader-sm8250/README.provenance`) and in [PATCHES.md](../PATCHES.md).
+`packages/soc/pocknix-bootloader-sm8550/README.provenance`) and in [PATCHES.md](../PATCHES.md).
 
 ROCKNIX additionally licenses its distribution branding and artwork under CC BY-NC-SA.
 pocknix-os does not ship ROCKNIX branding; only their GPL-licensed software, scripts, and

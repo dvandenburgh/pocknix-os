@@ -15,8 +15,7 @@ provides=("linux=${pkgver}" ${POCKNIX_KERNEL_LEGACY_NAMES})
 conflicts=('linux-aarch64' ${POCKNIX_KERNEL_LEGACY_NAMES})
 replaces=('linux-aarch64' ${POCKNIX_KERNEL_LEGACY_NAMES})
 # qcom-abl: python runs the shipped mkbootimg in pocknix-bsp-common's on-device /flash/KERNEL
-# rebuild. arm-efi has no boot image: GRUB loads the raw Image plus a separate dtb and the
-# cmdline lives in grub.cfg, so the /flash deploy only copies Image + dtbs.
+# rebuild.
 case "${POCKNIX_BOOTLOADER:?set by build-packages.sh}" in qcom-abl) depends=('python') ;; esac
 install=linux-pocknix.install
 options=('!strip')          # the kernel Image and DTBs must not be stripped

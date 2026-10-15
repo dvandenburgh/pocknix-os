@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # build-kernel.sh — build the linux-pocknix kernel for the selected device's SoC
 # (kernel/${SOC}/, chosen by the device profile) and stage the boot artifact for
-# the SoC's BOOTLOADER style: qcom-abl (mkbootimg Android boot image, sm8550) or
-# arm-efi (raw Image loaded by GRUB, sm8250). The recipe:
+# the SoC's qcom-abl bootloader (mkbootimg Android boot image). The recipe:
 #
 #   stock kernel.org linux-${KERNEL_VERSION}   (pinned in kernel/${SOC}/kernel.conf)
 #     + patch stack in numeric subdir order: kernel/${SOC}/patches/*/
@@ -18,8 +17,7 @@
 #
 # Outputs (per SoC):
 #   build/kernel/<soc>/out/{Image,dtbs/,modroot/lib/modules/<ver>/,kernelrelease,soc}
-#   build/image/<soc>/KERNEL   (qcom-abl: the boot image; arm-efi: the raw Image
-#                               -> either way, deploy to /flash/KERNEL)
+#   build/image/<soc>/KERNEL   (the boot image, deployed to /flash/KERNEL)
 
 source "$(dirname "$0")/lib.sh"
 need_linux
@@ -167,11 +165,10 @@ configure() {
   #  - sched_ext (SCHED_CLASS_EXT) + BTF (DEBUG_INFO_BTF), so scx_lavd (pocknix-lavd.service)
   #    can load: a sched_ext program attaches only if /sys/kernel/btf/vmlinux exists, which
   #    needs DEBUG_INFO_BTF=y and pahole at compile time. BTF depends on !DEBUG_INFO_REDUCED
-  #    (the sm8550 base sets REDUCED), and the whole debug-info choice is hidden without
-  #    DEBUG_KERNEL (the sm8250 base disables it, so the choice falls to DEBUG_INFO_NONE).
-  #    Either way olddefconfig drops BTF and SCHED_CLASS_EXT silently, with no "is not set"
+  #    (the synced base sets REDUCED), and the whole debug-info choice is hidden without
+  #    DEBUG_KERNEL. olddefconfig drops BTF and SCHED_CLASS_EXT silently, with no "is not set"
   #    line: so DEBUG_KERNEL on, REDUCED off, the choice forced onto DWARF_TOOLCHAIN_DEFAULT.
-  #  - KALLSYMS_ALL: also DEBUG_KERNEL-gated and missing from the sm8250 base config.
+  #  - KALLSYMS_ALL: also DEBUG_KERNEL-gated, so it is not a given in a synced base config.
   #    scx_lavd resolves the per-cpu 'runqueues' ksym via kallsyms, and DATA symbols are
   #    only listed with _ALL; without it the prog load dies with "ldimm64 failed to find".
   #  - SCHED_CLUSTER: cluster-aware scheduler topology for the big.LITTLE DynamIQ parts.
@@ -194,10 +191,10 @@ configure() {
   #    run from half a millisecond to five, so a 4 ms tick let a waiting game thread sit up to
   #    4 ms behind a half-millisecond slice; 1 ms bounds it. NO_HZ_IDLE keeps idle CPUs
   #    tickless, so only busy ones pay.
-  #  - QCOM_Q6V5_PAS =m: built in (as the synced sm8250 config ships it) the adsp/cdsp/slpi
-  #    remoteprocs probe before the initramfs-less root holds /usr/lib/firmware, and remoteproc
-  #    never retries a failed request_firmware: the DSPs stay offline and the q6 sound card
-  #    never assembles. =m loads post-root; no-op on sm8550, which already ships =m.
+  #  - QCOM_Q6V5_PAS =m: built in, the adsp/cdsp remoteprocs would probe before the
+  #    initramfs-less root holds /usr/lib/firmware, and remoteproc never retries a failed
+  #    request_firmware: the DSPs stay offline and the q6 sound card never assembles. =m loads
+  #    post-root. The synced config already ships =m; this keeps a resync from undoing it.
   #  - UNICODE =y: SteamOS formats SD cards with the ext4 `casefold` feature, and ext4
   #    refuses to mount a casefold filesystem without CONFIG_UNICODE, so a card from another
   #    Deck would never mount here. Built in, not a module: filesystems mount before modules.
@@ -262,7 +259,7 @@ configure() {
   # Assert the whole scx_lavd chain actually resolved: the fentry/BPF-trampoline
   # symbols (attach fails ENOTSUPP without them) AND BTF + sched_ext themselves —
   # olddefconfig silently drops any of these when a dependency is missing
-  # (REDUCED on sm8550, DEBUG_INFO_NONE on sm8250), and the failure only
+  # (DEBUG_INFO_REDUCED in the synced base), and the failure only
   # shows up on-device as pocknix-lavd's ConditionPathExists quietly skipping.
   local sym
   for sym in FUNCTION_TRACER DYNAMIC_FTRACE DYNAMIC_FTRACE_WITH_DIRECT_CALLS \
@@ -387,27 +384,13 @@ main() {
   build_kernel
   progress_detail "staging the boot image"
   stage
-  case "${BOOTLOADER}" in
-    arm-efi)
-      # ROCKNIX arm-efi contract (SM8250): the ABL chainloads GRUB, whose
-      # "linux /KERNEL" line loads a RAW arm64 Image. The dtb is a separate
-      # "devicetree /boot/grub/<board>.dtb" file and the cmdline lives in
-      # grub.cfg (shipped by pocknix-bootloader-<soc>). No Android boot image,
-      # no mkbootimg, no appended dtbs.
-      mkdir -p "${IMAGE_DIR}"
-      cp "${KBUILD}/out/Image" "${IMAGE_DIR}/KERNEL"
-      ok "raw Image staged -> ${IMAGE_DIR}/KERNEL (arm-efi: cmdline + dtb come from GRUB)"
-      ;;
-    *)
-      assemble_bootimg "$@"
-      # Stage the on-device boot-image rebuild inputs into out/ for the linux-pocknix-<soc>
-      # package: the mkbootimg tool, so the package's alpm hook can rebuild /flash/KERNEL on the
-      # device exactly the way this build does. (The cmdline the hook reads is shipped by the
-      # device BSP; out/cmdline is kept as a build record of what the boot image was given.)
-      rm -rf "${KBUILD}/out/mkbootimg"
-      cp -r "${KBUILD}/mkbootimg" "${KBUILD}/out/mkbootimg"
-      ;;
-  esac
+  assemble_bootimg "$@"
+  # Stage the on-device boot-image rebuild inputs into out/ for the linux-pocknix-<soc>
+  # package: the mkbootimg tool, so the package's alpm hook can rebuild /flash/KERNEL on the
+  # device exactly the way this build does. (The cmdline the hook reads is shipped by the
+  # device BSP; out/cmdline is kept as a build record of what the boot image was given.)
+  rm -rf "${KBUILD}/out/mkbootimg"
+  cp -r "${KBUILD}/mkbootimg" "${KBUILD}/out/mkbootimg"
   printf '%s' "${KERNEL_CMDLINE}" > "${KBUILD}/out/cmdline"
   # SoC marker: records which SoC produced out/, so downstream checks catch a copied/renamed dir.
   printf '%s' "${SOC}" > "${KBUILD}/out/soc"

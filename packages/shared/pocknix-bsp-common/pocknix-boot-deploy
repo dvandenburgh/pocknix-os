@@ -1,6 +1,5 @@
 #!/bin/bash
-# Picks the /flash deploy by POCKNIX_BOOT_STYLE, not by which script is installed: both ship
-# everywhere, and the bootimg builder exits 0 on arm-efi (no mkbootimg), leaving KERNEL stale.
+# The /flash deploy for POCKNIX_BOOT_STYLE; qcom-abl, the RP6's, is the only one.
 # FLASH / SRCROOT / OUT_SUFFIX pass through; --style only prints.
 # No pipefail: device.conf's model probe is a pipeline that fails without a devicetree.
 set -eu
@@ -14,6 +13,5 @@ style="${POCKNIX_BOOT_STYLE:-qcom-abl}"
 [ $# -eq 0 ] || { echo "pocknix-boot-deploy: unknown argument '$1'" >&2; exit 1; }
 case "${style}" in
   qcom-abl) exec /usr/bin/pocknix-build-bootimg ;;
-  arm-efi)  exec /usr/bin/pocknix-update-boot ;;
   *) echo "pocknix-boot-deploy: unknown boot style '${style}'" >&2; exit 1 ;;
 esac

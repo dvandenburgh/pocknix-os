@@ -15,4 +15,3 @@ inputplumber :: conflicts=inputplumber :: our build takes the name over ALARM's
 wxwidgets-pocknix :: conflicts=wxwidgets-common :: provides ALARM's wxwidgets split in one package
 wxwidgets-pocknix :: conflicts=wxwidgets-gtk3 :: provides ALARM's wxwidgets split in one package
 pocknix-bsp-common :: conflicts=linux-pocknix-sm8550<7.2.10-3 :: the /flash deploy scripts and hook these kernels shipped (#126)
-pocknix-bsp-common :: conflicts=linux-pocknix-sm8250<7.2.10-4 :: the /flash deploy scripts and hook these kernels shipped (#126)

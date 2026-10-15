@@ -1,8 +1,0 @@
-# Local kernel delta that make sync (scripts/sync.sh) restores from git after its rsync --delete,
-# paths under kernel/sm8250/. path = our edit of an upstream file, +path = our own file,
-# -path = deleted locally. Our 1000+ patches the sync deletes come back without a line here.
--patches/20-version/9999-fix-rust-build-error.patch
--patches/20-version/0011-thermal-adc-tm5-drop-iio-val-int-check.patch
-patches/30-sm8250/0105-drm-panel-visionox-vtdr6130-add-sm8250.patch
-dts/qcom/sm8250-retroidpocket-common.dtsi
-dts/qcom/sm8250-retroidpocket-rp5.dts

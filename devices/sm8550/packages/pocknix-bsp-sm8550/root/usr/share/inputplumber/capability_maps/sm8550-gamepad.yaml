@@ -1,7 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ShadowBlip/InputPlumber/main/rootfs/usr/share/inputplumber/schema/capability_map_v2.json
-# InputPlumber capability map for the SM8550 family (RSInput "AYN Odin2 Gamepad"):
-# Retroid Pocket 6 (+TOP-DPAD), Nova and AYN Odin 2 / Mini / Portal share the same
-# RSInput MCU + gpio-keys wiring, so ONE map serves the family.
+# InputPlumber capability map for the Retroid Pocket 6 (+TOP-DPAD) RSInput MCU, whose driver
+# names it "AYN Odin2 Gamepad", and its gpio-keys wiring.
 # Why we need it (vs InputPlumber's auto-detect):
 #   * X/Y are inverted at the driver — source BTN_NORTH is physically X (West), BTN_WEST is
 #     physically Y (North). The two swap entries below fix that.

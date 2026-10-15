@@ -5,9 +5,8 @@ hardcodes a device fact: the **build** reads `devices/<name>/profile.conf` (sour
 `scripts/lib.sh` right after `config/pocknix.conf`), and the **running OS** reads
 `/usr/lib/pocknix/device.conf`, shipped by the family's BSP package.
 
-`DEVICE` names an **image target**, and there is one FAMILY target per SoC
-(`make build DEVICE=sm8550` is the default; `DEVICE=sm8250` for the RP5 family):
-each family image serves every board on its SoC, ROCKNIX-style. The BSP
+`DEVICE` names an **image target**, a SoC family. This tree builds one: `sm8550`, for the
+Retroid Pocket 6 (standard and TOP-DPAD models). The BSP
 (`pocknix-bsp-<soc>`) ships per-board facts in `/usr/lib/pocknix/boards/<board>.conf`,
 each sourcing the family-wide `boards/family.conf` first, and
 `/usr/lib/pocknix/device.conf` is a sourced **dispatcher** that picks one at source time
@@ -16,23 +15,21 @@ BSP's `boards/models` table (`<board> <dt model>` rows). InputPlumber configs ar
 `matches:` on the devicetree model. Since consumers *source* `device.conf`, the dispatcher
 is invisible to them; `/etc/pocknix/device.conf` still overrides.
 
-Current families:
+The family:
 
-* **sm8550** (qcom-abl): Retroid Pocket 6 (+TOP-DPAD), Retroid Pocket Nova, AYN Odin 2 /
-  Mini / Portal, AYN Thor. The family RSInput controller config covers every board but the
-  Thor, which has its own (its extra AYN key).
-* **sm8250** (arm-efi): Retroid Pocket 5, Retroid Pocket Flip 2; each also as a Visionox-panel revision (separate `-visionox` dtb + board conf, picked by the grub `visionox` marker file).
+* **sm8550** (qcom-abl): Retroid Pocket 6 (+TOP-DPAD), both on `boards/rp6.conf`. The RP6
+  device tree includes the shared AYN SM8550 dtsi, so its sound card is named `AYN-Odin2`
+  and it loads the AYN Odin 2 DSP and amp firmware: those UCM and firmware files are the
+  RP6's own.
 
-The first board a bullet names is the family's fallback: it must be the first `boards/models`
-row, which an unknown or absent model gets (`make check` pins the two together).
+The RP6 is the fallback: it is the first `boards/models` row, which an unknown or absent
+model gets (`make check` pins the two together).
 
-Adding a **board to an existing family**: a `boards/<board>.conf` (only what differs from
+Adding a **board to the family**: a `boards/<board>.conf` (only what differs from
 `boards/family.conf`) + its `boards/models` row(s) + (if its controller differs) an
 inputplumber yaml/map with the board's dt-model `matches:` + a `[[device]]` entry in the
-BSP's `root/usr/share/steamos-manager/devices/pocknix-family.toml`, ahead of the SoC entry -
-plus, on arm-efi SoCs, a menuentry in the SoC grub.cfg.in template and the board in the BSP's board-select script
-(pocknix-sm8250-board-select). Bump the BSP (and bootloader) pkgrels. No new packages, no
-new image.
+BSP's `root/usr/share/steamos-manager/devices/pocknix-family.toml`, ahead of the SoC entry.
+Bump the BSP pkgrel. No new packages, no new image.
 
 ## Where a new file goes
 
@@ -42,8 +39,6 @@ new image.
   one recipe for every chip: `packages/soc/linux-pocknix/` builds every chip's kernel
   package from its `kernel/<soc>/kernel.conf`; `pocknix-bootloader-<soc>` is the remaining
   one-chip recipe until it is templated.
-* A recipe built per Adreno generation goes in `packages/gpu/`, gated by its `gpus` file
-  against each profile's `GPU_GEN`. Neither dir takes the other's gate file.
 * `packages/shared/` only if the bytes are identical for every chip.
 
 ## What a family target must provide
@@ -52,11 +47,9 @@ new image.
 devices/<soc>/
   profile.conf                    # build-time facts that differ per family (see devices/sm8550):
                                   #   SOC (selects kernel/<soc>/ + vendor/rocknix-<soc>/),
-                                  #   BOOTLOADER (qcom-abl | arm-efi),
+                                  #   BOOTLOADER (qcom-abl),
                                   #   KERNEL_CMDLINE_ROOT / KERNEL_CMDLINE_EXTRA (ONE cmdline
-                                  #   for the family), DEVICE_PRETTY,
-                                  #   GPU_GEN (Adreno generation, a6xx/a7xx/a8xx: selects the
-                                  #   packages/gpu packages whose ./gpus file lists it).
+                                  #   for the family), DEVICE_PRETTY.
                                   #   Defaults a profile may override: config/pocknix.conf
                                   #   (DEVICE_HOSTNAME, SD_FAT_LABEL / SD_BOOT_PARTNAME /
                                   #   ROOT_LABEL, set before the profile: override with X=value)
@@ -86,8 +79,7 @@ devices/<soc>/
                                   #   MUST: depends=(pocknix-bsp-common)
                                   #   provides/conflicts=(pocknix-bsp)   <- wrong-device guard
     pocknix-device-<soc>/         # metapackage: depends on the BSP + kernel + bootloader
-                                  #   + its protons: exactly the ./gpus packages listing its
-                                  #   GPU_GEN (make check enforces), the stock ones otherwise.
+                                  #   + its protons.
                                   #   Nothing every family needs: that goes on pocknix-core.
                                   #   MUST provides/conflicts=(pocknix-device).
     pocknix-firmware-<soc>/       # (optional) vendor firmware linux-firmware lacks or gets wrong,
@@ -100,22 +92,17 @@ If the family brings a **new SoC**, also create `kernel/<soc>/` (`kernel.conf` w
 source pins, `KERNEL_PKGREL` (1 for a new chip) + `config/ patches/ dts/` -
 populated by `make sync` against the ROCKNIX device dir named in `ROCKNIX_SOC`); the kernel
 package needs no recipe of its own (`packages/soc/linux-pocknix/` packages `make kernel` output,
-plus `mkbootimg` on qcom-abl; the /flash deploy is bsp-common's and needs nothing per SoC), and a
-`packages/soc/pocknix-bootloader-<soc>/` - on arm-efi SoCs the GRUB payload
-+ a grub.cfg.in template (see pocknix-bootloader-sm8250), on both styles the ROCKNIX ABL install kit
-copied to the SD boot FAT. Each SoC gets its own pacman repo tree
+plus `mkbootimg`; the /flash deploy is bsp-common's and needs nothing per SoC), and a
+`packages/soc/pocknix-bootloader-<soc>/` with the ROCKNIX ABL install kit copied to the SD
+boot FAT. Each SoC gets its own pacman repo tree
 (`build/localrepo/<soc>`, published at `POCKNIX_REPO_URL/<soc>`): the tuned packages
 (mesa, gamescope, fex-emu) share pkgnames across SoCs with different
-binaries, so the repos must not mix. They build for every SoC already (`socs` = `all`), and
-packages gated by GPU generation (`packages/gpu/`, e.g. the a6xx `-dxvk2` protons) follow the
-profile's `GPU_GEN`: a new SoC on a known Adreno generation sets it and lists them in its meta;
+binaries, so the repos must not mix. They build for every SoC already (`socs` = `all`);
 a SoC-specific kernel config or a local patch delta goes in `kernel/<soc>/` (see
 kernel/README.md). `make check` validates every family: required files, family and board keys,
-the meta's `gpus` packages against `GPU_GEN`,
-the models table against boards/ and the dts model lines (and grub.cfg + board-select on
-arm-efi), the consumers' fallbacks, the rendered device.conf and family.conf, and that
+the models table against boards/ and the dts model lines, the consumers' fallbacks, the rendered device.conf and family.conf, and that
 the cmdline has no committed copy outside the profile. The BSP PKGBUILD installs what the
-build stages into its `./staged` (device.conf, family.conf, and on qcom-abl kernel-cmdline):
+build stages into its `./staged` (device.conf, family.conf and kernel-cmdline):
 copy an existing family's `package()`. A new tree is never published until its first
 `make stage`/`make publish`; stage-check skips it for the other SoCs until then.
 
@@ -132,14 +119,6 @@ kernel update, rollback and cmdline change. Kernel packages ship no deploy scrip
   The SD boot FAT also carries `rocknix_abl/` (pocknix-bootloader-<soc>): ROCKNIX's
   first-install kit for flashing that ABL from rooted stock Android - inert at boot,
   pocknix never flashes it itself.
-* `arm-efi` (sm8250): the ABL chainloads GRUB (`EFI/BOOT/bootaa64.efi`); `/KERNEL` is
-  a RAW Image; the board dtb is a separate `/boot/grub/<board>.dtb`; the cmdline lives
-  in grub.cfg, rendered from `packages/soc/pocknix-bootloader-<soc>/grub.cfg.in` with the
-  profile's `KERNEL_CMDLINE` in place of each entry's `@KERNEL_CMDLINE@` (build-packages.sh
-  stages it; a profile edit rebuilds the BSP and the bootloader package). Board selection at the boot
-  level is the GRUB menuentry; at the OS level it's device.conf + model gates.
-  The stock ABL SD-boots this chain too; the ROCKNIX ABL kit on the SD boot FAT is
-  optional here.
 
 ## The runtime contract (`/usr/lib/pocknix/device.conf` -> `boards/<board>.conf`)
 
@@ -158,13 +137,11 @@ leaves it unset); otherwise it says what a board without the key gets. Keys:
 | `POCKNIX_PANEL_MM` | pocknix-steam | required | GAMESCOPE_FAKE_OUTPUT_MM (gamepadui DPI; deliberately faked on small panels) |
 | `POCKNIX_DESKTOP_ROTATE` / `POCKNIX_DESKTOP_SCALE` | pocknix-desktop-rotate | required | kscreen-doctor rotation/scale (seeded once per user; env re-forces) |
 | `POCKNIX_BOARD_UNKNOWN` | pocknix-desktop-rotate | board known (only the fallback branch sets it) | set by the device.conf fallback branch: board not in the list, do not force guessed values |
-| `POCKNIX_PANEL_OUTPUT` | pocknix-steam, pocknix-desktop, pocknix-desktop-rotate | single panel, first DSI | DRM connector of the main panel (`DSI-2`); gamescope `--prefer-output`, the desktop seed's output |
+| `POCKNIX_PANEL_OUTPUT` | pocknix-steam, pocknix-desktop-rotate | single panel, first DSI | DRM connector of the main panel (`DSI-2`); gamescope `--prefer-output`, the desktop seed's output |
 | `POCKNIX_PANEL_ROTATE_SHADER` | pocknix-steam | rotation autodetected | `1` = gamescope `--force-composition-rotation`: required for a panel past the DPU rotator's 1088-line cap, which otherwise scans out black |
 | `POCKNIX_PANEL_HDR_NITS` | pocknix-steam | no HDR | HDR panel's peak in nits: gamescope `--hdr-itm-target-nits` plus GAMESCOPE_EXPOSE_CLIENT_SAMPLEABLE_FORMATS=1 and, for the Steam client, STEAM_GAMESCOPE_HDR_SUPPORTED=1 (its HDR switch). Set only with a gamescope panel profile in the BSP (`/usr/share/gamescope/scripts/10-pocknix/displays/`) matching the board's `POCKNIX_DEVICE` with the same peak as its `max_content_light_level`: the profile is what tells gamescope the EDID-less panel can do HDR. Absent or 0 = SDR |
-| `POCKNIX_PANEL2_OUTPUT`, `POCKNIX_PANEL2_W` / `POCKNIX_PANEL2_H`, `POCKNIX_DESKTOP2_SCALE` | pocknix-desktop, pocknix-desktop-rotate | single screen (second scale: the main one's) | second panel (dual-screen boards): enabled, rotated like the main one, scaled, placed below it |
-| `POCKNIX_TOUCH_NAME` / `POCKNIX_TOUCH2_NAME` | pocknix-desktop, pocknix-second-screen, pocknix-steam (second) | no touch mapping, no second-screen handling | evdev names of the main/second touchscreen: kwin maps each to its output (kcminputrc); the second is libinput-ignored outside the desktop session (udev rule in the board BSP + pocknix-second-screen) |
 | `POCKNIX_BIG_CORES` | via cores.sh: pocknix-steam-env (-> pocknix-game-launch), pocknix-rt-ladder, emulator launchers | required | cores games and emulators are pinned to; the cores left out are the small cores irq work goes to (on a SoC with no little cluster, leave two mids out) |
-| `POCKNIX_BOOT_STYLE` | pocknix-install-internal, pocknix-boot-deploy (the kernel hook, pocknix-rollback, pocknix-cmdline-sync) | required | qcom-abl or arm-efi (rendered from the profile's `BOOTLOADER`): selects the /flash kernel deploy (`pocknix-build-bootimg` or `pocknix-update-boot`) and the internal-install boot-file handling (arm-efi pins grub.cfg + fstab to internal PARTUUIDs) |
+| `POCKNIX_BOOT_STYLE` | pocknix-install-internal, pocknix-boot-deploy (the kernel hook, pocknix-rollback, pocknix-cmdline-sync) | required | qcom-abl (rendered from the profile's `BOOTLOADER`): selects the /flash kernel deploy (`pocknix-build-bootimg`) |
 | `POCKNIX_INTERNAL_DISK` | pocknix-install/uninstall-internal, installer-gui, pocknix-tools, pocknix-rollback, pocknix-internal-boot-rename | required | internal disk |
 | `POCKNIX_BOOT_GPT_NAME` / `POCKNIX_BOOT_FAT_LABEL`, `POCKNIX_ROOT_LABEL` | pocknix-install/uninstall-internal, pocknix-tools (root label), pocknix-rollback, pocknix-internal-boot-rename (root label) | required | internal-install boot contract (the two labels are rendered from `SD_FAT_LABEL` / `ROOT_LABEL`, config/pocknix.conf defaults a profile may override) |
 
@@ -185,8 +162,6 @@ Picking the display values for a new board:
 
 Every consumer also falls back to the RP6 values when a required key (or the whole file) is
 absent, so a missing/partial device.conf degrades to known-good behavior instead of breaking.
-(The `POCKNIX_BOOT_STYLE` gate exists precisely because those fallbacks would be wrong
-on an arm-efi board's internal storage.)
 `make check` holds each consumer's `${POCKNIX_<key>:-<value>}` to that rule: a required key's
 fallback is the RP6 value, an optional key's is 0 or empty, and `scripts/fallbacks.allow` lists
 the exceptions with a reason.
@@ -201,11 +176,7 @@ the exceptions with a reason.
    values per the rule above + a `boards/models` row per DT model string.
 3. InputPlumber: extend the family yaml's `matches:` if the board shares the family
    controller, or add a new model-gated yaml + capability map if it differs.
-4. UCM if the sound card name differs; udev quirks as needed. arm-efi: add the board's
-   grub.cfg menuentry and its arm in the BSP's board-select script.
-   Dual-screen board: the `POCKNIX_PANEL2_*`/`POCKNIX_TOUCH*` keys plus a udev rule
-   ignoring the second touchscreen unless `/run/pocknix/second-screen` exists (see
-   the sm8550 BSP's Thor rule); gamescope blanks the second panel by itself.
-5. `make check` (board keys, models table, grub menuentries); bump pkgrels; `make build DEVICE=<soc>`.
+4. UCM if the sound card name differs; udev quirks as needed.
+5. `make check` (board keys, models table); bump pkgrels; `make build DEVICE=<soc>`.
    No shared file should need editing; if one does, the boundary has a hole: fix the
    boundary, not the device.

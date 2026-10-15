@@ -12,7 +12,6 @@ first so we can agree the shape before you spend the time.
 Especially welcome:
 
 - **Emulator configs** that you have dialled in on a device.
-- **Device support and testing** for hardware I do not own (AYN Odin 2 family, Thor, Nova).
 - **Pocknix Control features and fixes.**
 - **Docs corrections** - these need no hardware and no build.
 
@@ -34,7 +33,7 @@ Especially welcome:
 
 1. **One topic per PR.** A fix, a feature, or a config set. Not three.
 2. **Test on hardware, or say plainly that you could not.** Untested is acceptable when
-   declared and justified ("no Odin 2 to hand"). Silently untested is not.
+   declared and justified ("no RP6 to hand"). Silently untested is not.
 3. **Tell me how to test it.** Every PR includes reproduction steps I can follow on my
    device. This is a hard requirement, see
    [What the PR must contain](#what-the-pr-must-contain).
@@ -50,7 +49,6 @@ Especially welcome:
 |---|---|
 | `packages/shared/<pkg>/` | SoC-neutral packages, built once for every device. Most contributions land here. |
 | `packages/soc/<pkg>/` | Packages built per SoC family (GPU stack, emulators, kernels); a `socs` file names the families or says `all`. |
-| `packages/gpu/<pkg>/` | Packages built per Adreno generation; a `gpus` file names the generations, matched against each profile's `GPU_GEN`. |
 | `devices/<soc>/` | Per-SoC-family and per-board facts: `profile.conf`, compiler tuning, the device metapackage, BSP package, InputPlumber configs. `devices/README.md` says where a new file goes. |
 | `kernel/<soc>/` | Committed kernel inputs: pinned version, patch series, config, dts. See `kernel/README.md`. |
 | `kernel/common/patches/` | Our SoC-neutral kernel patches, applied to every SoC. |
@@ -67,8 +65,7 @@ Three rules that catch most first-time contributors:
 
 - **Kernel config changes go in a delta**, not in `kernel/<soc>/config` - that file is a
   synced ROCKNIX snapshot and `make sync` overwrites it. Use the delta block in
-  `scripts/build-kernel.sh` for every SoC, or `kernel/<soc>/config-delta` (plus
-  `config-assert` for options that must survive `olddefconfig`) for one.
+  `scripts/build-kernel.sh`.
 - **Anything in `overlay/` or the image scripts only reaches people who reflash.** It does not
   ship through `pacman -Syu`. If a fix needs to reach existing installs, it belongs in a
   package with a bumped `pkgrel`. If it genuinely cannot, say so in the PR.
@@ -115,9 +112,8 @@ sudo make packages PKG="pocknix-decky"    # -> build/localrepo/shared/ (per-SoC 
 ./build.sh              # every step, asking sudo once -> build/image/<soc>/ (--ssh: SSH on)
 ```
 
-The SoC family defaults to `sm8550`; pass `DEVICE=sm8250` to any target (or `./build.sh --device
-sm8250`) for the RP5 / Flip 2. `POCKNIX_EMULATION=1` (`--emulation`) bakes the emulation layer
-into the image.
+This tree builds the Retroid Pocket 6 (SoC family `sm8550`). `POCKNIX_EMULATION=1`
+(`--emulation`) bakes the emulation layer into the image.
 
 Packages compress as `.pkg.tar.zst` (seeded and older ones as `.pkg.tar.xz`), so glob
 `*.pkg.tar.*`. Never sign or publish anything - releases go through the maintainer's staged
@@ -171,11 +167,8 @@ Not everything applies to every PR. Cover what is relevant, and say which items 
 3. **The update path, not just a fresh image.** Confirm the change actually arrives via
    `pacman -U` on an existing install with the bumped `pkgrel`. If the change is image-only,
    say so explicitly.
-4. **The other SoC family**, if you touched shared code. sm8550 (RP6, Odin 2 family) and
-   sm8250 (RP5, Flip 2) differ in GPU generation, bootloader, and audio. If you only have
-   one, test it and declare the other untested.
-5. **Devices that lack the hardware you are driving.** Not every board has the LEDs, the fan,
-   or the sensor. Probe for the thing and degrade quietly when it is missing; never error the
+4. **Hardware that is absent or not yet probed.** A driver can fail to bind, or a node can be
+   missing from a devicetree revision. Probe for the thing and degrade quietly when it is missing; never error the
    session. If you cannot test the absent-hardware path on hardware, at least show the code
    path that handles it.
 6. **Failure paths.** No network, missing config file, service disabled, permission denied.

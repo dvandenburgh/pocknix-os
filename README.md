@@ -27,17 +27,11 @@
 
 ## Supported devices
 
+This branch builds for the Retroid Pocket 6 only.
+
 | Device | SoC family | Status |
 |---|---|---|
-| Retroid Pocket Flip 2 | SM8250 | ✅ Supported |
-| Retroid Pocket 5 | SM8250 | ✅ Supported |
-| Retroid Pocket 6 | SM8550 | ✅ Supported |
-| AYN Odin 2 | SM8550 | ✅ Supported |
-| AYN Odin 2 Portal | SM8550 | ✅ Supported |
-| AYN Odin 2 Mini | SM8550 | ✅ Supported |
-| AYN Thor | SM8550 | 🧪 Beta |
-| Retroid Pocket Nova | SM8550 | 🧪 Beta |
-| AYN Odin 3 | SM8750 | 🚧 In progress |
+| Retroid Pocket 6 (and TOP-DPAD) | SM8550 | ✅ Supported |
 
 ## Get started
 

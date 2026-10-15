@@ -88,7 +88,7 @@ OUT=/var/log/pocknix-diag.txt
   printf '\n## dmesg DRM/msm/gpu (gamescope display acquisition)\n'
   dmesg 2>/dev/null | grep -iE 'msm|drm|adreno|gpu|atomic|a740' | tail -40
 
-  printf '\n## board (dt model / panel / grub choice)\n'
+  printf '\n## board (dt model / panel)\n'
   echo "model: $(tr -d '\0' < /proc/device-tree/model 2>/dev/null)"
   for pn in /sys/firmware/devicetree/base/soc@0/display-subsystem@*/dsi@*/panel@0/compatible; do
     [ -e "$pn" ] && echo "panel compatible: $(tr '\0' ' ' < "$pn")"
@@ -96,8 +96,6 @@ OUT=/var/log/pocknix-diag.txt
   for c in /sys/class/drm/card*-*; do
     [ -e "$c/status" ] && echo "$(basename "$c"): $(cat "$c/status") $(cat "$c/enabled" 2>/dev/null)"
   done
-  echo "grubenv: $(grep -a '^saved_entry=' /flash/boot/grub/grubenv 2>/dev/null || echo '(no saved_entry)')"
-  ls /flash/visionox /flash/visionox.txt 2>/dev/null | sed 's/^/visionox marker: /'
   printf '\n## suspend support\n'
   echo "mem_sleep: $(cat /sys/power/mem_sleep 2>/dev/null)"
   echo "state:     $(cat /sys/power/state 2>/dev/null)"

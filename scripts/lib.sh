@@ -35,7 +35,7 @@ source "${POCKNIX_ROOT}/devices/${DEVICE}/profile.conf"
 profile_defaults
 source "${POCKNIX_ROOT}/kernel/${SOC}/kernel.conf"
 # Per-SoC userspace compiler tuning: the tuned packages/soc PKGBUILDs read these
-# (build-packages.sh injects them into every packages/soc and packages/gpu makepkg environment).
+# (build-packages.sh injects them into every packages/soc makepkg environment).
 source "${POCKNIX_ROOT}/devices/${DEVICE}/tuning.conf"
 
 # Paths derived from the profile (must come after it):
@@ -276,7 +276,7 @@ EOF
 
 # Files outside a package's dir that it is also built from (build_one stages what they render
 # into ./staged), so editing one rebuilds it like an edit to its own dir. pocknix.conf holds the
-# SD labels and sm8250's root= PARTUUID; kernel.conf the kernel package's version and release.
+# SD labels; kernel.conf the kernel package's version and release.
 pkg_extra_srcs() {  # $1 = package name
   case "$1" in
     "${DEVICE_BSP_PKG}") echo "${DEVICE_DIR}/profile.conf ${CONFIG_DIR}/pocknix.conf ${POCKNIX_ROOT}/scripts/render-bsp.sh" ;;
@@ -316,8 +316,8 @@ pkg_env() {  # $1 = package dir
 # line each: build-packages.sh's dirs, socs gating and makepkg --packagelist naming, read from
 # the PKGBUILDs alone so pending.sh and seed-localrepo.sh need no build chroot.
 local_artifacts() {
-  local d devsoc socs gpus repo
-  for d in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${PACKAGES_DIR}"/gpu/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
+  local d devsoc socs repo
+  for d in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
     [ -f "${d}PKGBUILD" ] || continue
     case "${d}" in */devices/*/packages/*)
       devsoc="$(unset SOC; . "${d%/packages/*}/profile.conf" >/dev/null 2>&1; printf '%s' "${SOC}")"
@@ -327,9 +327,6 @@ local_artifacts() {
       */packages/soc/*)
         socs=""; read -r socs 2>/dev/null < "${d}socs" || true
         case " ${socs} " in " all "|*" ${SOC} "*) ;; *) continue ;; esac ;;
-      */packages/gpu/*)
-        gpus=""; read -r gpus 2>/dev/null < "${d}gpus" || true
-        case " ${gpus} " in *" ${GPU_GEN:-} "*) [ -n "${GPU_GEN:-}" ] ;; *) false ;; esac || continue ;;
     esac
     repo="${LOCALREPO_DIR}"
     case "${d}" in */packages/shared/*) repo="${LOCALREPO_SHARED_DIR}" ;; esac

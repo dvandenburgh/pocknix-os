@@ -38,7 +38,7 @@ fi
 # FAT label first: if it fails, the GPT name still says ROCKNIX and we retry next boot.
 fatlabel "$PART" "$NEW"
 parted -s "$DISK" name "$BOOT_NUM" "$NEW"
-# qcom-abl installs mount /flash by PARTLABEL (arm-efi ones use PARTUUID — no match, no-op)
+# qcom-abl installs mount /flash by PARTLABEL
 sed -i "s|PARTLABEL=${OLD}|PARTLABEL=${NEW}|g" /etc/fstab
 
 # flash.mount has not started yet (we are Before= it); the reload regenerates it

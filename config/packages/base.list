@@ -49,8 +49,6 @@ wireplumber
 rtkit               # deck has no blanket rtprio, so PipeWire's realtime goes through rtkit
 alsa-utils
 alsa-ucm-conf
-swh-plugins         # sm8250-only dep, listed here: `make snapshot` harvests from whichever SoC
-                    #   built last, so a per-SoC dep would go missing from the base
 
 # --- utilities ---
 sudo

@@ -6,8 +6,8 @@ CONF=/etc/pocknix/gamepad-calibration.conf
 # Probe-time values for Pocknix Control's Reset; per board (devicetree overrides at probe).
 DEFAULTS=/run/pocknix/gamepad-calibration.defaults
 
-# sm8250 loads its gamepad driver as a module on device probe, so the parameters
-# can appear after this unit is ordered to run.
+# A gamepad driver built as a module loads on device probe, so the parameters can appear
+# after this unit is ordered to run.
 params=""
 for _ in $(seq 1 50); do
   for candidate in /sys/module/*/parameters; do

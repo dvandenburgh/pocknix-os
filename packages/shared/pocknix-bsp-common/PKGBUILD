@@ -3,8 +3,8 @@
 # live in devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
-pkgrel=26.3
-pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, second-screen touch policy, power profiles daemon, realtime priority ladder, deck session limits, kernel /flash deploy"
+pkgrel=26.4
+pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, power profiles daemon, realtime priority ladder, deck session limits, kernel /flash deploy"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL-2.0-or-later')
@@ -13,7 +13,7 @@ license=('GPL-2.0-or-later')
 depends=('bash' 'sudo' 'pocknix-core' 'python' 'python-gobject' 'cpio')
 # Older kernels own the /flash deploy files: the versioned conflict makes pacman upgrade the
 # kernel in the same transaction instead of failing on file conflicts.
-conflicts=('linux-pocknix-sm8550<7.2.10-3' 'linux-pocknix-sm8250<7.2.10-4')
+conflicts=('linux-pocknix-sm8550<7.2.10-3')
 optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target'
             'scx-scheds: scx_lavd for pocknix-lavd.service (unit self-skips without it)')
 install=pocknix-bsp-common.install
@@ -27,10 +27,9 @@ source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         '10-pocknix-wheel'
         'pocknix-fancontrol' 'pocknix-fan-mode' 'pocknix-lavd-mode'
         'pocknix-fancontrol.service' 'pocknix-lavd.service' 'pocknix-game-mode.conf'
-        'pocknix-update-abl' '52-pocknix-abl.rules' 'pocknix-gpt-abl'
+        'pocknix-update-abl' '52-pocknix-abl.rules'
         'pocknix-refresh-abl-kit'
         'pocknix-gamepad-target' 'pocknix-gamepad-target.service'
-        'pocknix-second-screen' 'pocknix-second-screen.service'
         'iwd-wait-wlan0.conf'
         'pocknix-perfd' 'pocknix_perf.py' 'pocknix-perf' 'pocknix-perfd.service'
         'org.pocknix.Perf.service' 'org.pocknix.Perf.conf' 'power-profiles.conf'
@@ -39,14 +38,8 @@ source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         '70-pocknix-cache.conf' '10-pocknix-stop-timeout.conf' 'pocknix-coredump.conf'
         '60-pocknix-deck.conf'
         'pocknix-cmdline-sync' '91-pocknix-cmdline.hook' 'cores.sh'
-        'pocknix-boot-deploy' 'pocknix-build-bootimg' 'pocknix-update-boot' '90-linux-pocknix.hook')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP')
+        'pocknix-boot-deploy' 'pocknix-build-bootimg' '90-linux-pocknix.hook')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-sleep" \
@@ -93,8 +86,6 @@ package() {
     "${pkgdir}/usr/lib/tmpfiles.d/pocknix-game-mode.conf"
 
   install -Dm755 "${srcdir}/pocknix-update-abl" "${pkgdir}/usr/bin/pocknix-update-abl"
-  # Not in PATH: it writes a partition table, and has exactly one caller.
-  install -Dm755 "${srcdir}/pocknix-gpt-abl" "${pkgdir}/usr/lib/pocknix/pocknix-gpt-abl"
   install -Dm755 "${srcdir}/pocknix-refresh-abl-kit" "${pkgdir}/usr/bin/pocknix-refresh-abl-kit"
   install -Dm644 "${srcdir}/52-pocknix-abl.rules" \
     "${pkgdir}/usr/share/polkit-1/rules.d/52-pocknix-abl.rules"
@@ -109,11 +100,6 @@ package() {
   install -Dm644 "${srcdir}/60-pocknix-sdl-xb360.conf" \
     "${pkgdir}/usr/lib/environment.d/60-pocknix-sdl-xb360.conf"
   install -Dm644 "${srcdir}/pocknix-sdl-xb360.sh" "${pkgdir}/etc/profile.d/pocknix-sdl-xb360.sh"
-
-  # Dual-screen boards (device.conf POCKNIX_TOUCH2_NAME): a no-op everywhere else.
-  install -Dm755 "${srcdir}/pocknix-second-screen" "${pkgdir}/usr/bin/pocknix-second-screen"
-  install -Dm644 "${srcdir}/pocknix-second-screen.service" \
-    "${pkgdir}/usr/lib/systemd/system/pocknix-second-screen.service"
 
   install -Dm644 "${srcdir}/iwd-wait-wlan0.conf" \
     "${pkgdir}/usr/lib/systemd/system/iwd.service.d/10-pocknix-wait-wlan0.conf"
@@ -144,10 +130,9 @@ package() {
 
   install -Dm755 "${srcdir}/pocknix-boot-deploy" "${pkgdir}/usr/lib/pocknix/pocknix-boot-deploy"
   install -Dm755 "${srcdir}/pocknix-build-bootimg" "${pkgdir}/usr/bin/pocknix-build-bootimg"
-  install -Dm755 "${srcdir}/pocknix-update-boot" "${pkgdir}/usr/bin/pocknix-update-boot"
   install -Dm644 "${srcdir}/90-linux-pocknix.hook" \
     "${pkgdir}/usr/share/libalpm/hooks/90-linux-pocknix.hook"
-  # qcom-abl boot images bake the cmdline in; inert on other boot styles.
+  # qcom-abl boot images bake the cmdline in.
   install -Dm755 "${srcdir}/pocknix-cmdline-sync" "${pkgdir}/usr/lib/pocknix/pocknix-cmdline-sync"
   install -Dm644 "${srcdir}/91-pocknix-cmdline.hook" \
     "${pkgdir}/usr/share/libalpm/hooks/91-pocknix-cmdline.hook"

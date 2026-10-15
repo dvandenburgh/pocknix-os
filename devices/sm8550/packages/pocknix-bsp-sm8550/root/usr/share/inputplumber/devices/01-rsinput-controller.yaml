@@ -1,13 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ShadowBlip/InputPlumber/main/rootfs/usr/share/inputplumber/schema/composite_device_v1.json
-# InputPlumber composite device for the SM8550 family gamepad (RSInput MCU).
-#
-# ONE config serves every board in the family (Retroid Pocket 6 (+TOP-DPAD),
-# Nova, AYN Odin 2 / Mini / Portal):
-# they all use the in-kernel RSInput driver (phys "rsinput-gamepad/input0")
-# with the paddles + volume-up rocker on a separate gpio-keys node, and the
-# same capability_map fixes the same driver quirks (X/Y swap, explicit d-pad,
-# Guide/QuickAccess). Gated on the devicetree model so the config only
-# activates on family hardware (the sm8250 boards ship their own).
+# InputPlumber composite device for the Retroid Pocket 6 gamepad (RSInput MCU), both the
+# standard and TOP-DPAD models: the in-kernel RSInput driver (phys "rsinput-gamepad/input0")
+# with the paddles + volume-up rocker on a separate gpio-keys node, and a capability_map that
+# fixes the driver quirks (X/Y swap, explicit d-pad, Guide/QuickAccess). Gated on the
+# devicetree model so the config only activates on RP6 hardware.
 #
 # gpio-keys is grabbed as a second source: the DTS wires the back paddles
 # there as BTN_Z (left) / BTN_C (right); left ungrabbed, Steam sees them as a
@@ -34,26 +30,6 @@ matches:
       attributes:
         - name: model
           value: Retroid Pocket 6 TOP-DPAD
-  - udev:
-      sys_path: /sys/firmware/devicetree/base
-      attributes:
-        - name: model
-          value: AYN Odin 2
-  - udev:
-      sys_path: /sys/firmware/devicetree/base
-      attributes:
-        - name: model
-          value: AYN Odin 2 Mini
-  - udev:
-      sys_path: /sys/firmware/devicetree/base
-      attributes:
-        - name: model
-          value: AYN Odin 2 Portal
-  - udev:
-      sys_path: /sys/firmware/devicetree/base
-      attributes:
-        - name: model
-          value: Retroid Pocket Nova
 
 single_source: false
 
@@ -68,14 +44,6 @@ source_devices:
   - group: gamepad
     evdev:
       name: gpio-keys
-      phys_path: gpio-keys/input0
-      handler: event*
-    capability_map_id: sm8550_gamepad
-
-  # Odin 2 paddles: unclaimed, InputPlumber's stock 50-ayn_odin2.yaml makes it a second pad.
-  - group: gamepad
-    evdev:
-      name: gpio-keys-paddles
       phys_path: gpio-keys/input0
       handler: event*
     capability_map_id: sm8550_gamepad

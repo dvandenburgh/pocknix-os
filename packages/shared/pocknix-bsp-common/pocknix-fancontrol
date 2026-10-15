@@ -11,7 +11,7 @@ FAN_PWM="$(ls /sys/class/hwmon/hwmon*/pwm1 2>/dev/null | head -1)"
 [ -n "${FAN_PWM}" ] || { echo "pocknix-fancontrol: no hwmon pwm1 fan found, exiting"; exit 0; }
 FAN_EN="${FAN_PWM}_enable"
 
-# gpu* not gpuss*: sm8550 names its zones gpuss-N-thermal, sm8250 gpu-top-thermal.
+# gpu*: sm8550 names its GPU zones gpuss-N-thermal.
 SENSORS=""
 for z in /sys/devices/virtual/thermal/thermal_zone*/; do
   case "$(cat "${z}type" 2>/dev/null)" in

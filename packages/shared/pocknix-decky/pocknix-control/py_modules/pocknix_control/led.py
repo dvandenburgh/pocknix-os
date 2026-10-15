@@ -7,7 +7,7 @@ from .system import atomically_write
 
 # Stick RGB rings are multicolor LED-class devices; sysfs resets on reboot, so state is
 # persisted here and re-applied from Plugin._main on load. Same multi_intensity/brightness
-# ABI on both node layouts: RP6/RP5/Flip 2 name four ring segments per stick as
+# ABI on both node layouts: the RP6 names four ring segments per stick as
 # rgb:l1..l4 / rgb:r1..r4, Odin 2 names one node per stick (left-joystick, right-joystick).
 LED_CONFIG = Path("/etc/pocknix/led.json")
 LED_CLASS_DIR = Path("/sys/class/leds")

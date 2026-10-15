@@ -9,7 +9,7 @@ mountpoint -q "${FLASH}" || exit 0
 
 staged=()
 shopt -s nullglob
-for f in "${FLASH}/KERNEL.new" "${FLASH}/KERNEL.md5.new" "${FLASH}"/boot/grub/*.dtb.new; do
+for f in "${FLASH}/KERNEL.new" "${FLASH}/KERNEL.md5.new"; do
   [ -f "${f}" ] && staged+=("${f}")
 done
 [ "${#staged[@]}" -gt 0 ] || exit 0

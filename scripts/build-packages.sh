@@ -13,7 +13,7 @@ need_linux
 need_root build-packages
 for t in curl tar rsync; do need_tool "$t"; done
 
-# Two repo trees: packages/soc/* and packages/gpu/* are PER-SoC (tuned packages share
+# Two repo trees: packages/soc/* are PER-SoC (tuned packages share
 # pkgnames across SoCs with different binaries; each SoC gets its own repo, and the
 # chroot is split too so one SoC's tuned makedepends can never leak into
 # another SoC's builds). packages/shared/* are byte-identical across SoCs:
@@ -40,7 +40,7 @@ wipe_chroot() {
 }
 
 # Which repo a package dir builds into: shared packages target the shared
-# localrepo, everything else (packages/soc, packages/gpu + device packages) the per-SoC one.
+# localrepo, everything else (packages/soc + device packages) the per-SoC one.
 pkg_repo_dir()   { case "$1" in */packages/shared/*) printf '%s' "${LOCALREPO_SHARED}" ;; *) printf '%s' "${LOCALREPO}" ;; esac; }
 pkg_repo_db()    { case "$1" in */packages/shared/*) printf '%s' "${SHARED_REPO_DB}" ;; *) printf '%s' "${REPO_DB}" ;; esac; }
 pkg_repo_mount() { case "$1" in */packages/shared/*) printf '/localrepo-shared' ;; *) printf '/localrepo' ;; esac; }
@@ -247,9 +247,9 @@ build_one() {
     fi
     cp -a "${kout}" "${BROOT}/build/${name}/staged"
   fi
-  # The cmdline is written once, in the profile: the qcom-abl BSP installs it for the on-device
-  # boot image rebuild, the arm-efi bootloader renders it into grub.cfg.
-  if [ "${name}" = "${DEVICE_BSP_PKG}" ] || [ "${name}" = "pocknix-bootloader-${SOC}" ]; then
+  # The cmdline is written once, in the profile: the BSP installs it for the on-device boot
+  # image rebuild.
+  if [ "${name}" = "${DEVICE_BSP_PKG}" ]; then
     mkdir -p "${BROOT}/build/${name}/staged"
     printf '%s\n' "${KERNEL_CMDLINE}" > "${BROOT}/build/${name}/staged/kernel-cmdline"
   fi
@@ -359,13 +359,12 @@ main() {
     return 1
   }
 
-  local built=0 name force devdir devsoc pkgsocs pkggpus
+  local built=0 name force devdir devsoc pkgsocs
   local -a failed=()
   # Per-SoC and device packages build only into the CURRENT SoC's repo: device packages by
-  # their profile's SOC, packages/soc by ./socs, packages/gpu by ./gpus against GPU_GEN. The
-  # gpus gate keeps the a6xx dxvk2 protons out of every other GPU's repo, where their replaces=
-  # would downgrade DXVK. PKG= names and POCKNIX_FORCE_REBUILD=1 force past the up-to-date skip.
-  for pkgdir in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${PACKAGES_DIR}"/gpu/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
+  # their profile's SOC, packages/soc by ./socs. PKG= names and POCKNIX_FORCE_REBUILD=1 force
+  # past the up-to-date skip.
+  for pkgdir in "${PACKAGES_DIR}"/shared/*/ "${PACKAGES_DIR}"/soc/*/ "${POCKNIX_ROOT}"/devices/*/packages/*/; do
     [ -f "${pkgdir}/PKGBUILD" ] || continue
     name="$(pkg_name "${pkgdir}")"
     case "${pkgdir}" in */devices/*/packages/*)
@@ -379,12 +378,6 @@ main() {
         read -r pkgsocs < "${pkgdir}/socs" || true   # a 0-byte file fails read; the next line names it
         [ -n "${pkgsocs}" ] || die "${name}: empty socs file"
         case " ${pkgsocs} " in " all "|*" ${SOC} "*) ;; *) continue ;; esac ;;
-      */packages/gpu/*)
-        [ -f "${pkgdir}/gpus" ] || die "${name}: packages/gpu/ package with no gpus file: declare its Adreno generation(s) on one space-separated line"
-        [ -n "${GPU_GEN:-}" ] || die "${name}: gated on ./gpus but devices/${DEVICE}/profile.conf sets no GPU_GEN"
-        read -r pkggpus < "${pkgdir}/gpus" || true
-        [ -n "${pkggpus}" ] || die "${name}: empty gpus file"
-        case " ${pkggpus} " in *" ${GPU_GEN} "*) ;; *) continue ;; esac ;;
     esac
     force=0
     [ "${POCKNIX_FORCE_REBUILD:-0}" = "1" ] && force=1

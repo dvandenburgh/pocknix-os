@@ -52,7 +52,7 @@ body:
     id: devices
     attributes:
       label: Which device(s)?
-      placeholder: "RP5, all SM8550, all devices, ..."
+      placeholder: "RP6, RP6 TOP-DPAD, both, ..."
     validations:
       required: false
   - type: dropdown

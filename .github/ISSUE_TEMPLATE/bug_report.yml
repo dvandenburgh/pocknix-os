@@ -8,13 +8,7 @@ body:
       label: Device
       options:
         - Retroid Pocket 6
-        - Retroid Pocket 5
-        - Retroid Pocket Flip 2
-        - AYN Odin 2
-        - AYN Odin 2 Mini
-        - AYN Odin 2 Portal
-        - AYN Thor
-        - Retroid Pocket Nova
+        - Retroid Pocket 6 TOP-DPAD
         - Other / not device-specific
     validations:
       required: true

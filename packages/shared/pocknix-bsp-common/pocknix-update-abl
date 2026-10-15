@@ -30,11 +30,6 @@ fi
 SOC="$(basename "${ELF}" .elf)"; SOC="${SOC#abl_signed-}"
 SHIPPED_VER="$(cat "${KIT}/version" 2>/dev/null || echo unknown)"
 
-# Retroid sm8250 units ship a bad primary GPT header, so the kernel hides abl_a
-# entirely. Repairable, and common, so it is a step here and not a dead end.
-GPT_HELPER="${POCKNIX_GPT_HELPER:-/usr/lib/pocknix/pocknix-gpt-abl}"
-GPT_DEV=""
-
 resolve_slots() {
   ABL_A="$(blkid -t PARTLABEL=abl_a -o device 2>/dev/null | head -1 || true)"
   ABL_B="$(blkid -t PARTLABEL=abl_b -o device 2>/dev/null | head -1 || true)"
@@ -42,38 +37,8 @@ resolve_slots() {
 }
 
 if ! resolve_slots; then
-  gpt_state=absent
-  if [ -x "${GPT_HELPER}" ]; then
-    gpt_scan="$("${GPT_HELPER}" scan 2>/dev/null || true)"
-    gpt_state="$(printf '%s\n' "${gpt_scan}" | sed -n 's/^state=//p')"
-    GPT_DEV="$(printf '%s\n' "${gpt_scan}" | sed -n 's/^device=//p')"
-  fi
-  if [ "${gpt_state}" != repairable ]; then
-    [ "$STATUS_ONLY" = 1 ] && { echo "state=nopart"; exit 0; }
-    die "abl_a/abl_b partitions not found — is this an internal-storage device?"
-  fi
-  if [ "$STATUS_ONLY" = 1 ]; then
-    cat <<STATUS
-state=gptrepair
-soc=${SOC}
-shipped_version=${SHIPPED_VER}
-gpt_device=${GPT_DEV}
-STATUS
-    exit 0
-  fi
-  say "The bootloader partitions exist but this device's partition table is"
-  say "damaged (bad primary GPT header on ${GPT_DEV}), so Linux cannot see them."
-  say "Repairing rebuilds ONLY that header, from this disk's own valid backup"
-  say "copy. Partition contents are not touched and the original is kept."
-  if [ "$ASSUME_YES" != 1 ]; then
-    read -rp "Type 'REPAIR' to fix the partition table: " ans || die "no input"
-    [ "${ans}" = "REPAIR" ] || die "aborted."
-  fi
-  "${GPT_HELPER}" repair "${GPT_DEV}" || die "partition table repair failed — nothing else was changed."
-  partprobe "${GPT_DEV}" 2>/dev/null || blockdev --rereadpt "${GPT_DEV}" 2>/dev/null || true
-  udevadm settle 2>/dev/null || sleep 1
-  resolve_slots || die "partitions still not visible after repair — reboot and re-run."
-  say "partition table repaired; slots are now visible"
+  [ "$STATUS_ONLY" = 1 ] && { echo "state=nopart"; exit 0; }
+  die "abl_a/abl_b partitions not found — is this an internal-storage device?"
 fi
 
 ELF_SIZE="$(stat -c%s "${ELF}")"

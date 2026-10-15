@@ -34,8 +34,8 @@ the card is inserted.
 
 1. Hold **Volume −** while powering on to open the ABL menu. Volume keys move through the entries,
    the power key selects.
-2. Set **Boot mode** to **Linux** and **Boot source** to **SD Card**. **SM8550 devices must also
-   set the device model to match the device**; SM8250 devices can skip this.
+2. Set **Boot mode** to **Linux** and **Boot source** to **SD Card**, and **set the device model
+   to Retroid Pocket 6** (a wrong model gives a black screen).
 3. Insert the flashed microSD and boot.
 
 The first boot into game mode can take a long while, especially from an SD card. Leave it be; it
@@ -44,14 +44,6 @@ will come up.
 > [!IMPORTANT]
 > **Then change the default password.** It is `pocknix` and publicly known: run `passwd` (and
 > `sudo passwd root`) in a terminal. SSH is off by default.
-
-### Newer RP5 / Flip 2 panels
-
-Retroid Pocket 5 / Flip 2 units from 2026 batches (sold as 12 GB) have a different display panel
-(Visionox). pocknix supports it but cannot tell the two panels apart before the screen driver
-runs, so on those units the first boot stays black (you can hear Steam start). To fix it: with the
-SD card in a PC, create an empty file named `visionox` (or `visionox.txt`) in the top folder of the
-small `POCKNIX` partition, next to `KERNEL`, then boot again.
 
 ## Updating
 

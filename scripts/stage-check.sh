@@ -93,8 +93,7 @@ done
 [ "${nstaged}" -gt 0 ] || die "no packages in ${STAGE}"
 note "staged" "${nstaged} packages"
 
-# Every live repo whatever the scope: reach is judged fleet-wide (an sm8250-only
-# member dual-published into the sm8550 tree is reached by pocknix-device-sm8250).
+# Every live repo whatever the scope: reach is judged fleet-wide.
 fetch_db base "${POCKNIX_BASE_RCLONE_REMOTE}/pocknix-base.db" || die "no base db at ${POCKNIX_BASE_RCLONE_REMOTE}"
 db_facts base "${DBCACHE}/base.db" >> "${facts}"
 fetch_db shared "${POCKNIX_REPO_RCLONE_REMOTE}/shared/pocknix-shared.db" || die "no [pocknix-shared] db (first publish? POCKNIX_STAGE_CHECK_OFFLINE=1 with a cached copy)"

@@ -22,30 +22,6 @@ if command -v pocknix-gamepad-target >/dev/null 2>&1; then
   pocknix-gamepad-target xb360 || true
 fi
 
-# Before kwin enumerates input: its fallback puts every touchscreen on the FIRST output.
-for _dc in /usr/lib/pocknix/device.conf /etc/pocknix/device.conf; do
-  [ -r "${_dc}" ] && . "${_dc}"
-done
-if [ -n "${POCKNIX_TOUCH2_NAME:-}" ]; then
-  systemctl start pocknix-second-screen.service 2>/dev/null || true
-  map_touch() {  # <evdev name> <output>
-    local d vendor product
-    for d in /sys/class/input/input*; do
-      [ "$(cat "${d}/name" 2>/dev/null)" = "$1" ] || continue
-      vendor=$(( 16#$(cat "${d}/id/vendor" 2>/dev/null || echo 0) ))
-      product=$(( 16#$(cat "${d}/id/product" 2>/dev/null || echo 0) ))
-      kwriteconfig6 --file kcminputrc --group Libinput --group "${vendor}" --group "${product}" \
-        --group "$1" --key OutputName "$2" 2>/dev/null || true
-      return
-    done
-    echo "pocknix-desktop: touchscreen '$1' not found — not mapped to $2" >&2
-  }
-  if command -v kwriteconfig6 >/dev/null 2>&1; then
-    [ -n "${POCKNIX_TOUCH_NAME:-}" ]   && map_touch "${POCKNIX_TOUCH_NAME}"  "${POCKNIX_PANEL_OUTPUT:-}"
-    map_touch "${POCKNIX_TOUCH2_NAME}" "${POCKNIX_PANEL2_OUTPUT:-}"
-  fi
-fi
-
 # What a display manager exports: DEs are tested against that, and the supervisor's own
 # session says XDG_SESSION_TYPE=tty.
 export XDG_SESSION_TYPE=wayland DESKTOP_SESSION="${session}"

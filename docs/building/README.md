@@ -44,8 +44,7 @@ missing for an image build.
 
 ## Quick start
 
-The device family defaults to `sm8550` (Retroid Pocket 6, AYN Odin 2 family); add
-`DEVICE=sm8250` to the `make` commands for the Retroid Pocket 5 / Flip 2.
+This tree builds the Retroid Pocket 6 (SoC family `sm8550`).
 
 ```bash
 git clone https://github.com/dvandenburgh/pocknix-os && cd pocknix-os
@@ -63,7 +62,6 @@ always rebuilt.
 ./build.sh --ssh                             # SSH on in the image (make image SSH=1)
 ./build.sh --ssh --wifi MyNet --wifi-psk secret --wifi-country US
 ./build.sh --no-sd-image                     # stop at the finished rootfs (make rootfs)
-./build.sh --device sm8250                   # Retroid Pocket 5 / Flip 2
 ./build.sh --help                            # every option
 ```
 
@@ -81,10 +79,8 @@ sudo make sd-image                           # -> build/image/sm8550/pocknix-sm8
 Flash the image with Balena Etcher, Rufus, or `dd`, then follow
 [How to install](../../README.md#how-to-install) in the project README.
 
-For an SD card **for SM8250**, add `DEVICE=sm8250` as above.
-
-SM8550 device firmware is a package like any other (`pocknix-firmware-sm8550`, fetched at a pinned
-commit and checked by sha256; SM8250's comes from Arch's `linux-firmware`), so no step puts it in
+Device firmware is a package like any other (`pocknix-firmware-sm8550`, fetched at a pinned
+commit and checked by sha256), so no step puts it in
 place by hand. `make sync` only refreshes ROCKNIX
 reference material in `vendor/`, which no build reads.
 
@@ -117,7 +113,6 @@ environment (for example `make image SSH=1`, `export SSH=1` to make it the defau
 | `--password PW` | `SD_ROOT_PASSWORD=PW` | the root and `deck` password baked into the image |
 | `--wifi SSID --wifi-psk PSK --wifi-country US` | `SD_WIFI_SSID= SD_WIFI_PSK= SD_WIFI_COUNTRY=` | pre-configure Wi-Fi in the image |
 | `--emulation` | `POCKNIX_EMULATION=1` | bake the emulation layer (ES-DE and emulators) into the image |
-| `--device sm8250` | `DEVICE=sm8250` | build for the SM8250 family instead of SM8550 |
 | `--jobs N` | `JOBS=N` | parallel jobs for the kernel build (default: all cores) |
 | `--no-sd-image` | `SD_IMAGE=off` | stop at the finished rootfs (`make rootfs`) |
 | `--no-seed` | `POCKNIX_SEED=off` | compile every package instead of downloading the published ones |

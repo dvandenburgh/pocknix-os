@@ -35,12 +35,11 @@ abl_item_label() {
   case "${state}" in
     differs|mixed)  echo "Bootloader: install or update to ${ver}..." ;;
     uptodate)       echo "Bootloader is up to date (${ver})" ;;
-    gptrepair)      echo "Bootloader: repair partition table, then install ${ver}..." ;;
     *)              return 1 ;;
   esac
 }
 
-# the CLI keeps its own typed FLASH/REPAIR confirmation; never wire this into a hook
+# the CLI keeps its own typed FLASH confirmation; never wire this into a hook
 do_abl() {
   local st state ver
   st="$(abl_status)"
@@ -48,13 +47,6 @@ do_abl() {
   ver="$(printf '%s\n' "${st}" | sed -n 's/^shipped_version=//p')"
   if [ "${state}" = uptodate ]; then
     kdialog --title "$TITLE" --msgbox "The bootloader already matches the version this Pocknix ships.\n\nNothing to do." || true
-    return 0
-  fi
-  if [ "${state}" = gptrepair ]; then
-    kdialog --title "$TITLE" --warningcontinuecancel \
-      "This device's partition table is damaged and must be repaired before the bootloader can be installed.\n\nMany Retroid units ship this way. Only a single 4 KB header is rewritten, from this disk's own backup copy; no partition contents are touched and the original is kept.\n\nAfterwards the bootloader (ABL) ${ver} is installed, which rewrites both bootloader slots.\n\nKeep the device plugged in. You will confirm each step in a terminal." \
-      || return 0
-    konsole_run "/usr/bin/pocknix-update-abl"
     return 0
   fi
   kdialog --title "$TITLE" --warningcontinuecancel \

@@ -19,6 +19,3 @@ Ask on the [Discord](https://discord.gg/jEpwudj4Fx) or open an issue.
 
 - **Gyro does not work yet.** The motion sensors are not wired up, so games and emulators that
   use gyro aim or tilt controls see no input.
-- **2026 Retroid Pocket 5 / Flip 2 units (12 GB) stay black on first boot.** These have a
-  different display panel that pocknix cannot detect before the screen comes up. The fix is a
-  one-file step on the SD card: see [newer RP5 / Flip 2 panels](install.md#newer-rp5--flip-2-panels).

@@ -1,27 +1,27 @@
-# pocknix-device-sm8550 — metapackage: the per-SoC members of an SM8550 system
-# (BSP, kernel, bootloader, the SoC's proton choice). Shared members live on
+# pocknix-device-sm8550 — metapackage: the per-SoC members of a Retroid Pocket 6 system
+# (BSP, kernel, bootloader, the proton choice). Shared members live on
 # pocknix-core / the pocknix-*-full layers: a dep edge from here would block
 # `pacman -Rs` of an optional layer.
 # Successor to the retired per-device metapackages; 'replaces' migrates
 # installed devices (e.g. an internal-installed RP6) on their next pacman -Syu.
 pkgname=pocknix-device-sm8550
 pkgver=0.2.0
-pkgrel=11
-pkgdesc="pocknix device metapackage: SM8550 family (Retroid Pocket 6, AYN Odin 2 family)"
+pkgrel=11.1
+pkgdesc="pocknix device metapackage: Retroid Pocket 6 (SM8550)"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL-2.0-or-later')
 depends=('pocknix-bsp-sm8550'
          'linux-pocknix-sm8550'
          'pocknix-bootloader-sm8550'
-         # a7xx runs DXVK 3: the stock ARM protons (a6xx needs the -dxvk2 variants)
+         # a7xx runs DXVK 3: the stock ARM protons
          'proton-cachyos'
          'proton-ge')
 # Exactly one device metapackage per install (wrong-device guard, same pattern
 # as the BSPs).
 provides=('pocknix-device')
 conflicts=('pocknix-device')
-replaces=('pocknix-device-rp6' 'pocknix-device-odin2' 'pocknix-device-odin2mini' 'pocknix-device-odin2portal')
+replaces=('pocknix-device-rp6')
 
 package() {
   :   # pure metapackage

@@ -153,7 +153,7 @@ btrfs subvolume set-default "$(btrfs inspect-internal rootid "${TOP}/${new}")" "
 if [ -n "${staged}" ]; then
   mount -o remount,rw "${FLASH}" 2>/dev/null || true
   shopt -s nullglob
-  for f in "${FLASH}/KERNEL.new" "${FLASH}/KERNEL.md5.new" "${FLASH}"/boot/grub/*.dtb.new; do
+  for f in "${FLASH}/KERNEL.new" "${FLASH}/KERNEL.md5.new"; do
     [ -f "${f}" ] && mv -f "${f}" "${f%.new}"
   done
   sync

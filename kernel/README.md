@@ -3,8 +3,8 @@
 Everything needed to build a SoC's kernel is committed here, so a clone builds the same
 kernel with no ROCKNIX checkout. Only the stock kernel.org source and the firmware blobs
 are fetched at build time, both pinned. The device profile (`devices/<soc>/profile.conf`)
-selects the SoC; every board on a SoC shares its tree and every board's dtb ships (qcom-abl
-picks one by board id, arm-efi by the grub.cfg `devicetree` line).
+selects the SoC; every board on a SoC shares its tree and every board's dtb ships (the ABL
+picks one by board id).
 
 This file describes the layout and the rules. What is carried and why (patch by patch, the
 pinned versions, the ROCKNIX commit we synced to) lives in one place only: the kernel rows of
@@ -33,8 +33,7 @@ kernel/
 
 `scripts/build-kernel.sh` extracts the pinned source, applies `patches/*/` in sort order and
 then `kernel/common/patches/`, installs `dts/`, seeds `.config` from `kernel/<soc>/config/linux.aarch64.conf`, applies our
-config deltas, and packages the result for the SoC's `BOOTLOADER` (`qcom-abl`: Android boot
-image; `arm-efi`: raw Image + dtbs for GRUB). The numbered dirs follow ROCKNIX's own apply
+config deltas, and packages the result as an Android boot image for the ABL (`qcom-abl`). The numbered dirs follow ROCKNIX's own apply
 order (mainline, then the version dir, then the device dir): device patches can depend on
 version-dir context.
 
