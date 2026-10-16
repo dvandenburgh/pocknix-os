@@ -1,5 +1,5 @@
 # pocknix-bsp-common — the device-NEUTRAL board support shared by every pocknix device.
-# Device-specific quirks (input maps, audio UCM, SoC suspend/cpuidle tweaks, device.conf)
+# Device-specific quirks (input maps, audio UCM, SoC suspend config, device.conf)
 # live in devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0

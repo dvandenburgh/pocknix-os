@@ -70,7 +70,7 @@ devices/<soc>/
                                   #   exec bits and symlinks; make check wants 755 exactly on
                                   #   files with a shebang): input maps
                                   #   (dt-model gated), udev quirks, audio UCM, SoC
-                                  #   suspend/cpuidle tweaks, steamos-manager's device match
+                                  #   suspend config, steamos-manager's device match
                                   #   (usr/share/steamos-manager/devices/pocknix-family.toml:
                                   #   the boards, then a qcom,<soc> catch-all), pocknix-perfd's
                                   #   underclock tables (usr/share/pocknix/power-profiles.d/

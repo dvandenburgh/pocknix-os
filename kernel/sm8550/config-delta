@@ -21,3 +21,7 @@
 --disable DRM_PANEL_LVDS
 --disable DRM_PANEL_SITRONIX_ST7703
 --disable BACKLIGHT_QCOM_WLED
+
+# CPU: the RP6 has eight cores. 512 also makes arm64 select CPUMASK_OFFSTACK, which allocates
+# every cpumask_var_t on the heap; at 8 they are one word on the stack.
+--set-val NR_CPUS 8
