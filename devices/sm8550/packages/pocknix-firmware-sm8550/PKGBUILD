@@ -1,11 +1,13 @@
 # Retroid Pocket 6 firmware upstream linux-firmware lacks or gets wrong (ath12k WCN7850,
 # ADSP/CDSP, speaker amps, audio topology, VPU). Pinned by commit + sha256, nothing in git. The
-# RP6 loads the AYN Odin 2 DSP and amp set (its devicetree names qcom/sm8550/ayn/odin2/) and the
-# AYN-Odin2 topology. /usr/lib/firmware/updates/ wins the kernel's search and no ALARM package writes
+# RP6 runs its own ADSP build (extracted from a Retroid Android image, via armada) from
+# qcom/sm8550/retroidpocket/rp6/; pd-mapper reads the .jsn files from the ADSP's directory, so
+# they and the amp tuning sit beside it (byte-identical to ROCKNIX's Odin 2 set). The CDSP and
+# the AYN-Odin2 topology (the RP6's sound card is named AYN-Odin2) still come from ROCKNIX. /usr/lib/firmware/updates/ wins the kernel's search and no ALARM package writes
 # there, so linux-firmware updates never revert the ath12k board file that wifi needs.
 pkgname=pocknix-firmware-sm8550
 pkgver=0.1.0
-pkgrel=3.1
+pkgrel=3.2
 pkgdesc="Retroid Pocket 6 vendor firmware (wifi, ADSP/CDSP, audio, VPU), immune to linux-firmware updates"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -23,19 +25,25 @@ _extrafw_files=(
   qcom/sm8550/SM8550-APS-tplg.bin
   qcom/sm8550/ayn/cdsp.mbn
   qcom/sm8550/ayn/cdsp_dtb.mbn
-  qcom/sm8550/ayn/odin2/adsp.mbn
-  qcom/sm8550/ayn/odin2/adsp_dtb.mbn
-  qcom/sm8550/ayn/odin2/adspr.jsn
-  qcom/sm8550/ayn/odin2/adsps.jsn
-  qcom/sm8550/ayn/odin2/adspua.jsn
-  qcom/sm8550/ayn/odin2/aw883xx_acf.bin
-  qcom/sm8550/ayn/odin2/battmgr.jsn
   qcom/vpu/vpu30_p4.mbn
   renesas_usb_fw.mem
+)
+_armada=ce363b8e67cfd2b5fcf44fd384686f85d777ae9d   # armada-os/armada, system_files/usr/lib/firmware/
+_armada_files=(
+  qcom/sm8550/retroidpocket/rp6/adsp.mbn
+  qcom/sm8550/retroidpocket/rp6/adsp_dtb.mbn
+  qcom/sm8550/retroidpocket/rp6/adspr.jsn
+  qcom/sm8550/retroidpocket/rp6/adsps.jsn
+  qcom/sm8550/retroidpocket/rp6/adspua.jsn
+  qcom/sm8550/retroidpocket/rp6/aw883xx_acf.bin
+  qcom/sm8550/retroidpocket/rp6/battmgr.jsn
 )
 source=()
 for _f in "${_extrafw_files[@]}"; do
   source+=("${_f//\//_}::https://raw.githubusercontent.com/ROCKNIX/extra-firmware/${_extrafw}/SM8550/${_f}")
+done
+for _f in "${_armada_files[@]}"; do
+  source+=("${_f//\//_}::https://raw.githubusercontent.com/armada-os/armada/${_armada}/system_files/usr/lib/firmware/${_f}")
 done
 sha256sums=(
   '5660a1aa3db12716b42c687b0c88ef4f6ac80bd46e42cfe3636ed332d3f6e6ee'
@@ -46,20 +54,20 @@ sha256sums=(
   'feef17790cf76d16fc9bce6a9b1bb44f669cfd5ce2b4d723d83943e3eca263ee'
   'c8166bf798f3bab68defc2437a225a8e5fc7979faf1f5f3b3fc8b187b7f4cccf'
   'aae496bed4987eebf69538ca21ec309c60c00ffa0e98ce743aee1531de6387d3'
-  '750d98172d9e780640fd02431dea2cb6827f11e34e8d2e71109be727bfc1d42d'
-  'dde0327058b0b2b6cdbf8259937c76a6adf097664d0428e4c1b3f3f7e9398d08'
+  'f59fec39dc69b34130fbf0b5cd72db266e585071324a1a3e384146bb19f53e66'
+  '177560c224c73d040836b17082348036430ecf59e8a32d7736ce2b80b2634f97'
+  'c7c53436f34748908f9d89103a38364604960f179d813a716fde57457aa44de3'
+  '303b30802e9c918cf102e0e0859545d063a1551c0a8af9c3de056672e88c02f8'
   '66ce8531efb7979d234e0f0eabbe18d038ac97da771a8a194f613df8f0724e81'
   '12ac2f3ae8ced12aa4b06b3ab3a01bc4d8efe1c92ebea503c002f209a6ec176f'
   '982a99853495e34726b8e44697fdfad303334de0a67cbf6cde306c8f1731000b'
   'a73ecfe2239a56eb7ad1573fa35977fd57557cfa7c220ba5437f88d256c907ad'
   'be8c6fba330908e4683fb6282761cb08485a302d6a66e09721e102e342f27236'
-  'f59fec39dc69b34130fbf0b5cd72db266e585071324a1a3e384146bb19f53e66'
-  '177560c224c73d040836b17082348036430ecf59e8a32d7736ce2b80b2634f97'
 )
 
 package() {
   local _f
-  for _f in "${_extrafw_files[@]}"; do
+  for _f in "${_extrafw_files[@]}" "${_armada_files[@]}"; do
     install -Dm644 "${srcdir}/${_f//\//_}" "${pkgdir}/usr/lib/firmware/updates/${_f}"
   done
 }

@@ -2,13 +2,13 @@
 # (the standard and TOP-DPAD models share rp6.conf) and the input maps are model-gated.
 pkgname=pocknix-bsp-sm8550
 pkgver=0.2.0
-pkgrel=17.2
+pkgrel=17.3
 pkgdesc="pocknix board support: Retroid Pocket 6 (SM8550) — board dispatch, input maps, suspend quirks, audio UCM"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL-2.0-or-later')
 # The firmware reaches the fleet through this edge: -Syu never installs a new name alone.
-depends=('pocknix-bsp-common' 'pocknix-firmware-sm8550')
+depends=('pocknix-bsp-common' 'pocknix-firmware-sm8550>=0.1.0-3.2')  # 3.2: the RP6 dtb loads its ADSP from retroidpocket/rp6/
 # One BSP per device (wrong-device guard); replaces= migrates the retired per-device BSPs.
 provides=('pocknix-bsp')
 conflicts=('pocknix-bsp')
