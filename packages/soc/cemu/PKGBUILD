@@ -3,7 +3,7 @@
 # and set pkgver to <last release>.<commit date>.<short sha>, which vercmp orders by date.
 pkgname=cemu
 pkgver=2.6.20261009.aa20e2f
-pkgrel=1
+pkgrel=1.1
 _commit=aa20e2f86e93c9f625f048dbd2b6b993f1973180
 pkgdesc="Cemu — Wii U emulator (native aarch64 build with the ARM64 recompiler)"
 arch=('aarch64')
@@ -30,6 +30,10 @@ prepare() {
 }
 
 build() {
+  # Tuned to the SoC like packages/soc/mesa (sm8550 fallback for a standalone makepkg): the
+  # recompiler emits its own code at runtime, this covers everything that is not recompiled.
+  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
+  export CFLAGS+=" ${_rocknix_tune}" CXXFLAGS+=" ${_rocknix_tune}"
   cd cemu
   cmake -B build -G Ninja -Wno-dev \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.21.1 \

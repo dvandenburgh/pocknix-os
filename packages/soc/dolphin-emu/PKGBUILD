@@ -2,7 +2,7 @@
 # build and upstream's Linux binaries are x86_64-only.
 pkgname=dolphin-emu
 pkgver=2609a
-pkgrel=1
+pkgrel=1.1
 pkgdesc="GameCube / Wii emulator (native aarch64 build)"
 arch=('aarch64')
 url="https://dolphin-emu.org"
@@ -22,6 +22,10 @@ prepare() {
 }
 
 build() {
+  # Tuned to the SoC like packages/soc/mesa (sm8550 fallback for a standalone makepkg): the
+  # recompiler emits its own code at runtime, this covers everything that is not recompiled.
+  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
+  export CFLAGS+=" ${_rocknix_tune}" CXXFLAGS+=" ${_rocknix_tune}"
   cmake -S dolphin -B build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr \

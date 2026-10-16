@@ -3,7 +3,7 @@
 # upstream combination, so a version bump can need compile fixes.
 pkgname=azahar
 pkgver=2126.2
-pkgrel=1
+pkgrel=1.1
 pkgdesc="Azahar — 3DS emulator (Citra successor), native aarch64 build"
 arch=('aarch64')
 url="https://github.com/azahar-emu/azahar"
@@ -22,6 +22,10 @@ prepare() {
 }
 
 build() {
+  # Tuned to the SoC like packages/soc/mesa (sm8550 fallback for a standalone makepkg): the
+  # recompiler emits its own code at runtime, this covers everything that is not recompiled.
+  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
+  export CFLAGS+=" ${_rocknix_tune}" CXXFLAGS+=" ${_rocknix_tune}"
   # The video-dump backend is compiled unconditionally against FFmpeg-4/5 APIs that FFmpeg 8
   # removed, so CMAKE_INCLUDE_PATH steers headers to the ffmpeg4.4 compat package. Headers
   # only: the libs are dlopen'd, so no ffmpeg4.4 at runtime just disables video dumping.

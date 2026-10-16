@@ -126,13 +126,13 @@ install_local_packages() {
   chroot "${root}" pacman -Q pocknix-desktop >/dev/null 2>&1 || {
     die "pocknix-desktop not installed — its local build wasn't in [pocknix]. Build it: 'make packages PKG=pocknix-desktop', confirm build/localrepo/pocknix-desktop-*.pkg.tar.* exists, then re-run."
   }
-  # Source-built emulators are optdepends of pocknix-emulation-full: a missing one only
+  # Source-built emulators (SoC-tuned, so [pocknix]) are optdepends of pocknix-emulation-full: a missing one only
   # drops that system from ES-DE, so warn here rather than fail the whole image.
   local oe
   if [ "${POCKNIX_EMULATION}" = 1 ]; then
     for oe in dolphin-emu azahar cemu; do
-      chroot "${root}" pacman -S --noconfirm --needed "pocknix-shared/${oe}" 2>/dev/null \
-        || warn "optional emulator ${oe} not in [pocknix-shared] (build failed/skipped?) — image ships WITHOUT it"
+      chroot "${root}" pacman -S --noconfirm --needed "pocknix/${oe}" 2>/dev/null \
+        || warn "optional emulator ${oe} not in [pocknix] (build failed/skipped?) — image ships WITHOUT it"
     done
   fi
   # Kernel: swap ALARM's generic linux-aarch64 for our SoC kernel package (Image + modules,
