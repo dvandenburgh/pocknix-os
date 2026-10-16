@@ -169,7 +169,7 @@ class Perf:
         self.hw.set_cpu_max(t["cpu_max"])
         if self.hw.gpu:
             if self.gpu_level == "manual":
-                # The slider is whole MHz but an OPP need not be (441.6 MHz on the A650).
+                # The slider is whole MHz but an OPP need not be (124.8 MHz on the A740).
                 hz = min(self.hw.gpu_freqs, key=lambda f: abs(f - self.manual_mhz * 1000000))
                 self.hw.set_gpu_range(hz, hz)
             else:
