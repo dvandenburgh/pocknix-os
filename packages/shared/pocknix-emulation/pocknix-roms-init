@@ -66,8 +66,12 @@ render_all() {  # $1 template dir, $2 out dir
   local src="$1" out="$2"; mkdir -p "${out}"
   printf '<?xml version="1.0"?>\n<string name="ROMDirectory" value="%s" />\n' "${ROMS}" > "${out}/es_settings.xml"
   local si=$(( REFRESH / 60 )); [ "${si}" -lt 1 ] && si=1
+  local hdr=true nits="${POCKNIX_PANEL_HDR_NITS:-0}"
+  case "${nits}" in ''|0|*[!0-9]*) hdr=false; nits=1000 ;; esac
   [ -f "${src}/retroarch.cfg" ] && sed -e "s/^video_refresh_rate = .*/video_refresh_rate = \"${REFRESH}.000000\"/" \
-      -e "s/^video_swap_interval = .*/video_swap_interval = \"${si}\"/" "${src}/retroarch.cfg" > "${out}/retroarch.cfg"
+      -e "s/^video_swap_interval = .*/video_swap_interval = \"${si}\"/" \
+      -e "s/^video_hdr_enable = .*/video_hdr_enable = \"${hdr}\"/" \
+      -e "s/^video_hdr_max_nits = .*/video_hdr_max_nits = \"${nits}.000000\"/" "${src}/retroarch.cfg" > "${out}/retroarch.cfg"
   [ -f "${src}/armsx2-PCSX2.ini.in" ] && sed "s|__HOME__|${HOME}|g" "${src}/armsx2-PCSX2.ini.in" > "${out}/PCSX2.ini"
   local vs=2; [ "${REFRESH}" -ge 120 ] 2>/dev/null && vs=1
   [ -f "${src}/eden-qt-config.ini.in" ] && sed "s/^use_vsync=.*/use_vsync=${vs}/" "${src}/eden-qt-config.ini.in" > "${out}/qt-config.ini"
