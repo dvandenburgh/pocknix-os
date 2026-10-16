@@ -4,6 +4,7 @@
 -patches/20-version/9999-fix-rust-build-error.patch
 -patches/20-version/0011-thermal-adc-tm5-drop-iio-val-int-check.patch
 dts/qcom/qcs8550-ayn-common.dtsi
+dts/qcom/qcs8550-retroidpocket-rp6.dts
 # Retroid Pocket 6 only: the other boards' device trees and the drivers only they use.
 -dts/qcom/qcs8550-ayaneo-pocket-common.dtsi
 -dts/qcom/qcs8550-ayaneo-pocketace.dts
