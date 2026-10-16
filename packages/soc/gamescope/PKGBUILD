@@ -6,7 +6,7 @@
 pkgname=gamescope
 epoch=1
 pkgver=3.16.31.rocknix.20260927.f6916aa
-pkgrel=4.1
+pkgrel=4.2
 _commit=f6916aacdecb4476f05746fef4dc49a650c28f05
 install=gamescope.install
 pkgdesc="SteamOS session compositing WM — patched (for msm handhelds)"
@@ -47,9 +47,11 @@ source=("gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=${
         '0023-drm-count-the-msm-DPU-output-LUTs-as-plane-colour-management.patch'
         # overlays above the game on msm's multiple primary planes (ROCKNIX 0020 + 0022)
         '0024-libliftoff-treat-enodev-as-no-fit.patch'
-        '0025-libliftoff-give-planes-the-layer-zpos.patch')
+        '0025-libliftoff-give-planes-the-layer-zpos.patch'
+        # Valve PR #2417 (merged after our pin), via armada 0028
+        '0026-vblankmanager-improve-frame-pacing.patch')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd gamescope
@@ -75,6 +77,7 @@ prepare() {
   patch -p1 < "${srcdir}/0023-drm-count-the-msm-DPU-output-LUTs-as-plane-colour-management.patch"
   patch -p1 < "${srcdir}/0024-libliftoff-treat-enodev-as-no-fit.patch"
   patch -p1 < "${srcdir}/0025-libliftoff-give-planes-the-layer-zpos.patch"
+  patch -p1 < "${srcdir}/0026-vblankmanager-improve-frame-pacing.patch"
 }
 
 build() {
