@@ -12,7 +12,7 @@ url="https://github.com/flyinghead/flycast"
 license=('GPL-2.0-or-later')
 depends=('glibc' 'gcc-libs')
 makedepends=('git' 'cmake' 'ninja')
-# The vendored set shipped this core before 0.1.0-3.1: upgrade both in one transaction.
+# libretro-cores-pocknix used to ship this core: the conflict upgrades both in one transaction.
 conflicts=('libretro-cores-pocknix<0.1.0-3.1')
 source=("flycast::git+https://github.com/flyinghead/flycast.git#commit=${_commit}")
 sha256sums=('SKIP')

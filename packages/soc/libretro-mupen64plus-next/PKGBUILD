@@ -13,7 +13,7 @@ url="https://github.com/libretro/mupen64plus-libretro-nx"
 license=('GPL-2.0-or-later')
 depends=('glibc' 'gcc-libs' 'libglvnd')
 makedepends=('git' 'mesa')
-# The vendored set shipped this core before 0.1.0-3.1: upgrade both in one transaction.
+# libretro-cores-pocknix used to ship this core: the conflict upgrades both in one transaction.
 conflicts=('libretro-cores-pocknix<0.1.0-3.1')
 source=("mupen64plus-libretro-nx::git+https://github.com/libretro/mupen64plus-libretro-nx.git#commit=${_commit}")
 sha256sums=('SKIP')
