@@ -2,8 +2,8 @@
 # (the standard and TOP-DPAD models share rp6.conf) and the input maps are model-gated.
 pkgname=pocknix-bsp-sm8550
 pkgver=0.2.0
-pkgrel=17.4
-pkgdesc="pocknix board support: Retroid Pocket 6 (SM8550) — board dispatch, input maps, audio UCM"
+pkgrel=17.5
+pkgdesc="pocknix board support: Retroid Pocket 6 (SM8550) — board dispatch, input maps, suspend config, audio UCM"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL-2.0-or-later')

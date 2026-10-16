@@ -73,6 +73,13 @@ for soc in sorted(os.listdir(DEVICES)):
             check(policy in cpu, f"{up}.{level}: {policy} is not a cpufreq policy")
             check(khz in cpu.get(policy, []), f"{up}.{level}: {policy}={khz} is not an available frequency")
         check(set(caps) == set(cpu), f"{up}.{level}: covers {sorted(caps)}, SoC has {sorted(cpu)}")
+    # A deeper level never caps a policy higher than a shallower one.
+    tables = fam["tables"].get(up, {})
+    present = [lv for lv in pp.UNDERCLOCK_LEVELS[1:] if lv in tables]
+    for shallow, deep in zip(present, present[1:]):
+        for policy in sorted(set(tables[shallow]) & set(tables[deep])):
+            check(tables[deep][policy] <= tables[shallow][policy],
+                  f"{up}: {deep} caps {policy} at {tables[deep][policy]}, above {shallow}'s {tables[shallow][policy]}")
     for pid in fam["order"]:
         t = pp.resolve(eff, pid, up, cpu, gpu)
         check(all(t["cpu_max"][p] in cpu[p] for p in cpu), f"{up}/{pid}: CPU cap off the OPP table")
