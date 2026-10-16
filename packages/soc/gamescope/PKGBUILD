@@ -6,7 +6,7 @@
 pkgname=gamescope
 epoch=1
 pkgver=3.16.31.rocknix.20260927.f6916aa
-pkgrel=3.1
+pkgrel=4.1
 _commit=f6916aacdecb4476f05746fef4dc49a650c28f05
 install=gamescope.install
 pkgdesc="SteamOS session compositing WM — patched (for msm handhelds)"
@@ -44,9 +44,12 @@ source=("gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=${
         '0020-drm-sdr-color-management-through-dpu-output-luts.patch'
         '0021-libliftoff-fix-multiple-primary-plane-stacking.patch'
         '0022-drm-per-plane-color-management-through-msm-plane-color-pipelines.patch'
-        '0023-drm-count-the-msm-DPU-output-LUTs-as-plane-colour-management.patch')
+        '0023-drm-count-the-msm-DPU-output-LUTs-as-plane-colour-management.patch'
+        # overlays above the game on msm's multiple primary planes (ROCKNIX 0020 + 0022)
+        '0024-libliftoff-treat-enodev-as-no-fit.patch'
+        '0025-libliftoff-give-planes-the-layer-zpos.patch')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd gamescope
@@ -70,6 +73,8 @@ prepare() {
   patch -p1 < "${srcdir}/0021-libliftoff-fix-multiple-primary-plane-stacking.patch"
   patch -p1 < "${srcdir}/0022-drm-per-plane-color-management-through-msm-plane-color-pipelines.patch"
   patch -p1 < "${srcdir}/0023-drm-count-the-msm-DPU-output-LUTs-as-plane-colour-management.patch"
+  patch -p1 < "${srcdir}/0024-libliftoff-treat-enodev-as-no-fit.patch"
+  patch -p1 < "${srcdir}/0025-libliftoff-give-planes-the-layer-zpos.patch"
 }
 
 build() {

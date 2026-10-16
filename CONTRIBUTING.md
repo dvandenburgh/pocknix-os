@@ -325,12 +325,12 @@ works against the locked base.
 
 ## AI assistance
 
-Using an AI assistant is fine, and the project README is up front about the maintainer doing
-the same. Three conditions:
+Using an AI assistant is fine, and the maintainer is open about using one too. Three
+conditions:
 
 - **Say so in the PR.** It genuinely helps me target the review, and it has done so before.
-- **You understand and can explain every line you submit.** If you cannot answer "why this
-  way?", it is not ready.
+- **You understand what you submit.** That means the code itself, what it changes on the
+  device, and what else it might affect. If you cannot answer "why this way?", it is not ready.
 - **It is tested on hardware.** Plausible-looking code that has never run is worse than no PR.
 
 ## Review and merge
