@@ -6,7 +6,7 @@
 pkgname=gamescope
 epoch=1
 pkgver=3.16.31.rocknix.20260927.f6916aa
-pkgrel=4.2
+pkgrel=4.3
 _commit=f6916aacdecb4476f05746fef4dc49a650c28f05
 install=gamescope.install
 pkgdesc="SteamOS session compositing WM — patched (for msm handhelds)"
@@ -49,9 +49,11 @@ source=("gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=${
         '0024-libliftoff-treat-enodev-as-no-fit.patch'
         '0025-libliftoff-give-planes-the-layer-zpos.patch'
         # Valve PR #2417 (merged after our pin), via armada 0028
-        '0026-vblankmanager-improve-frame-pacing.patch')
+        '0026-vblankmanager-improve-frame-pacing.patch'
+        # Steam's colour-temperature slider on the ARM64 client (armada 0018)
+        '0027-steamcompmgr-arm64-virtual-white.patch')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd gamescope
@@ -78,6 +80,7 @@ prepare() {
   patch -p1 < "${srcdir}/0024-libliftoff-treat-enodev-as-no-fit.patch"
   patch -p1 < "${srcdir}/0025-libliftoff-give-planes-the-layer-zpos.patch"
   patch -p1 < "${srcdir}/0026-vblankmanager-improve-frame-pacing.patch"
+  patch -p1 < "${srcdir}/0027-steamcompmgr-arm64-virtual-white.patch"
 }
 
 build() {
