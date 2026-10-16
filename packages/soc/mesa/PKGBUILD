@@ -72,7 +72,7 @@ build() {
   )
   # Turnip keys its shader cache on its build ID, and these builds are not reproducible, so
   # every rebuild wiped users' caches. Derive the ID from the build's inputs instead (source,
-  # tuning, options; not the compiler version or pkgrel), as armada does (8d980fad).
+  # tuning, options; not the compiler version or pkgrel).
   local _tu_id
   _tu_id="$(printf '%s\n' aarch64 "${_rocknix_tune}" "${sha256sums[0]}" "${_meson[*]}" \
     | sha256sum | cut -c1-40)"

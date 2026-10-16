@@ -1,9 +1,9 @@
 # Retroid Pocket 6 firmware upstream linux-firmware lacks or gets wrong (ath12k WCN7850,
 # ADSP/CDSP, speaker amps, audio topology, VPU). Pinned by commit + sha256, nothing in git. The
-# RP6 runs its own ADSP build (extracted from a Retroid Android image, via armada) from
+# RP6 runs its own ADSP build (extracted from a Retroid Android image) from
 # qcom/sm8550/retroidpocket/rp6/; pd-mapper reads the .jsn files from the ADSP's directory, so
-# they and the amp tuning sit beside it (byte-identical to ROCKNIX's Odin 2 set). The CDSP and
-# the AYN-Odin2 topology (the RP6's sound card is named AYN-Odin2) still come from ROCKNIX. /usr/lib/firmware/updates/ wins the kernel's search and no ALARM package writes
+# they and the amp tuning sit beside it. The CDSP and the AYN-Odin2 topology (the RP6's sound
+# card is named AYN-Odin2) come from the first pin, the ADSP set from the second. /usr/lib/firmware/updates/ wins the kernel's search and no ALARM package writes
 # there, so linux-firmware updates never revert the ath12k board file that wifi needs.
 pkgname=pocknix-firmware-sm8550
 pkgver=0.1.0
