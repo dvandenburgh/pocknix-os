@@ -101,13 +101,17 @@ fi
 # POCKNIX_PANEL_HDR_NITS, the panel's peak: inverse tone mapping of SDR content targets it,
 # clients are offered the formats gamescope can sample as well as those a plane scans out,
 # which HDR swapchains rely on, and the Steam client (which inherits gamescope's environment)
-# is told the session supports HDR, so its display settings offer the HDR switch.
+# is told the session supports HDR, so its display settings offer the HDR switch. DXVK_HDR=1 lets
+# DXVK and vkd3d-proton offer HDR swapchains, so a Proton game's own HDR option appears: the
+# upstream session exports it only with ENABLE_GAMESCOPE_HDR, which also forces HDR output on at
+# startup, and gamescope's DRM backend never sets it. The gamescope WSI layer still forces it
+# off for clients it flags, and Steam's switch decides whether the panel runs HDR.
 GS_ENV=(GAMESCOPE_INTERNAL_DEVICE_ID="${POCKNIX_DEVICE:-rp6}")
 GS_HDR=()
 case "${POCKNIX_PANEL_HDR_NITS:-0}" in
   ''|0|*[!0-9]*) ;;
   *) GS_HDR=(--hdr-itm-target-nits "${POCKNIX_PANEL_HDR_NITS}")
-     GS_ENV+=(GAMESCOPE_EXPOSE_CLIENT_SAMPLEABLE_FORMATS=1 STEAM_GAMESCOPE_HDR_SUPPORTED=1) ;;
+     GS_ENV+=(GAMESCOPE_EXPOSE_CLIENT_SAMPLEABLE_FORMATS=1 STEAM_GAMESCOPE_HDR_SUPPORTED=1 DXVK_HDR=1) ;;
 esac
 
 # Session flags a Steam Deck sets in game mode, limited to what holds on every board: two
