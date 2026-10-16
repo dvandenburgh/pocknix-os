@@ -3,7 +3,7 @@
 # Counterpart of pocknix-turnip-x86; same per-SoC tuning contract as packages/soc/mesa.
 pkgname=pocknix-turnip-arm
 pkgver=20261009
-pkgrel=1
+pkgrel=1.1
 pkgdesc="Pinned aarch64 Turnip builds for per-game Mesa selection (SoC-tuned)"
 arch=('aarch64')
 url="https://www.mesa3d.org/"
@@ -67,27 +67,39 @@ build() {
   export CXXFLAGS="${CXXFLAGS} ${_rocknix_tune}"
 
   # Both WSI platforms stay on: x11 for XWayland games, wayland for gamescope-native ones.
-  local v
-  for v in "${_versions[@]}"; do
-    meson setup "build-${v}" "mesa-$(_srctag "$v")" --prefix=/usr --buildtype=plain \
-      -Db_ndebug=true \
-      -Dplatforms=x11,wayland \
-      -Dglx=disabled \
-      -Degl=disabled \
-      -Dgbm=disabled \
-      -Dopengl=false \
-      -Dgles1=disabled \
-      -Dgles2=disabled \
-      -Dgallium-drivers= \
-      -Dvulkan-drivers=freedreno \
-      -Dfreedreno-kmds=msm \
-      -Dvulkan-layers= \
-      -Dllvm=disabled \
-      -Dshader-cache=enabled \
-      -Dandroid-libbacktrace=disabled \
-      -Dlibunwind=disabled \
-      -Dvalgrind=disabled \
-      -Dbuild-tests=false
+  local _meson=(
+    --prefix=/usr --buildtype=plain
+    -Db_ndebug=true
+    -Dplatforms=x11,wayland
+    -Dglx=disabled
+    -Degl=disabled
+    -Dgbm=disabled
+    -Dopengl=false
+    -Dgles1=disabled
+    -Dgles2=disabled
+    -Dgallium-drivers=
+    -Dvulkan-drivers=freedreno
+    -Dfreedreno-kmds=msm
+    -Dvulkan-layers=
+    -Dllvm=disabled
+    -Dshader-cache=enabled
+    -Dandroid-libbacktrace=disabled
+    -Dlibunwind=disabled
+    -Dvalgrind=disabled
+    -Dbuild-tests=false
+  )
+  # Turnip keys its shader cache on its build ID; derive it from the inputs (version, source
+  # hash, tuning, options) so a rebuild of unchanged inputs keeps users' caches, on the series
+  # whose meson.options has tu-build-id. Each series gets its own ID, so no two share a cache.
+  local v i tu_args
+  for i in "${!_versions[@]}"; do
+    v="${_versions[$i]}"
+    tu_args=()
+    if grep -q "'tu-build-id'" "mesa-$(_srctag "$v")/meson.options" 2>/dev/null; then
+      tu_args=(-Dtu-build-id="$(printf '%s\n' aarch64 "${_rocknix_tune}" "${v}" "${sha256sums[$((i + 1))]}" "${_meson[*]}" \
+        | sha256sum | cut -c1-40)")
+    fi
+    meson setup "build-${v}" "mesa-$(_srctag "$v")" "${_meson[@]}" "${tu_args[@]}"
     meson compile -C "build-${v}"
   done
 }
