@@ -1,0 +1,23 @@
+# Per-SoC kernel config deltas: scripts/config arguments, applied after build-kernel.sh's own
+# set and before olddefconfig. make sync leaves this file alone.
+
+# Display blocks SM8550 does not have: it drives its DSI panel and DP through the DPU, with the
+# 7nm-family DSI PHY (its 4nm variant lives in that driver). MDP4/MDP5, HDMI and the older DSI
+# PHY generations are other SoCs'.
+--disable DRM_MSM_MDP4
+--disable DRM_MSM_MDP5
+--disable DRM_MSM_HDMI
+--disable DRM_MSM_HDMI_HDCP
+--disable DRM_MSM_DSI_28NM_PHY
+--disable DRM_MSM_DSI_20NM_PHY
+--disable DRM_MSM_DSI_28NM_8960_PHY
+--disable DRM_MSM_DSI_14NM_PHY
+--disable DRM_MSM_DSI_10NM_PHY
+
+# The RP6 panel is the VTDR6130 (DRM_PANEL_VISIONOX_VTDR6130_COG) on a pwm-backlight; these
+# panel and backlight drivers serve other boards.
+--disable DRM_PANEL_EDP
+--disable DRM_PANEL_SIMPLE
+--disable DRM_PANEL_LVDS
+--disable DRM_PANEL_SITRONIX_ST7703
+--disable BACKLIGHT_QCOM_WLED

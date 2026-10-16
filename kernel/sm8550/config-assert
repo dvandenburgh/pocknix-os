@@ -1,0 +1,10 @@
+# Symbols the RP6 display path needs built in: build-kernel.sh fails the build if one did not
+# resolve to =y (config-delta trims the display blocks around them).
+DRM_MSM
+DRM_MSM_MDSS
+DRM_MSM_DPU
+DRM_MSM_DSI
+DRM_MSM_DSI_7NM_PHY
+DRM_MSM_DP
+DRM_PANEL_VISIONOX_VTDR6130_COG
+BACKLIGHT_PWM
