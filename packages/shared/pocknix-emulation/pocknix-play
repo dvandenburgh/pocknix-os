@@ -16,7 +16,7 @@ CORES=/usr/lib/libretro
 
 run_core() {
   local core="${CORES}/$1_libretro.so"
-  [ -f "${core}" ] || { echo "pocknix-play: core missing: ${core} (libretro-cores-pocknix not installed?)" >&2; exit 1; }
+  [ -f "${core}" ] || { echo "pocknix-play: core missing: ${core} (pocknix-emulation-full not installed?)" >&2; exit 1; }
   # es-retroarch adds -f and the frame-pacing --appendconfig; ES-DE launches use the same wrapper.
   exec /usr/lib/pocknix/es-retroarch -L "${core}" "${rom}"
 }
@@ -49,7 +49,7 @@ case "${system}" in
   sega32x)                              run_core picodrive ;;
   saturn)                               run_core yabasanshiro ;;
   dreamcast)                            run_core flycast ;;
-  psx)                                  run_core duckstation ;;
+  psx)                                  run_core swanstation ;;
   tg16|pcengine)                        run_core mednafen_pce_fast ;;
   supergrafx|sgfx)                      run_core mednafen_supergrafx ;;
   neogeo|fbneo)                         run_core fbneo ;;

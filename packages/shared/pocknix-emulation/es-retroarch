@@ -14,8 +14,7 @@ sub="$(sed -n 's/^video_shader_subframes = "\([0-9]*\)"/\1/p' "${racfg}" 2>/dev/
 if [ "${bfi:-0}" -gt 0 ] 2>/dev/null || [ "${sub:-1}" -gt 1 ] 2>/dev/null; then si=1; fi
 
 # GL+vsync under gamescope paces at an irregular ~47fps; audio-paced GL without vsync holds 60.
-# glcore, not gl: gl loads only GLSL presets and ours are slang. flycast is named because our
-# build lacks Vulkan though its info file claims it, and it fails to load on a Vulkan context.
+# glcore, not gl: gl loads only GLSL presets and ours are slang.
 driver=vulkan; vsync=true
 core=""; prev=""
 for a in "$@"; do [ "${prev}" = "-L" ] && core="${a}"; prev="${a}"; done
@@ -25,12 +24,20 @@ if [ -n "${core}" ]; then
     driver=glcore; vsync=false
   fi
   case "${name}" in
-    flycast_libretro) driver=glcore; vsync=false ;;
+    # The info file lists GL only, but ParaLLEl-RDP (the seeded default) renders through Vulkan;
+    # only GLideN64 needs the GL context.
+    mupen64plus_next_libretro)
+      opt="${HOME}/.config/retroarch/config/Mupen64Plus-Next/Mupen64Plus-Next.opt"
+      if grep -q '^mupen64plus-rdp-plugin = "gliden64"$' "${opt}" 2>/dev/null; then
+        driver=glcore; vsync=false
+      else
+        driver=vulkan; vsync=true
+      fi ;;
     # "OpenGL" here makes RetroArch switch the whole session to GL; only that value is healed
     # ("Auto" follows Vulkan, "Software" is deliberate).
-    duckstation_libretro)
-      opt="${HOME}/.config/retroarch/config/DuckStation/DuckStation.opt"
-      [ -w "${opt}" ] && sed -i 's/^duckstation_GPU\.Renderer = "OpenGL"$/duckstation_GPU.Renderer = "Vulkan"/' "${opt}" ;;
+    swanstation_libretro)
+      opt="${HOME}/.config/retroarch/config/SwanStation/SwanStation.opt"
+      [ -w "${opt}" ] && sed -i 's/^swanstation_GPU_Renderer = "OpenGL"$/swanstation_GPU_Renderer = "Vulkan"/' "${opt}" ;;
   esac
 fi
 

@@ -1,0 +1,29 @@
+# libretro-swanstation — the PlayStation core. SwanStation is the maintained GPL fork of
+# DuckStation's libretro core, which upstream DuckStation dropped (the vendored
+# duckstation_libretro.so it replaces was a 2018-era GCC 7 build). Vulkan and GL hardware
+# renderers, the ARM64 recompiler, PGXP. Every dependency is vendored in the tree.
+# Bump = move _commit, pkgver <commit date>.<short sha>.
+pkgname=libretro-swanstation
+pkgver=20261015.e436e9b
+pkgrel=1
+_commit=e436e9b85374def58d211df7f78880f0f4a917b4
+pkgdesc="SwanStation libretro core — PlayStation, Vulkan and OpenGL (SoC-tuned)"
+arch=('aarch64')
+url="https://github.com/libretro/swanstation"
+license=('GPL-3.0-or-later')
+depends=('glibc' 'gcc-libs')
+makedepends=('git' 'cmake' 'ninja')
+source=("swanstation::git+https://github.com/libretro/swanstation.git#commit=${_commit}")
+sha256sums=('SKIP')
+
+build() {
+  # Tuned to the SoC like packages/soc/mesa (sm8550 fallback for a standalone makepkg).
+  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
+  export CFLAGS+=" ${_rocknix_tune}" CXXFLAGS+=" ${_rocknix_tune}"
+  cmake -S swanstation -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+  ninja -C build
+}
+
+package() {
+  install -Dm644 build/swanstation_libretro.so "${pkgdir}/usr/lib/libretro/swanstation_libretro.so"
+}

@@ -3,7 +3,7 @@
 # are optdepends instead, so a failed optional build cannot block the layer.
 pkgname=pocknix-emulation-full
 pkgver=0.1.0
-pkgrel=3
+pkgrel=3.1
 pkgdesc="pocknix optional layer: ES-DE frontend, RetroArch cores, standalone emulators (Switch: bring your own)"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -11,6 +11,11 @@ license=('GPL-2.0-or-later')
 depends=('pocknix-emulation'
          'es-de'
          'libretro-cores-pocknix'
+         # Source-built, Vulkan-capable cores for N64, Dreamcast and PlayStation: hard deps,
+         # unlike the standalone emulators, because the vendored set no longer carries them.
+         'libretro-mupen64plus-next'
+         'libretro-flycast'
+         'libretro-swanstation'
          'retroarch'
          'libretro-core-info'
          'retroarch-autoconfig-pocknix'

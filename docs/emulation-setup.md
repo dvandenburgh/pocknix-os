@@ -20,7 +20,7 @@ ES-DE show up in your Steam library automatically.
 | Sega Master System / Genesis / Game Gear / Sega CD | RetroArch (Genesis Plus GX) |
 | Sega Saturn | RetroArch (YabaSanshiro) |
 | Sega Dreamcast | RetroArch (Flycast) |
-| PlayStation | RetroArch (DuckStation) |
+| PlayStation | RetroArch (SwanStation) |
 | PlayStation 2 | ARMSX2 |
 | PlayStation Portable | PPSSPP |
 | Arcade / Neo Geo | RetroArch (FBNeo) |

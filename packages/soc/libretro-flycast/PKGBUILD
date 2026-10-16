@@ -1,0 +1,40 @@
+# libretro-flycast — the Dreamcast/NAOMI core, built from source in place of the vendored ArkOS
+# binary, which had no Vulkan renderer (es-retroarch had to pin it to GL without vsync). This one
+# has Vulkan and desktop GL, and the ARM64 dynarec. Bump = move _commit, pkgver
+# <last tag>.<commit date>.<short sha>.
+pkgname=libretro-flycast
+pkgver=2.7.20261013.80471d5
+pkgrel=1
+_commit=80471d57b02606f53828daa916de6ecc94ca1877
+pkgdesc="Flycast libretro core — Dreamcast/NAOMI, Vulkan and OpenGL (SoC-tuned)"
+arch=('aarch64')
+url="https://github.com/flyinghead/flycast"
+license=('GPL-2.0-or-later')
+depends=('glibc' 'gcc-libs')
+makedepends=('git' 'cmake' 'ninja')
+# The vendored set shipped this core before 0.1.0-3.1: upgrade both in one transaction.
+conflicts=('libretro-cores-pocknix<0.1.0-3.1')
+source=("flycast::git+https://github.com/flyinghead/flycast.git#commit=${_commit}")
+sha256sums=('SKIP')
+
+prepare() {
+  cd flycast
+  # freetype only serves the standalone GUI's fonts; the libretro target never builds it.
+  git -c submodule.core/deps/freetype.update=none submodule update --init --recursive
+}
+
+build() {
+  # Tuned to the SoC like packages/soc/mesa (sm8550 fallback for a standalone makepkg).
+  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
+  export CFLAGS+=" ${_rocknix_tune}" CXXFLAGS+=" ${_rocknix_tune}"
+  # Bundled libzip: no runtime dependency for one core.
+  cmake -S flycast -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLIBRETRO=ON \
+    -DUSE_HOST_LIBZIP=OFF
+  ninja -C build
+}
+
+package() {
+  install -Dm644 build/flycast_libretro.so "${pkgdir}/usr/lib/libretro/flycast_libretro.so"
+}

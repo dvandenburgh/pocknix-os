@@ -1,0 +1,33 @@
+# libretro-mupen64plus-next — the N64 core, built from source in place of the vendored ArkOS
+# binary (a GLES2-only GCC 8 build): GLideN64 on desktop GL, the ARM64 dynarec, and ParaLLEl-RDP
+# and ParaLLEl-RSP (Vulkan), which upstream leaves off by default. Angrylion (HAVE_THR_AL) and the
+# cxd4 LLE RSP ride along as fallbacks. pocknix-emulation seeds the ParaLLEl plugins and
+# es-retroarch gives them a Vulkan context. Bump = move _commit, pkgver <commit date>.<short sha>.
+pkgname=libretro-mupen64plus-next
+pkgver=20261001.12edd2c
+pkgrel=1
+_commit=12edd2c74a517ff86dfa8cfc71ad75e4c10486d5
+pkgdesc="Mupen64Plus-Next libretro core — N64, with ParaLLEl-RDP/RSP (Vulkan) and GLideN64 (SoC-tuned)"
+arch=('aarch64')
+url="https://github.com/libretro/mupen64plus-libretro-nx"
+license=('GPL-2.0-or-later')
+depends=('glibc' 'gcc-libs' 'libglvnd')
+makedepends=('git' 'mesa')
+# The vendored set shipped this core before 0.1.0-3.1: upgrade both in one transaction.
+conflicts=('libretro-cores-pocknix<0.1.0-3.1')
+source=("mupen64plus-libretro-nx::git+https://github.com/libretro/mupen64plus-libretro-nx.git#commit=${_commit}")
+sha256sums=('SKIP')
+
+build() {
+  # Tuned to the SoC like packages/soc/mesa (sm8550 fallback for a standalone makepkg).
+  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
+  export CFLAGS+=" ${_rocknix_tune}" CXXFLAGS+=" ${_rocknix_tune}"
+  cd mupen64plus-libretro-nx
+  # platform=unix on aarch64 picks desktop GL and WITH_DYNAREC=aarch64.
+  make platform=unix HAVE_PARALLEL_RDP=1 HAVE_PARALLEL_RSP=1 HAVE_THR_AL=1 LLE=1
+}
+
+package() {
+  install -Dm644 mupen64plus-libretro-nx/mupen64plus_next_libretro.so \
+    "${pkgdir}/usr/lib/libretro/mupen64plus_next_libretro.so"
+}

@@ -4,12 +4,12 @@
   A custom entry REPLACES the bundled system of the same name, so every entry here must be the
   FULL definition, not a delta. Each one exists because the bundled launch commands name cores or
   standalones we do not ship: ps2 offers only the LRPS2 core, psx names a DuckStation standalone
-  that has no arm64 build (ours is the libretro core), gc/wii default to the RetroArch dolphin
+  (ours is the SwanStation libretro core), gc/wii default to the RetroArch dolphin
   core; cps1/cps2/cps3/arcade/mame all default to mame_libretro, which we do not ship.
   All commands go through the /usr/lib/pocknix/es-* wrappers: the big-core pin for the
   standalones, the frame-pacing pin (es-retroarch) for the libretro cores (psx and the
-  arcade systems). dreamcast and saturn are here only for that pin: the bundled entries
-  launch RetroArch bare. pocknix-play mirrors these defaults for the Steam tiles.
+  arcade systems). n64, dreamcast and saturn are here only for that pin: the bundled entries
+  launch RetroArch bare, and n64's ParaLLEl-RDP needs the Vulkan context the pin gives it. pocknix-play mirrors these defaults for the Steam tiles.
 -->
 <systemList>
     <system>
@@ -37,7 +37,7 @@
         <fullname>Sony PlayStation</fullname>
         <path>%ROMPATH%/psx</path>
         <extension>.bin .BIN .cbn .CBN .ccd .CCD .chd .CHD .cue .CUE .ecm .ECM .exe .EXE .img .IMG .iso .ISO .m3u .M3U .mdf .MDF .mds .MDS .minipsf .MINIPSF .pbp .PBP .psexe .PSEXE .psf .PSF .toc .TOC .z .Z .znx .ZNX .7z .7Z .zip .ZIP</extension>
-        <command label="DuckStation">/usr/lib/pocknix/es-retroarch -L %CORE_RETROARCH%/duckstation_libretro.so %ROM%</command>
+        <command label="SwanStation">/usr/lib/pocknix/es-retroarch -L %CORE_RETROARCH%/swanstation_libretro.so %ROM%</command>
         <command label="PCSX ReARMed">/usr/lib/pocknix/es-retroarch -L %CORE_RETROARCH%/pcsx_rearmed_libretro.so %ROM%</command>
         <command label="Shortcut or script">%ENABLESHORTCUTS% %EMULATOR_OS-SHELL% %ROM%</command>
         <platform>psx</platform>
@@ -167,6 +167,16 @@
         <command label="Shortcut or script">%ENABLESHORTCUTS% %EMULATOR_OS-SHELL% %ROM%</command>
         <platform>arcade</platform>
         <theme>mame</theme>
+    </system>
+    <system>
+        <name>n64</name>
+        <fullname>Nintendo 64</fullname>
+        <path>%ROMPATH%/n64</path>
+        <extension>.bin .BIN .n64 .N64 .ndd .NDD .u1 .U1 .v64 .V64 .z64 .Z64 .7z .7Z .zip .ZIP</extension>
+        <command label="Mupen64Plus-Next">/usr/lib/pocknix/es-retroarch -L %CORE_RETROARCH%/mupen64plus_next_libretro.so %ROM%</command>
+        <command label="Shortcut or script">%ENABLESHORTCUTS% %EMULATOR_OS-SHELL% %ROM%</command>
+        <platform>n64</platform>
+        <theme>n64</theme>
     </system>
     <system>
         <name>dreamcast</name>
