@@ -1,20 +1,20 @@
-# vita3k-bin — Vita3K, the PS Vita emulator, vendored from the native aarch64 AppImage on
-# upstream's rolling 'continuous' tag. That tag is force-updated, so pkgver carries the date we
-# vendored on; taking a newer build means bumping the date AND clearing the srccache copy.
+# vita3k-bin — Vita3K, the PS Vita emulator, vendored from the native aarch64 AppImage of one
+# numbered build in Vita3K/Vita3K-builds. Those releases never change, unlike the main repo's
+# force-updated 'continuous' tag, whose replaced file failed the sha on every later download.
+# Bump = a newer build number in _build, its date in pkgver, and the new sha256.
 pkgname=vita3k-bin
-pkgver=0.2026.10.09
+_build=4187   # Vita3K commit 55f88cd1
+pkgver=0.2026.10.16
 pkgrel=1.1
-pkgdesc="Vita3K — PS Vita emulator, native aarch64 AppImage (vendored, rolling upstream)"
+pkgdesc="Vita3K — PS Vita emulator, native aarch64 AppImage (vendored, pinned build)"
 arch=('aarch64')
 url="https://vita3k.org"
 license=('GPL2')
 depends=('fuse2')
 options=('!strip')
-source=("Vita3K-${pkgver}.AppImage::https://github.com/Vita3K/Vita3K/releases/download/continuous/Vita3K-aarch64.AppImage"
+source=("Vita3K-${pkgver}.AppImage::https://github.com/Vita3K/Vita3K-builds/releases/download/${_build}/Vita3K-aarch64.AppImage"
         'pocknix-vita3k.desktop')
-# The sha is what makes a moved 'continuous' tag fail loudly instead of shipping different
-# bytes under the same pkgver.
-sha256sums=('2cf6944c58b024e5fd917c06119b4f0634b141ec5d86a8bd061b52be142ec8cd'
+sha256sums=('011531af1fb5ada29a38849292af4cfb013843a3599b6362359c027520712fc3'
             'SKIP')
 noextract=("Vita3K-${pkgver}.AppImage")
 
