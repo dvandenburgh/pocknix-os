@@ -2,6 +2,9 @@
 # cores via Valve's steam-launch-wrapper (shortcuts included), and gives Wine a CPU topology over
 # the same cores: a topology that disagrees with the pin shows the game CPUs it may not use.
 # Values already in the env win. No guessed fallback: a board without the key is not pinned.
+# Steam Remote Play's V4L2 decoder path resets the decoder after its last buffer, which iris
+# needs to come back with a picture after a source change (with kernel 1096/1097; from armada).
+export STEAMLINK_V4L2_RESET_AFTER_LAST_BUF="${STEAMLINK_V4L2_RESET_AFTER_LAST_BUF:-1}"
 . /usr/lib/pocknix/cores.sh
 _pocknix_list="$(pocknix_big_cores)"
 if [ -n "${_pocknix_list}" ]; then
