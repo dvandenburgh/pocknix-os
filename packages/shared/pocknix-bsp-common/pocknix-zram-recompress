@@ -1,0 +1,13 @@
+#!/bin/sh
+# Recompresses zram pages that stayed idle since the previous pass with the secondary algorithm
+# (zstd, set by zram-generator.conf), then marks every page idle for the next pass. A page that is
+# swapped in meanwhile loses its idle mark, so only memory untouched for a whole timer period moves.
+z=/sys/block/zram0
+[ -w "${z}/recompress" ] && [ -w "${z}/idle" ] || exit 0
+grep -q '\[zstd\]' "${z}/recomp_algorithm" 2>/dev/null || exit 0
+# Off the cores games are pinned to.
+. /usr/lib/pocknix/cores.sh
+cpus="$(pocknix_small_cores)"
+[ -n "${cpus}" ] && taskset -pc "${cpus}" $$ >/dev/null 2>&1
+echo "type=idle" > "${z}/recompress" 2>/dev/null || true
+echo all > "${z}/idle"

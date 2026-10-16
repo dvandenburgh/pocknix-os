@@ -3,14 +3,14 @@
 # live in devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
-pkgrel=26.4
-pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, power profiles daemon, realtime priority ladder, deck session limits, kernel /flash deploy"
+pkgrel=26.5
+pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons, ABL updater, power profiles daemon, realtime priority ladder, zram swap and memory sysctls, deck session limits, kernel /flash deploy"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL-2.0-or-later')
 # pocknix-core rides along so a plain -Syu delivers the mandatory layer to devices that
 # predate it: a new package name only reaches installed devices via a dep edge.
-depends=('bash' 'sudo' 'pocknix-core' 'python' 'python-gobject' 'cpio')
+depends=('bash' 'sudo' 'pocknix-core' 'python' 'python-gobject' 'cpio' 'zram-generator')
 # Older kernels own the /flash deploy files: the versioned conflict makes pacman upgrade the
 # kernel in the same transaction instead of failing on file conflicts.
 conflicts=('linux-pocknix-sm8550<7.2.10-3')
@@ -36,10 +36,12 @@ source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         '60-pocknix-sdl-xb360.conf' 'pocknix-sdl-xb360.sh'
         'pocknix-rt-ladder' 'pocknix-rt-ladder.service' 'rtkit-limits.conf'
         '70-pocknix-cache.conf' '10-pocknix-stop-timeout.conf' 'pocknix-coredump.conf'
+        '60-pocknix-gaming.conf' 'zram-generator.conf' 'pocknix-mglru.conf'
+        'pocknix-zram-recompress' 'pocknix-zram-recompress.service' 'pocknix-zram-recompress.timer'
         '60-pocknix-deck.conf'
         'pocknix-cmdline-sync' '91-pocknix-cmdline.hook' 'cores.sh'
         'pocknix-boot-deploy' 'pocknix-build-bootimg' '90-linux-pocknix.hook')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-sleep" \
@@ -127,6 +129,18 @@ package() {
   install -Dm644 "${srcdir}/10-pocknix-stop-timeout.conf" \
     "${pkgdir}/usr/lib/systemd/user.conf.d/10-pocknix-stop-timeout.conf"
   install -Dm644 "${srcdir}/pocknix-coredump.conf" "${pkgdir}/usr/lib/tmpfiles.d/pocknix-coredump.conf"
+  # Memory: zram swap (lz4, idle pages recompressed to zstd), its sysctls, MGLRU thrash guard.
+  install -Dm644 "${srcdir}/60-pocknix-gaming.conf" "${pkgdir}/usr/lib/sysctl.d/60-pocknix-gaming.conf"
+  install -Dm644 "${srcdir}/zram-generator.conf" "${pkgdir}/usr/lib/systemd/zram-generator.conf"
+  install -Dm644 "${srcdir}/pocknix-mglru.conf" "${pkgdir}/usr/lib/tmpfiles.d/pocknix-mglru.conf"
+  install -Dm755 "${srcdir}/pocknix-zram-recompress" "${pkgdir}/usr/lib/pocknix/pocknix-zram-recompress"
+  install -Dm644 "${srcdir}/pocknix-zram-recompress.service" \
+    "${pkgdir}/usr/lib/systemd/system/pocknix-zram-recompress.service"
+  install -Dm644 "${srcdir}/pocknix-zram-recompress.timer" \
+    "${pkgdir}/usr/lib/systemd/system/pocknix-zram-recompress.timer"
+  install -d "${pkgdir}/usr/lib/systemd/system/timers.target.wants"
+  ln -sf "../pocknix-zram-recompress.timer" \
+    "${pkgdir}/usr/lib/systemd/system/timers.target.wants/pocknix-zram-recompress.timer"
 
   install -Dm755 "${srcdir}/pocknix-boot-deploy" "${pkgdir}/usr/lib/pocknix/pocknix-boot-deploy"
   install -Dm755 "${srcdir}/pocknix-build-bootimg" "${pkgdir}/usr/bin/pocknix-build-bootimg"
