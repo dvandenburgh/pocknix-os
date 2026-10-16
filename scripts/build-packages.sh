@@ -342,8 +342,16 @@ main() {
   local rmount rdb
   for rmount in /localrepo /localrepo-shared; do
     rdb="${REPO_DB}"; [ "${rmount}" = "/localrepo-shared" ] && rdb="${SHARED_REPO_DB}"
+    # A lock left by an interrupted run makes repo-add refuse the db. Only one build runs per
+    # checkout (build-all.sh), so a lock present now is stale.
+    rm -f "${BROOT}${rmount}/${rdb}.lck"
     if ls "${BROOT}${rmount}"/*.pkg.tar.* >/dev/null 2>&1; then
-      chroot "${BROOT}" bash -lc "cd ${rmount} && LC_ALL=C repo-add -q ${rdb} \$(ls *.pkg.tar.* | grep -v '\.sig\$')" >/dev/null 2>&1
+      # Captured, not discarded: a failure here used to end the build with no message at all.
+      local out
+      if ! out="$(chroot "${BROOT}" bash -lc "cd ${rmount} && LC_ALL=C repo-add -q ${rdb} \$(ls *.pkg.tar.* | grep -v '\.sig\$')" 2>&1)"; then
+        printf '%s\n' "${out}" | tail -n 20 >&2
+        die "repo-add could not index ${rmount#/} (${rdb}); its output is above"
+      fi
     else
       chroot "${BROOT}" bash -lc "cd ${rmount} && tar -czf ${rdb} -T /dev/null && ln -sf ${rdb} ${rdb%.tar.gz}"
     fi
