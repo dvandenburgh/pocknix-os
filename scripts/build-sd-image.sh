@@ -175,9 +175,13 @@ EOF
   # retries. fstrim: root is mounted without discard. No USB gadget on purpose.
   chroot "${root}" systemctl enable iwd NetworkManager systemd-resolved seatd inputplumber \
         bluetooth upower udisks2 fstrim.timer \
-        pocknix-diag.service pocknix-expand-root.service pocknix-session.service \
-        pocknix-lavd.service \
+        pocknix-diag.service pocknix-lavd.service \
         >/dev/null 2>&1 || true
+  # Apart, and fatal: systemctl enable is all-or-nothing, so one missing unit in the batch above
+  # would leave these off too, and the image would boot to a console with no Game Mode and an
+  # unexpanded root.
+  chroot "${root}" systemctl enable pocknix-session.service pocknix-expand-root.service \
+    || die "could not enable pocknix-session/pocknix-expand-root in the image (is pocknix-session installed?)"
   # A well-known password is baked in, so sshd ships off. ALARM enables it: disable, not skip.
   if [ "${SD_SSH}" = on ]; then
     warn "SSH is on — this image accepts SSH logins with the baked-in password"
